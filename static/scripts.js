@@ -4,6 +4,31 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
+// Function to send emotion data to n8n webhook
+async function sendEmotionToN8N(emotionData) {
+    const webhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
+    
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                emotion: emotionData.emotion,
+                confidence: emotionData.confidence,
+                timestamp: new Date().toISOString(),
+                text: emotionData.text, // the spoken text
+                sessionId: emotionData.sessionId || 'default'
+            })
+        });
+        
+        console.log('Emotion data sent to n8n:', response.status);
+    } catch (error) {
+        console.error('Failed to send to n8n:', error);
+    }
+}
+
 // Initialize when DOM is fully loaded
 window.addEventListener("DOMContentLoaded", () => {
   const recordBtn = document.getElementById("recordBtn");
@@ -77,6 +102,14 @@ window.addEventListener("DOMContentLoaded", () => {
       } else {
         console.error("updateVisualization function not found");
       }
+
+      // Send emotion data to n8n webhook
+      await sendEmotionToN8N({
+        emotion: data.emotion,
+        confidence: data.intensity,
+        text: text,
+        sessionId: chatId || 'default'
+      });
 
       // Get empathetic reply
       res = await fetch("/respond", {
