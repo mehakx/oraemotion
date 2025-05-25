@@ -6,12 +6,14 @@ let chatId = null;
 
 // Function to send emotion data to n8n webhook
 async function sendEmotionToN8N(emotionData) {
+    // Use a CORS proxy service
+    const corsProxyUrl = 'https://corsproxy.io/?';
     const webhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
     
-    console.log('🚀 Attempting to send to n8n webhook:', emotionData);
+    console.log('🚀 Attempting to send to n8n webhook:', emotionData );
     
     try {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(corsProxyUrl + encodeURIComponent(webhookUrl), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -20,15 +22,17 @@ async function sendEmotionToN8N(emotionData) {
                 emotion: emotionData.emotion,
                 confidence: emotionData.confidence,
                 timestamp: new Date().toISOString(),
-                text: emotionData.text, // the spoken text
+                text: emotionData.text,
                 sessionId: emotionData.sessionId || 'default'
             })
         });
         
         console.log('✅ Webhook response status:', response.status);
         console.log('✅ Webhook response:', await response.text());
+        return true;
     } catch (error) {
         console.error('❌ Failed to send to n8n:', error);
+        return false;
     }
 }
 
@@ -191,3 +195,4 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
