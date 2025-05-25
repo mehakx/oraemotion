@@ -8,6 +8,8 @@ let chatId = null;
 async function sendEmotionToN8N(emotionData) {
     const webhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
     
+    console.log('🚀 Attempting to send to n8n webhook:', emotionData);
+    
     try {
         const response = await fetch(webhookUrl, {
             method: 'POST',
@@ -23,9 +25,10 @@ async function sendEmotionToN8N(emotionData) {
             })
         });
         
-        console.log('Emotion data sent to n8n:', response.status);
+        console.log('✅ Webhook response status:', response.status);
+        console.log('✅ Webhook response:', await response.text());
     } catch (error) {
-        console.error('Failed to send to n8n:', error);
+        console.error('❌ Failed to send to n8n:', error);
     }
 }
 
