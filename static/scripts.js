@@ -4,15 +4,16 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
-// Function to send emotion data to n8n webhook via Netlify proxy
+// Function to send emotion data to n8n webhook via public CORS proxy
 async function sendEmotionToN8N(emotionData) {
-    // Use your Netlify function instead of directly accessing n8n
-    const proxyUrl = "https://adorable-sable-213540.netlify.app/api/webhook-proxy";
+    // Use a public CORS proxy service instead of Netlify
+    const corsProxyUrl = "https://corsproxy.io/?";
+    const n8nWebhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
     
-    console.log('🚀 Attempting to send to webhook proxy:', emotionData );
+    console.log('🚀 Attempting to send to webhook via CORS proxy:', emotionData );
     
     try {
-        const response = await fetch(proxyUrl, {
+        const response = await fetch(corsProxyUrl + encodeURIComponent(n8nWebhookUrl), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -26,8 +27,16 @@ async function sendEmotionToN8N(emotionData) {
             })
         });
         
-        const responseData = await response.json();
-        console.log('✅ Proxy response:', responseData);
+        const responseText = await response.text();
+        console.log('✅ Proxy response:', responseText);
+        
+        try {
+            const responseData = JSON.parse(responseText);
+            console.log('✅ Parsed response data:', responseData);
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
+        }
+        
         return true;
     } catch (error) {
         console.error('❌ Failed to send to proxy:', error);
@@ -220,5 +229,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
 
 
