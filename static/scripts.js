@@ -4,15 +4,16 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
-// Function to send emotion data directly to n8n webhook (with CORS headers now configured)
+// Function to send emotion data to n8n webhook via alternative CORS proxy
 async function sendEmotionToN8N(emotionData) {
-    // Direct n8n webhook URL (now with proper CORS headers)
-    const webhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
+    // Use a different CORS proxy service
+    const corsProxyUrl = "https://api.allorigins.win/raw?url=";
+    const n8nWebhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
     
-    console.log('🚀 Attempting to send to n8n webhook:', emotionData );
+    console.log('🚀 Attempting to send to webhook via CORS proxy:', emotionData );
     
     try {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(corsProxyUrl + encodeURIComponent(n8nWebhookUrl), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -27,10 +28,18 @@ async function sendEmotionToN8N(emotionData) {
         });
         
         const responseText = await response.text();
-        console.log('✅ Webhook response:', responseText);
+        console.log('✅ Proxy response:', responseText);
+        
+        try {
+            const responseData = JSON.parse(responseText);
+            console.log('✅ Parsed response data:', responseData);
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
+        }
+        
         return true;
     } catch (error) {
-        console.error('❌ Failed to send to webhook:', error);
+        console.error('❌ Failed to send to proxy:', error);
         return false;
     }
 }
