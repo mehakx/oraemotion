@@ -7,7 +7,7 @@ let chatId = null;
 // Function to send emotion data to n8n webhook via Netlify proxy
 async function sendEmotionToN8N(emotionData) {
     // Use your Netlify function instead of directly accessing n8n
-    const proxyUrl = "https://your-netlify-site.netlify.app/api/webhook-proxy";
+    const proxyUrl = "https://adorable-sable-213540.netlify.app/api/webhook-proxy";
     
     console.log('🚀 Attempting to send to webhook proxy:', emotionData );
     
