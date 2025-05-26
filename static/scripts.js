@@ -6,7 +6,7 @@ let chatId = null;
 
 // Function to send emotion data to n8n webhook with improved error handling
 async function sendEmotionToN8N(emotionData) {
-    const n8nWebhookUrl = "https://mehax.app.n8n.cloud/webhook/receive-emotion-data";
+    const n8nWebhookUrl = "https://mehax.app.n8n.cloud/webhook/webhook-test/receive-emotion-data";
     
     console.log('🚀 Attempting to send to webhook:', emotionData);
     
