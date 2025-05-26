@@ -4,12 +4,12 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
-// Function to send emotion data to n8n via Netlify serverless function
+// Function to send emotion data to n8n webhook via Netlify proxy
 async function sendEmotionToN8N(emotionData) {
-    // Use your serverless function instead of directly accessing n8n
-    const proxyUrl = "/api/webhook-proxy"; // This will be redirected to your Netlify function
+    // Use your Netlify function instead of directly accessing n8n
+    const proxyUrl = "https://your-netlify-site.netlify.app/api/webhook-proxy";
     
-    console.log('🚀 Attempting to send to webhook proxy:', emotionData);
+    console.log('🚀 Attempting to send to webhook proxy:', emotionData );
     
     try {
         const response = await fetch(proxyUrl, {
@@ -39,125 +39,151 @@ async function sendEmotionToN8N(emotionData) {
 window.addEventListener("DOMContentLoaded", () => {
   const recordBtn = document.getElementById("recordBtn");
   const stopBtn = document.getElementById("stopBtn");
-  const status = document.getElementById("status");
-  const chatDiv = document.getElementById("chat");
-  const chatHistory = document.getElementById("chatHistory");
-  const userMessage = document.getElementById("userMessage");
-  const sendBtn = document.getElementById("sendBtn");
-
-  // Check if elements exist
-  if (!recordBtn || !stopBtn || !status) {
-    console.error("Required UI elements not found");
-    return;
+  const statusText = document.getElementById("status");
+  const chatHistory = document.getElementById("chat-history");
+  const userMessage = document.getElementById("user-message");
+  const sendBtn = document.getElementById("send-btn");
+  
+  // Initialize chat ID
+  chatId = Date.now().toString();
+  
+  // Set up event listeners
+  if (recordBtn) {
+    recordBtn.addEventListener("click", startRecording);
   }
-
-  // Web Speech API
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    status.textContent = "⚠️ SpeechRecognition not supported.";
-    recordBtn.disabled = true;
-    return;
+  
+  if (stopBtn) {
+    stopBtn.addEventListener("click", stopRecording);
   }
-
-  const recognition = new SR();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  // Set up record button
-  recordBtn.onclick = () => {
-    status.textContent = "Listening…";
-    recordBtn.disabled = true;
-    stopBtn.disabled = false;
-    recognition.start();
-  };
-
-  // Set up stop button
-  stopBtn.onclick = () => {
-    recognition.stop();
-    status.textContent = "Stopped listening";
-    stopBtn.disabled = true;
-    recordBtn.disabled = false;
-  };
-
-  // Handle speech recognition results
-  recognition.onresult = async (e) => {
-    const text = e.results[0][0].transcript;
-    status.textContent = `You said: "${text}" – detecting emotion…`;
-    stopBtn.disabled = true;
-    recordBtn.disabled = false;
-
-    try {
-      // Classify emotion
-      let res = await fetch("/classify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text })
-      });
-      
-      let data = await res.json();
-      
-      // Update status with detected emotion
-      status.textContent = `Emotion: ${data.emotion} – generating reply…`;
-      
-      // Update the visualization
-      if (typeof window.updateVisualization === 'function') {
-        window.updateVisualization(data.emotion, data.intensity);
-      } else {
-        console.error("updateVisualization function not found");
+  
+  if (sendBtn) {
+    sendBtn.addEventListener("click", sendMessage);
+  }
+  
+  if (userMessage) {
+    userMessage.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        sendMessage();
       }
-
-      // Send emotion data to n8n webhook via Netlify function
-      await sendEmotionToN8N({
-        emotion: data.emotion,
-        confidence: data.intensity,
-        text: text,
-        sessionId: chatId || 'default'
-      });
-
-      // Get empathetic reply
-      res = await fetch("/respond", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ emotion: data.emotion, text })
-      });
-      
-      let { message, chat_id } = await res.json();
-      
-      // Show chat UI
-      chatId = chat_id;
-      if (chatHistory) {
-        chatHistory.innerHTML = `
-          <div class="assistant">🤖 ${message}</div>
-        `;
-        chatDiv.style.display = "block";
-      }
-      
-      status.textContent = "Ready to record again";
-    } catch (err) {
-      console.error(err);
-      status.textContent = "⚠️ Error – see console.";
-      recordBtn.disabled = false;
-    }
-  };
-
-  // Handle speech recognition errors
-  recognition.onerror = (e) => {
-    status.textContent = `⚠️ Speech error: ${e.error}`;
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
-  };
-
-  // Set up send button for chat
-  if (sendBtn && userMessage) {
-    sendBtn.onclick = sendMessage;
-    userMessage.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendMessage();
     });
+  }
+  
+  // Speech recognition setup
+  let recognition = null;
+  let isRecording = false;
+  
+  function startRecording() {
+    if (isRecording) return;
+    
+    if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+      statusText.textContent = "Speech recognition not supported in this browser.";
+      return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    
+    recognition.onstart = () => {
+      isRecording = true;
+      statusText.textContent = "Listening...";
+      recordBtn.style.display = "none";
+      stopBtn.style.display = "inline-block";
+    };
+    
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const confidence = event.results[0][0].confidence;
+      
+      // Process the speech
+      processEmotion(transcript, confidence);
+    };
+    
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      statusText.textContent = `Error: ${event.error}`;
+      resetRecording();
+    };
+    
+    recognition.onend = () => {
+      if (isRecording) {
+        statusText.textContent = "Ready to record again";
+        resetRecording();
+      }
+    };
+    
+    recognition.start();
+  }
+  
+  function stopRecording() {
+    if (!isRecording) return;
+    
+    if (recognition) {
+      recognition.stop();
+    }
+    
+    resetRecording();
+  }
+  
+  function resetRecording() {
+    isRecording = false;
+    recordBtn.style.display = "inline-block";
+    stopBtn.style.display = "none";
+  }
+  
+  // Process emotion from speech
+  async function processEmotion(text, confidence) {
+    // Simple emotion detection based on keywords
+    // In a real app, you'd use a more sophisticated model
+    const emotions = {
+      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic"],
+      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset"],
+      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated"],
+      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous"],
+      surprise: ["surprised", "shocked", "amazed", "astonished", "wow"],
+      disgust: ["disgusted", "gross", "yuck", "ew", "nasty"],
+      neutral: []
+    };
+    
+    let detectedEmotion = "neutral";
+    let maxCount = 0;
+    
+    // Count emotion keywords
+    for (const [emotion, keywords] of Object.entries(emotions)) {
+      const count = keywords.filter(keyword => 
+        text.toLowerCase().includes(keyword)
+      ).length;
+      
+      if (count > maxCount) {
+        maxCount = count;
+        detectedEmotion = emotion;
+      }
+    }
+    
+    // If no emotion words found, use neutral
+    if (maxCount === 0) {
+      detectedEmotion = "neutral";
+    }
+    
+    // Update global variables for visualization
+    window.currentEmotion = detectedEmotion;
+    window.emotionIntensity = confidence;
+    
+    // Display the detected emotion
+    statusText.textContent = detectedEmotion;
+    
+    // Send to n8n webhook
+    const emotionData = {
+      emotion: detectedEmotion,
+      confidence: confidence,
+      text: text,
+      sessionId: chatId
+    };
+    
+    // Send to n8n webhook
+    await sendEmotionToN8N(emotionData);
   }
 
   // Function to send chat messages
@@ -194,4 +220,5 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
 
