@@ -6,9 +6,9 @@ let chatId = null;
 
 // Function to send emotion data to n8n webhook via alternative CORS proxy
 async function sendEmotionToN8N(emotionData) {
-    // Use a different CORS proxy service
+    // Use the CORS proxy with the updated webhook path
     const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-    const n8nWebhookUrl = "https://mehax.app.n8n.cloud/webhook-test/https://ora-owjy.onrender.com/";
+    const n8nWebhookUrl = "https://mehax.app.n8n.cloud/webhook-test/receive-emotion-data";
     
     console.log('🚀 Attempting to send to webhook via CORS proxy:', emotionData );
     
