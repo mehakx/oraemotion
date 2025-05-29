@@ -6,60 +6,59 @@ let chatId = null;
 
 // Function to send emotion data to Make.com webhook
 async function sendEmotionToMake(emotionData) {
-    // Use the CORS proxy with the updated webhook path
-    const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-    const makeWebhookUrl = "https://hook.eu2.make.com/mgQz2u8k9gv069uo14pjTexbil0a6q17";
+    const makeWebhookUrl = "https://hook.eu2.make.com/mg0z2u8k9gv069uo14pj1exbil0a6q17";
     
     console.log('🚀 Attempting to send to Make.com webhook via CORS proxy:', emotionData);
     
-    // Helper function to get time of day
-    function getTimeOfDay() {
-        const hour = new Date().getHours();
-        if (hour < 6) return "night";
-        if (hour < 12) return "morning";
-        if (hour < 17) return "afternoon";
-        if (hour < 22) return "evening";
-        return "night";
-    }
-    
-    // Create enhanced payload structure to match Make.com scenario
-    const enhancedPayload = {
-        user_id: chatId,
-        session_id: emotionData.sessionId || 'default',
+    // Create a simpler payload first
+    const simplePayload = {
+        emotion: emotionData.emotion,
+        confidence: emotionData.confidence,
+        text: emotionData.text,
         timestamp: new Date().toISOString(),
-        emotion_data: {
-            primary_emotion: emotionData.emotion,
-            confidence_score: emotionData.confidence,
-            secondary_emotions: [],
-            voice_indicators: []
-        },
-        context: {
-            activity: "voice recording",
-            location: "app",
-            time_of_day: getTimeOfDay()
-        },
-        raw_text: emotionData.text
+        sessionId: emotionData.sessionId || 'default'
     };
     
-    console.log('📦 Enhanced payload:', enhancedPayload);
+    console.log('📦 Simple payload:', simplePayload);
     
     try {
+        // Try direct connection first (without CORS proxy)
+        const directResponse = await fetch(makeWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(simplePayload)
+        });
+        
+        if (directResponse.ok) {
+            const responseText = await directResponse.text();
+            console.log('✅ Direct Make.com webhook success:', responseText);
+            return true;
+        }
+        
+    } catch (directError) {
+        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
+    }
+    
+    // Fallback to CORS proxy with simple payload
+    try {
+        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
         const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(enhancedPayload)
+            body: JSON.stringify(simplePayload)
         });
         
         const responseText = await response.text();
         console.log('✅ Proxy response:', responseText);
         
-        try {
-            const responseData = JSON.parse(responseText);
-            console.log('✅ Parsed response data:', responseData);
-        } catch (parseError) {
-            console.log('⚠️ Could not parse response as JSON:', responseText);
+        // Check if the response indicates success
+        if (responseText && !responseText.includes('error')) {
+            console.log('✅ Make.com webhook likely received data');
+            return true;
         }
         
         return true;
