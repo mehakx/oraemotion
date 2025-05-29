@@ -4,93 +4,43 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
-// Function to send emotion data to Make.com webhook with improved error handling
+// Function to send emotion data to Make.com webhook
 async function sendEmotionToMake(emotionData) {
-   const makeWebhookUrl = "https://hook.eu2.make.com/mgQz2u8k9gv069uo14pjTexbil0a6q17";
+    // Use the CORS proxy with the updated webhook path
+    const corsProxyUrl = "https://api.allorigins.win/raw?url=";
+    const makeWebhookUrl = "https://hook.eu2.make.com/mgQz2u8k9gv069uo14pjTexbil0a6q17";
     
-    console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
-    
-    const payload = {
-        emotion: emotionData.emotion,
-        confidence: emotionData.confidence,
-        timestamp: new Date().toISOString(),
-        text: emotionData.text,
-        sessionId: emotionData.sessionId || 'default'
-    };
+    console.log('🚀 Attempting to send to Make.com webhook via CORS proxy:', emotionData);
     
     try {
-        // Try direct connection to Make.com webhook
-        const response = await fetch(makeWebhookUrl, {
+        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
             },
-            mode: 'cors',
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                emotion: emotionData.emotion,
+                confidence: emotionData.confidence,
+                timestamp: new Date().toISOString(),
+                text: emotionData.text,
+                sessionId: emotionData.sessionId || 'default'
+            })
         });
         
-        if (response.ok) {
-            const responseData = await response.text(); // Make.com returns text, not JSON
-            console.log('✅ Direct Make.com webhook success:', responseData);
-            return true;
-        } else {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        const responseText = await response.text();
+        console.log('✅ Proxy response:', responseText);
         
-    } catch (directError) {
-        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
-        
-        // Fallback to CORS proxy
         try {
-            const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-            const proxyResponse = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            const responseText = await proxyResponse.text();
-            console.log('✅ Proxy response:', responseText);
-            
-            try {
-                const responseData = JSON.parse(responseText);
-                console.log('✅ Parsed proxy response data:', responseData);
-            } catch (parseError) {
-                console.log('⚠️ Could not parse proxy response as JSON:', responseText);
-            }
-            
-            return true;
-            
-        } catch (proxyError) {
-            console.error('❌ Both direct and proxy failed:', proxyError);
-            
-            // Try alternative CORS proxy as last resort
-            try {
-                const altProxyUrl = "https://cors-anywhere.herokuapp.com/";
-                const altResponse = await fetch(altProxyUrl + makeWebhookUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (altResponse.ok) {
-                    const altResponseData = await altResponse.text();
-                    console.log('✅ Alternative proxy success:', altResponseData);
-                    return true;
-                }
-                
-            } catch (altError) {
-                console.error('❌ All connection methods failed:', altError);
-            }
-            
-            return false;
+            const responseData = JSON.parse(responseText);
+            console.log('✅ Parsed response data:', responseData);
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
         }
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Failed to send to proxy:', error);
+        return false;
     }
 }
 
@@ -99,9 +49,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const recordBtn = document.getElementById("recordBtn");
   const stopBtn = document.getElementById("stopBtn");
   const statusText = document.getElementById("status");
-  const chatHistory = document.getElementById("chat-history");
-  const userMessage = document.getElementById("user-message");
-  const sendBtn = document.getElementById("send-btn");
+  const chatHistory = document.getElementById("chatHistory");
+  const userMessage = document.getElementById("userMessage");
+  const sendBtn = document.getElementById("sendBtn");
   
   // Initialize chat ID
   chatId = Date.now().toString();
@@ -151,6 +101,7 @@ window.addEventListener("DOMContentLoaded", () => {
       statusText.textContent = "Listening...";
       recordBtn.style.display = "none";
       stopBtn.style.display = "inline-block";
+      stopBtn.disabled = false;
       console.log('🎤 Recording started');
     };
     
@@ -194,19 +145,19 @@ window.addEventListener("DOMContentLoaded", () => {
     isRecording = false;
     recordBtn.style.display = "inline-block";
     stopBtn.style.display = "none";
+    stopBtn.disabled = true;
   }
   
   // Process emotion from speech
   async function processEmotion(text, confidence) {
     // Simple emotion detection based on keywords
-    // In a real app, you'd use a more sophisticated model
     const emotions = {
-      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased"],
-      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken"],
-      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed"],
-      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic"],
-      surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible"],
-      disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick"],
+      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased", "cheerful", "delighted"],
+      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken", "dejected", "melancholy"],
+      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed", "livid", "outraged"],
+      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic", "fearful", "alarmed"],
+      surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible", "stunned", "astounded"],
+      disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick", "repulsed", "appalled"],
       neutral: []
     };
     
@@ -234,7 +185,32 @@ window.addEventListener("DOMContentLoaded", () => {
     window.currentEmotion = detectedEmotion;
     window.emotionIntensity = confidence;
     
-    // Display the detected emotion
+    // Update the emotion panel
+    const emotionLabel = document.getElementById("emotion-label");
+    const intensityFill = document.getElementById("intensity-fill");
+    
+    if (emotionLabel) {
+      emotionLabel.textContent = detectedEmotion;
+    }
+    
+    if (intensityFill) {
+      intensityFill.style.width = `${Math.round(confidence * 100)}%`;
+      
+      // Color based on emotion
+      const emotionColors = {
+        happy: "#4CAF50",
+        sad: "#2196F3", 
+        angry: "#F44336",
+        fear: "#9C27B0",
+        surprise: "#FF9800",
+        disgust: "#795548",
+        neutral: "#9E9E9E"
+      };
+      
+      intensityFill.style.background = emotionColors[detectedEmotion] || "#9E9E9E";
+    }
+    
+    // Display the detected emotion in status
     statusText.textContent = `${detectedEmotion} (${Math.round(confidence * 100)}%)`;
     
     console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', confidence);
@@ -247,14 +223,13 @@ window.addEventListener("DOMContentLoaded", () => {
       sessionId: chatId
     };
     
-    // Send to Make.com webhook with improved error handling
+    // Send to Make.com webhook
     const success = await sendEmotionToMake(emotionData);
     
     if (success) {
-      console.log('✅ Emotion data sent successfully');
+      console.log('✅ Emotion data sent successfully to Make.com');
     } else {
-      console.error('❌ Failed to send emotion data');
-      // Optional: Show user feedback
+      console.error('❌ Failed to send emotion data to Make.com');
       // statusText.textContent += ' (⚠️ Upload failed)';
     }
   }
