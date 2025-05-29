@@ -6,7 +6,7 @@ let chatId = null;
 
 // Function to send emotion data to Make.com webhook with improved error handling
 async function sendEmotionToMake(emotionData) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
+   const makeWebhookUrl = "https://hook.eu2.make.com/mgQz2u8k9gv069uo14pjTexbil0a6q17";
     
     console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
     
