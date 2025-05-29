@@ -8,7 +8,7 @@ let chatId = null;
 async function sendEmotionToMake(emotionData) {
     const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
-    console.log('🚀 Attempting to send to webhook:', emotionData);
+    console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
     
     const payload = {
         emotion: emotionData.emotion,
@@ -70,7 +70,7 @@ async function sendEmotionToMake(emotionData) {
             // Try alternative CORS proxy as last resort
             try {
                 const altProxyUrl = "https://cors-anywhere.herokuapp.com/";
-                const altResponse = await fetch(altProxyUrl + n8nWebhookUrl, {
+                const altResponse = await fetch(altProxyUrl + makeWebhookUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ async function sendEmotionToMake(emotionData) {
                 });
                 
                 if (altResponse.ok) {
-                    const altResponseData = await altResponse.json();
+                    const altResponseData = await altResponse.text();
                     console.log('✅ Alternative proxy success:', altResponseData);
                     return true;
                 }
@@ -239,7 +239,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', confidence);
     
-    // Send to n8n webhook
+    // Send to Make.com webhook
     const emotionData = {
       emotion: detectedEmotion,
       confidence: confidence,
@@ -247,8 +247,8 @@ window.addEventListener("DOMContentLoaded", () => {
       sessionId: chatId
     };
     
-    // Send to n8n webhook with improved error handling
-    const success = await sendEmotionToN8N(emotionData);
+    // Send to Make.com webhook with improved error handling
+    const success = await sendEmotionToMake(emotionData);
     
     if (success) {
       console.log('✅ Emotion data sent successfully');
