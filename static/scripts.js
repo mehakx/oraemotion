@@ -12,19 +12,44 @@ async function sendEmotionToMake(emotionData) {
     
     console.log('🚀 Attempting to send to Make.com webhook via CORS proxy:', emotionData);
     
+    // Helper function to get time of day
+    function getTimeOfDay() {
+        const hour = new Date().getHours();
+        if (hour < 6) return "night";
+        if (hour < 12) return "morning";
+        if (hour < 17) return "afternoon";
+        if (hour < 22) return "evening";
+        return "night";
+    }
+    
+    // Create enhanced payload structure to match Make.com scenario
+    const enhancedPayload = {
+        user_id: chatId,
+        session_id: emotionData.sessionId || 'default',
+        timestamp: new Date().toISOString(),
+        emotion_data: {
+            primary_emotion: emotionData.emotion,
+            confidence_score: emotionData.confidence,
+            secondary_emotions: [],
+            voice_indicators: []
+        },
+        context: {
+            activity: "voice recording",
+            location: "app",
+            time_of_day: getTimeOfDay()
+        },
+        raw_text: emotionData.text
+    };
+    
+    console.log('📦 Enhanced payload:', enhancedPayload);
+    
     try {
         const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                emotion: emotionData.emotion,
-                confidence: emotionData.confidence,
-                timestamp: new Date().toISOString(),
-                text: emotionData.text,
-                sessionId: emotionData.sessionId || 'default'
-            })
+            body: JSON.stringify(enhancedPayload)
         });
         
         const responseText = await response.text();
