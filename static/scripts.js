@@ -81,9 +81,10 @@ async function sendEmotionToMake(emotionData) {
             return true;
         } catch (parseError) {
             console.log('⚠️ Could not parse response as JSON:', responseText);
+            // Even if parsing fails, try to display something
+            displayOraResponse({response: responseText});
+            return true;
         }
-        
-        return true;
     } catch (error) {
         console.error('❌ Failed to send to proxy:', error);
         return false;
@@ -105,32 +106,50 @@ function displayOraResponse(responseData) {
     const chatHistory = document.getElementById("chatHistory");
     if (!chatHistory) return;
     
-    // Check if we have a response object
-    if (responseData && responseData.response) {
-        try {
-            // Try to parse the response if it's a string
-            const response = typeof responseData.response === 'string' 
-                ? JSON.parse(responseData.response) 
-                : responseData.response;
+    console.log("Raw response received:", responseData);
+    
+    // Display something no matter what
+    chatHistory.innerHTML += `<div class="assistant">🧘 ORA Wellness Response received.</div>`;
+    
+    // Try to display structured response if available
+    try {
+        if (responseData && responseData.response) {
+            let response = responseData.response;
             
-            // Add ORA's response components to chat
-            chatHistory.innerHTML += `
-                <div class="assistant">
-                    <div class="ora-header">🧘 ORA Wellness Response</div>
-                    <div class="ora-section"><strong>Acknowledgment:</strong> ${response.acknowledgment}</div>
-                    <div class="ora-section"><strong>Mindfulness Practice:</strong> ${response.mindfulness_practice}</div>
-                    <div class="ora-section"><strong>Mind-Body Exercise:</strong> ${response.mind_body_exercise}</div>
-                    <div class="ora-section"><strong>Empowering Reflection:</strong> ${response.empowering_reflection}</div>
-                    <div class="ora-section"><strong>Physical Action:</strong> ${response.physical_action}</div>
-                </div>
-            `;
-        } catch (error) {
-            // If parsing fails, display the raw response
-            chatHistory.innerHTML += `<div class="assistant">🧘 ${responseData.response}</div>`;
+            // If response is a string, try to parse it as JSON
+            if (typeof response === 'string') {
+                try {
+                    response = JSON.parse(response);
+                } catch (e) {
+                    // If parsing fails, just display the string
+                    chatHistory.innerHTML += `<div class="assistant-content">${response}</div>`;
+                    return;
+                }
+            }
+            
+            // If we have a structured response object
+            if (response.acknowledgment || response.mindfulness_practice) {
+                chatHistory.innerHTML += `
+                    <div class="assistant-content">
+                        ${response.acknowledgment ? `<p><strong>Acknowledgment:</strong> ${response.acknowledgment}</p>` : ''}
+                        ${response.mindfulness_practice ? `<p><strong>Mindfulness Practice:</strong> ${response.mindfulness_practice}</p>` : ''}
+                        ${response.mind_body_exercise ? `<p><strong>Mind-Body Exercise:</strong> ${response.mind_body_exercise}</p>` : ''}
+                        ${response.empowering_reflection ? `<p><strong>Empowering Reflection:</strong> ${response.empowering_reflection}</p>` : ''}
+                        ${response.physical_action ? `<p><strong>Physical Action:</strong> ${response.physical_action}</p>` : ''}
+                    </div>
+                `;
+            }
+        } else if (responseData && responseData.status === "success") {
+            // Generic success message if no specific response
+            chatHistory.innerHTML += `<div class="assistant-content">ORA has processed your emotion data.</div>`;
+        } else {
+            // Fallback for unexpected response format
+            chatHistory.innerHTML += `<div class="assistant-content">Received response from ORA.</div>`;
+            console.log("Unexpected response format:", responseData);
         }
-    } else if (responseData && responseData.status === "success") {
-        // Generic success message if no specific response
-        chatHistory.innerHTML += `<div class="assistant">🧘 ORA has processed your emotion data.</div>`;
+    } catch (error) {
+        console.error("Error displaying ORA response:", error);
+        chatHistory.innerHTML += `<div class="assistant error">⚠️ Error displaying ORA response.</div>`;
     }
     
     // Scroll chat to bottom
