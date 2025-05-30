@@ -8,18 +8,28 @@ let chatId = null;
 async function sendEmotionToMake(emotionData) {
     const makeWebhookUrl = "https://hook.eu2.make.com/mg0z2u8k9gv069uo14pj1exbil0a6q17";
     
-    console.log('🚀 Attempting to send to Make.com webhook via CORS proxy:', emotionData);
+    console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
     
-    // Create a simpler payload first
-    const simplePayload = {
-        emotion: emotionData.emotion,
-        confidence: emotionData.confidence,
-        text: emotionData.text,
+    // Create enhanced payload structure to match Make.com scenario
+    const enhancedPayload = {
+        user_id: chatId,
+        session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
-        sessionId: emotionData.sessionId || 'default'
+        emotion_data: {
+            primary_emotion: emotionData.emotion,
+            confidence_score: emotionData.confidence,
+            secondary_emotions: [],
+            voice_indicators: []
+        },
+        context: {
+            activity: "voice recording",
+            location: "app",
+            time_of_day: getTimeOfDay()
+        },
+        raw_text: emotionData.text
     };
     
-    console.log('📦 Simple payload:', simplePayload);
+    console.log('📦 Enhanced payload:', enhancedPayload);
     
     try {
         // Try direct connection first (without CORS proxy)
@@ -28,12 +38,17 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(simplePayload)
+            body: JSON.stringify(enhancedPayload)
         });
         
         if (directResponse.ok) {
-            const responseText = await directResponse.text();
-            console.log('✅ Direct Make.com webhook success:', responseText);
+            // Parse and handle the response from Make.com
+            const responseData = await directResponse.json();
+            console.log('✅ Direct Make.com webhook success:', responseData);
+            
+            // Display the ORA response in the chat
+            displayOraResponse(responseData);
+            
             return true;
         }
         
@@ -41,7 +56,7 @@ async function sendEmotionToMake(emotionData) {
         console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
     }
     
-    // Fallback to CORS proxy with simple payload
+    // Fallback to CORS proxy with enhanced payload
     try {
         const corsProxyUrl = "https://api.allorigins.win/raw?url=";
         const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
@@ -49,16 +64,23 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(simplePayload)
+            body: JSON.stringify(enhancedPayload)
         });
         
         const responseText = await response.text();
         console.log('✅ Proxy response:', responseText);
         
-        // Check if the response indicates success
-        if (responseText && !responseText.includes('error')) {
-            console.log('✅ Make.com webhook likely received data');
+        try {
+            // Try to parse the response as JSON
+            const responseData = JSON.parse(responseText);
+            console.log('✅ Parsed response data:', responseData);
+            
+            // Display the ORA response in the chat
+            displayOraResponse(responseData);
+            
             return true;
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
         }
         
         return true;
@@ -66,6 +88,53 @@ async function sendEmotionToMake(emotionData) {
         console.error('❌ Failed to send to proxy:', error);
         return false;
     }
+}
+
+// Helper function to get time of day
+function getTimeOfDay() {
+    const hour = new Date().getHours();
+    if (hour < 6) return "night";
+    if (hour < 12) return "morning";
+    if (hour < 17) return "afternoon";
+    if (hour < 22) return "evening";
+    return "night";
+}
+
+// Function to display ORA's response in the chat
+function displayOraResponse(responseData) {
+    const chatHistory = document.getElementById("chatHistory");
+    if (!chatHistory) return;
+    
+    // Check if we have a response object
+    if (responseData && responseData.response) {
+        try {
+            // Try to parse the response if it's a string
+            const response = typeof responseData.response === 'string' 
+                ? JSON.parse(responseData.response) 
+                : responseData.response;
+            
+            // Add ORA's response components to chat
+            chatHistory.innerHTML += `
+                <div class="assistant">
+                    <div class="ora-header">🧘 ORA Wellness Response</div>
+                    <div class="ora-section"><strong>Acknowledgment:</strong> ${response.acknowledgment}</div>
+                    <div class="ora-section"><strong>Mindfulness Practice:</strong> ${response.mindfulness_practice}</div>
+                    <div class="ora-section"><strong>Mind-Body Exercise:</strong> ${response.mind_body_exercise}</div>
+                    <div class="ora-section"><strong>Empowering Reflection:</strong> ${response.empowering_reflection}</div>
+                    <div class="ora-section"><strong>Physical Action:</strong> ${response.physical_action}</div>
+                </div>
+            `;
+        } catch (error) {
+            // If parsing fails, display the raw response
+            chatHistory.innerHTML += `<div class="assistant">🧘 ${responseData.response}</div>`;
+        }
+    } else if (responseData && responseData.status === "success") {
+        // Generic success message if no specific response
+        chatHistory.innerHTML += `<div class="assistant">🧘 ORA has processed your emotion data.</div>`;
+    }
+    
+    // Scroll chat to bottom
+    chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
 // Initialize when DOM is fully loaded
@@ -239,6 +308,12 @@ window.addEventListener("DOMContentLoaded", () => {
     
     console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', confidence);
     
+    // Add user's speech to chat history
+    if (chatHistory) {
+      chatHistory.innerHTML += `<div class="user">🧑 "${text}"</div>`;
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+    
     // Send to Make.com webhook
     const emotionData = {
       emotion: detectedEmotion,
@@ -254,7 +329,9 @@ window.addEventListener("DOMContentLoaded", () => {
       console.log('✅ Emotion data sent successfully to Make.com');
     } else {
       console.error('❌ Failed to send emotion data to Make.com');
-      // statusText.textContent += ' (⚠️ Upload failed)';
+      if (chatHistory) {
+        chatHistory.innerHTML += `<div class="assistant error">⚠️ Unable to connect to ORA wellness agent.</div>`;
+      }
     }
   }
 
@@ -268,27 +345,8 @@ window.addEventListener("DOMContentLoaded", () => {
     // Add user message to chat
     chatHistory.innerHTML += `<div class="user">🧑 ${text}</div>`;
     userMessage.value = "";
-
-    try {
-      // Send message to server
-      const res = await fetch("/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ chat_id: chatId, message: text })
-      });
-      
-      const { reply } = await res.json();
-      
-      // Add assistant reply to chat
-      chatHistory.innerHTML += `<div class="assistant">🤖 ${reply}</div>`;
-      
-      // Scroll chat to bottom
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    } catch (err) {
-      console.error('Chat error:', err);
-      chatHistory.innerHTML += `<div class="assistant error">⚠️ Chat failed.</div>`;
-    }
+    
+    // Process the text as an emotion input
+    processEmotion(text, 0.8); // Using a default confidence score
   }
 });
