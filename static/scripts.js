@@ -10,26 +10,19 @@ async function sendEmotionToMake(emotionData) {
     
     console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
     
-    // Create enhanced payload structure to match Make.com scenario
-    const enhancedPayload = {
+    // Create FLATTENED payload structure to match Make.com scenario
+    // This avoids nested objects which Make.com has trouble parsing
+    const flattenedPayload = {
         user_id: chatId,
         session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
-        emotion_data: {
-            primary_emotion: emotionData.emotion,
-            confidence_score: emotionData.confidence,
-            secondary_emotions: [],
-            voice_indicators: []
-        },
-        context: {
-            activity: "voice recording",
-            location: "app",
-            time_of_day: getTimeOfDay()
-        },
-        raw_text: emotionData.text
+        primary_emotion: emotionData.emotion,
+        confidence_score: emotionData.confidence,
+        raw_text: emotionData.text,
+        time_of_day: getTimeOfDay()
     };
     
-    console.log('📦 Enhanced payload:', enhancedPayload);
+    console.log('📦 Flattened payload:', flattenedPayload);
     
     try {
         // Try direct connection first (without CORS proxy)
@@ -38,7 +31,7 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(enhancedPayload)
+            body: JSON.stringify(flattenedPayload)
         });
         
         if (directResponse.ok) {
@@ -56,7 +49,7 @@ async function sendEmotionToMake(emotionData) {
         console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
     }
     
-    // Fallback to CORS proxy with enhanced payload
+    // Fallback to CORS proxy with flattened payload
     try {
         const corsProxyUrl = "https://api.allorigins.win/raw?url=";
         const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
@@ -64,7 +57,7 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(enhancedPayload)
+            body: JSON.stringify(flattenedPayload)
         });
         
         const responseText = await response.text();
@@ -369,3 +362,4 @@ window.addEventListener("DOMContentLoaded", () => {
     processEmotion(text, 0.8); // Using a default confidence score
   }
 });
+
