@@ -178,8 +178,20 @@ function displayOraResponse(responseData) {
         // Parse the nested response structure from Make.com
         if (responseData && responseData.response) {
             try {
+                console.log("🔍 Raw Make.com response:", responseData.response);
+                
+                // Fix malformed JSON before parsing
+                let fixedResponse = responseData.response;
+                
+                // Fix common JSON issues from Make.com
+                fixedResponse = fixedResponse.replace(/"emotion": "",/g, '"emotion": "unknown",');
+                fixedResponse = fixedResponse.replace(/"confidence": ,/g, '"confidence": 0,');
+                fixedResponse = fixedResponse.replace(/,\s*}/g, '}'); // Remove trailing commas
+                
+                console.log("🔧 Fixed response:", fixedResponse);
+                
                 // The response is a JSON string, parse it
-                const makeResponse = JSON.parse(responseData.response);
+                const makeResponse = JSON.parse(fixedResponse);
                 console.log("📋 Make.com response structure:", makeResponse);
                 
                 if (makeResponse.response && makeResponse.response.text) {
@@ -199,12 +211,25 @@ function displayOraResponse(responseData) {
                 console.log("⚠️ Error parsing Make.com response:", parseError);
                 console.log("Raw response that failed:", responseData.response);
                 
-                // Try to extract text directly if JSON parsing fails
-                if (typeof responseData.response === 'string' && responseData.response.includes('acknowledgment')) {
-                    // Try to extract the meaningful content even if JSON is malformed
-                    const match = responseData.response.match(/"acknowledgment":\s*"([^"]+)"/);
-                    if (match) {
-                        claudeResponse = { acknowledgment: match[1] };
+                // Try to extract meaningful content even if JSON is malformed
+                if (typeof responseData.response === 'string') {
+                    // Look for Claude's response text directly
+                    const textMatch = responseData.response.match(/"text":"(\{[^}]+\})"/);
+                    if (textMatch) {
+                        try {
+                            const extractedText = textMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                            claudeResponse = JSON.parse(extractedText);
+                            console.log("🔄 Extracted Claude response:", claudeResponse);
+                        } catch (extractError) {
+                            console.log("❌ Could not extract Claude response:", extractError);
+                        }
+                    }
+                    
+                    // As a last resort, look for acknowledgment text
+                    const ackMatch = responseData.response.match(/"acknowledgment":\s*"([^"]+)"/);
+                    if (ackMatch && !claudeResponse) {
+                        claudeResponse = { acknowledgment: ackMatch[1] };
+                        console.log("🆘 Fallback acknowledgment:", claudeResponse);
                     }
                 }
             }
@@ -373,6 +398,13 @@ window.addEventListener("DOMContentLoaded", () => {
     // If no emotion words found, use neutral
     if (maxCount === 0) {
       detectedEmotion = "neutral";
+    }
+    
+    // Adjust emotion confidence based on detection success
+    if (maxCount > 0) {
+      // Found emotion keywords, boost confidence
+      adjustedConfidence = Math.max(adjustedConfidence, 0.8);
+      console.log('🎯 Boosted confidence due to emotion keywords found:', adjustedConfidence);
     }
     
     // Update global variables for visualization
