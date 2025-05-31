@@ -172,109 +172,48 @@ function displayOraResponse(responseData) {
     
     console.log("Raw response received:", responseData);
     
+    // Display something no matter what
+    chatHistory.innerHTML += `<div class="assistant">🧘 ORA Wellness Response received.</div>`;
+    
+    // Try to display structured response if available
     try {
-        let claudeResponse = null;
-        
-        // Parse the nested response structure from Make.com
         if (responseData && responseData.response) {
-            console.log("🔍 Parsing Make.com response:", responseData.response);
+            let response = responseData.response;
             
-            // Fix malformed JSON with duplicate keys before parsing
-            let cleanedResponse = responseData.response;
-            
-            // Remove duplicate "emotion": "happy" entries (keep only the first)
-            cleanedResponse = cleanedResponse.replace(/"emotion":\s*"[^"]*",\s*"emotion":\s*"[^"]*"/g, match => {
-                const firstMatch = match.match(/"emotion":\s*"[^"]*"/);
-                return firstMatch ? firstMatch[0] : match;
-            });
-            
-            console.log("🧹 Cleaned response:", cleanedResponse);
-            
-            // The response is a JSON string, parse it
-            const makeResponse = JSON.parse(cleanedResponse);
-            console.log("📋 Make.com response structure:", makeResponse);
-            
-            if (makeResponse.response && typeof makeResponse.response === 'string') {
-                // Parse the nested JSON string from Claude
-                const claudeJsonString = JSON.parse(makeResponse.response);
-                console.log("🔍 Claude JSON string:", claudeJsonString);
-                
-                if (claudeJsonString.text) {
-                    // Parse Claude's actual wellness response
-                    claudeResponse = JSON.parse(claudeJsonString.text);
-                    console.log("✅ Final Claude response:", claudeResponse);
+            // If response is a string, try to parse it as JSON
+            if (typeof response === 'string') {
+                try {
+                    response = JSON.parse(response);
+                } catch (e) {
+                    // If parsing fails, just display the string
+                    chatHistory.innerHTML += `<div class="assistant-content">${response}</div>`;
+                    return;
                 }
             }
-        }
-        
-        if (claudeResponse) {
-            // Display the beautiful structured wellness response
-            chatHistory.innerHTML += `
-                <div class="assistant">
-                    🧘 <strong>ORA Wellness Response:</strong>
-                    <div class="assistant-content" style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #007bff;">
-                        ${claudeResponse.acknowledgment ? `
-                            <div style="margin-bottom: 12px;">
-                                <strong style="color: #007bff;">💙 Acknowledgment:</strong><br>
-                                <span style="font-style: italic;">${claudeResponse.acknowledgment}</span>
-                            </div>
-                        ` : ''}
-                        
-                        ${claudeResponse.mindfulness_practice ? `
-                            <div style="margin-bottom: 12px;">
-                                <strong style="color: #28a745;">🧘 Mindfulness Practice:</strong><br>
-                                ${claudeResponse.mindfulness_practice}
-                            </div>
-                        ` : ''}
-                        
-                        ${claudeResponse.mind_body_exercise ? `
-                            <div style="margin-bottom: 12px;">
-                                <strong style="color: #fd7e14;">🏃 Mind-Body Exercise:</strong><br>
-                                ${claudeResponse.mind_body_exercise}
-                            </div>
-                        ` : ''}
-                        
-                        ${claudeResponse.empowering_reflection ? `
-                            <div style="margin-bottom: 12px;">
-                                <strong style="color: #6f42c1;">✨ Empowering Reflection:</strong><br>
-                                ${claudeResponse.empowering_reflection}
-                            </div>
-                        ` : ''}
-                        
-                        ${claudeResponse.physical_action ? `
-                            <div style="margin-bottom: 8px;">
-                                <strong style="color: #dc3545;">🎯 Physical Action:</strong><br>
-                                ${claudeResponse.physical_action}
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        } else {
-            // Fallback display
-            chatHistory.innerHTML += `
-                <div class="assistant">
-                    🧘 <strong>ORA Wellness Response:</strong><br>
+            
+            // If we have a structured response object
+            if (response.acknowledgment || response.mindfulness_practice) {
+                chatHistory.innerHTML += `
                     <div class="assistant-content">
-                        Your wellness response has been processed successfully!
+                        ${response.acknowledgment ? `<p><strong>Acknowledgment:</strong> ${response.acknowledgment}</p>` : ''}
+                        ${response.mindfulness_practice ? `<p><strong>Mindfulness Practice:</strong> ${response.mindfulness_practice}</p>` : ''}
+                        ${response.mind_body_exercise ? `<p><strong>Mind-Body Exercise:</strong> ${response.mind_body_exercise}</p>` : ''}
+                        ${response.empowering_reflection ? `<p><strong>Empowering Reflection:</strong> ${response.empowering_reflection}</p>` : ''}
+                        ${response.physical_action ? `<p><strong>Physical Action:</strong> ${response.physical_action}</p>` : ''}
                     </div>
-                </div>
-            `;
+                `;
+            }
+        } else if (responseData && responseData.status === "success") {
+            // Generic success message if no specific response
+            chatHistory.innerHTML += `<div class="assistant-content">ORA has processed your emotion data.</div>`;
+        } else {
+            // Fallback for unexpected response format
+            chatHistory.innerHTML += `<div class="assistant-content">Received response from ORA.</div>`;
+            console.log("Unexpected response format:", responseData);
         }
-        
     } catch (error) {
-        console.error("Error parsing ORA response:", error);
-        console.log("Failed response data:", responseData);
-        
-        // Show a helpful error message
-        chatHistory.innerHTML += `
-            <div class="assistant">
-                🧘 <strong>ORA Wellness Response:</strong><br>
-                <div class="assistant-content">
-                    Received a wellness response, but there was a formatting issue. Your emotion data was processed successfully!
-                </div>
-            </div>
-        `;
+        console.error("Error displaying ORA response:", error);
+        chatHistory.innerHTML += `<div class="assistant error">⚠️ Error displaying ORA response.</div>`;
     }
     
     // Scroll chat to bottom
