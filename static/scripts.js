@@ -6,7 +6,7 @@ let chatId = null;
 
 // Function to send emotion data to Make.com webhook
 async function sendEmotionToMake(emotionData) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
+    const makeWebhookUrl = "https://hook.eu2.make.com/mg0z2u8k9gv069uo14pj1exbil0a6q17";
     
     console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
     
@@ -17,7 +17,7 @@ async function sendEmotionToMake(emotionData) {
         session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
         primary_emotion: emotionData.emotion,
-        confidence_score: emotionData.confidence,
+        intensity_level: emotionData.intensity,  // Changed from confidence_score to intensity_level
         raw_text: emotionData.text,
         time_of_day: getTimeOfDay()
     };
@@ -286,9 +286,15 @@ window.addEventListener("DOMContentLoaded", () => {
       detectedEmotion = "neutral";
     }
     
+    // Calculate intensity based on emotion detection and keywords found
+    let intensity = 0.7; // Default intensity
+    if (maxCount > 0) {
+      intensity = Math.min(0.6 + (maxCount * 0.2), 1.0); // Higher intensity for more emotion keywords
+    }
+    
     // Update global variables for visualization
     window.currentEmotion = detectedEmotion;
-    window.emotionIntensity = confidence;
+    window.emotionIntensity = intensity; // Use calculated intensity instead of speech confidence
     
     // Update the emotion panel
     const emotionLabel = document.getElementById("emotion-label");
@@ -299,7 +305,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     
     if (intensityFill) {
-      intensityFill.style.width = `${Math.round(confidence * 100)}%`;
+      intensityFill.style.width = `${Math.round(intensity * 100)}%`;
       
       // Color based on emotion
       const emotionColors = {
@@ -316,9 +322,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     
     // Display the detected emotion in status
-    statusText.textContent = `${detectedEmotion} (${Math.round(confidence * 100)}%)`;
+    statusText.textContent = `${detectedEmotion} (${Math.round(intensity * 100)}%)`;
     
-    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', confidence);
+    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', intensity);
     
     // Add user's speech to chat history
     if (chatHistory) {
@@ -326,10 +332,10 @@ window.addEventListener("DOMContentLoaded", () => {
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
     
-    // Send to Make.com webhook
+    // Send to Make.com webhook with intensity instead of confidence
     const emotionData = {
       emotion: detectedEmotion,
-      confidence: confidence,
+      intensity: intensity,  // Use intensity instead of confidence
       text: text,
       sessionId: chatId
     };
@@ -358,7 +364,7 @@ window.addEventListener("DOMContentLoaded", () => {
     chatHistory.innerHTML += `<div class="user">🧑 ${text}</div>`;
     userMessage.value = "";
     
-    // Process the text as an emotion input
-    processEmotion(text, 0.8); // Using a default confidence score
+    // Process the text as an emotion input with default intensity
+    processEmotion(text, 0.8); // Using a default confidence score (not used for intensity calculation)
   }
 });
