@@ -172,91 +172,48 @@ function displayOraResponse(responseData) {
     
     console.log("Raw response received:", responseData);
     
+    // Display something no matter what
+    chatHistory.innerHTML += `<div class="assistant">🧘 ORA Wellness Response received.</div>`;
+    
+    // Try to display structured response if available
     try {
-        let claudeResponse = null;
-        
-        // Parse the nested response structure from Make.com
         if (responseData && responseData.response) {
-            try {
-                console.log("🔍 Raw Make.com response:", responseData.response);
-                
-                // Fix malformed JSON before parsing
-                let fixedResponse = responseData.response;
-                
-                // Fix common JSON issues from Make.com
-                fixedResponse = fixedResponse.replace(/"emotion": "",/g, '"emotion": "unknown",');
-                fixedResponse = fixedResponse.replace(/"confidence": ,/g, '"confidence": 0,');
-                fixedResponse = fixedResponse.replace(/,\s*}/g, '}'); // Remove trailing commas
-                
-                console.log("🔧 Fixed response:", fixedResponse);
-                
-                // The response is a JSON string, parse it
-                const makeResponse = JSON.parse(fixedResponse);
-                console.log("📋 Make.com response structure:", makeResponse);
-                
-                if (makeResponse.response && makeResponse.response.text) {
-                    // Clean the response text before parsing (remove extra quotes/escapes)
-                    let cleanText = makeResponse.response.text;
-                    
-                    // Remove extra escaping and fix malformed JSON
-                    cleanText = cleanText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                    
-                    console.log("🧹 Cleaned response text:", cleanText);
-                    
-                    // Parse Claude's JSON response
-                    claudeResponse = JSON.parse(cleanText);
-                    console.log("✅ Parsed Claude response:", claudeResponse);
-                }
-            } catch (parseError) {
-                console.log("⚠️ Error parsing Make.com response:", parseError);
-                console.log("Raw response that failed:", responseData.response);
-                
-                // Try to extract meaningful content even if JSON is malformed
-                if (typeof responseData.response === 'string') {
-                    // Look for Claude's response text directly
-                    const textMatch = responseData.response.match(/"text":"(\{[^}]+\})"/);
-                    if (textMatch) {
-                        try {
-                            const extractedText = textMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
-                            claudeResponse = JSON.parse(extractedText);
-                            console.log("🔄 Extracted Claude response:", claudeResponse);
-                        } catch (extractError) {
-                            console.log("❌ Could not extract Claude response:", extractError);
-                        }
-                    }
-                    
-                    // As a last resort, look for acknowledgment text
-                    const ackMatch = responseData.response.match(/"acknowledgment":\s*"([^"]+)"/);
-                    if (ackMatch && !claudeResponse) {
-                        claudeResponse = { acknowledgment: ackMatch[1] };
-                        console.log("🆘 Fallback acknowledgment:", claudeResponse);
-                    }
+            let response = responseData.response;
+            
+            // If response is a string, try to parse it as JSON
+            if (typeof response === 'string') {
+                try {
+                    response = JSON.parse(response);
+                } catch (e) {
+                    // If parsing fails, just display the string
+                    chatHistory.innerHTML += `<div class="assistant-content">${response}</div>`;
+                    return;
                 }
             }
-        }
-        
-        if (claudeResponse) {
-            // Display the structured wellness response
-            chatHistory.innerHTML += `
-                <div class="assistant">
-                    🧘 <strong>ORA Wellness Response:</strong>
+            
+            // If we have a structured response object
+            if (response.acknowledgment || response.mindfulness_practice) {
+                chatHistory.innerHTML += `
                     <div class="assistant-content">
-                        ${claudeResponse.acknowledgment ? `<p><strong>Acknowledgment:</strong> ${claudeResponse.acknowledgment}</p>` : ''}
-                        ${claudeResponse.mindfulness_practice ? `<p><strong>Mindfulness Practice:</strong> ${claudeResponse.mindfulness_practice}</p>` : ''}
-                        ${claudeResponse.mind_body_exercise ? `<p><strong>Mind-Body Exercise:</strong> ${claudeResponse.mind_body_exercise}</p>` : ''}
-                        ${claudeResponse.empowering_reflection ? `<p><strong>Empowering Reflection:</strong> ${claudeResponse.empowering_reflection}</p>` : ''}
-                        ${claudeResponse.physical_action ? `<p><strong>Physical Action:</strong> ${claudeResponse.physical_action}</p>` : ''}
+                        ${response.acknowledgment ? `<p><strong>Acknowledgment:</strong> ${response.acknowledgment}</p>` : ''}
+                        ${response.mindfulness_practice ? `<p><strong>Mindfulness Practice:</strong> ${response.mindfulness_practice}</p>` : ''}
+                        ${response.mind_body_exercise ? `<p><strong>Mind-Body Exercise:</strong> ${response.mind_body_exercise}</p>` : ''}
+                        ${response.empowering_reflection ? `<p><strong>Empowering Reflection:</strong> ${response.empowering_reflection}</p>` : ''}
+                        ${response.physical_action ? `<p><strong>Physical Action:</strong> ${response.physical_action}</p>` : ''}
                     </div>
-                </div>
-            `;
+                `;
+            }
+        } else if (responseData && responseData.status === "success") {
+            // Generic success message if no specific response
+            chatHistory.innerHTML += `<div class="assistant-content">ORA has processed your emotion data.</div>`;
         } else {
-            // Fallback display
-            chatHistory.innerHTML += `<div class="assistant">🧘 ORA has processed your emotion data.</div>`;
+            // Fallback for unexpected response format
+            chatHistory.innerHTML += `<div class="assistant-content">Received response from ORA.</div>`;
+            console.log("Unexpected response format:", responseData);
         }
-        
     } catch (error) {
-        console.error("Error parsing ORA response:", error);
-        chatHistory.innerHTML += `<div class="assistant">🧘 ORA wellness response received (parsing error).</div>`;
+        console.error("Error displaying ORA response:", error);
+        chatHistory.innerHTML += `<div class="assistant error">⚠️ Error displaying ORA response.</div>`;
     }
     
     // Scroll chat to bottom
@@ -400,16 +357,9 @@ window.addEventListener("DOMContentLoaded", () => {
       detectedEmotion = "neutral";
     }
     
-    // Adjust emotion confidence based on detection success
-    if (maxCount > 0) {
-      // Found emotion keywords, boost confidence
-      adjustedConfidence = Math.max(adjustedConfidence, 0.8);
-      console.log('🎯 Boosted confidence due to emotion keywords found:', adjustedConfidence);
-    }
-    
     // Update global variables for visualization
     window.currentEmotion = detectedEmotion;
-    window.emotionIntensity = adjustedConfidence; // Use adjusted confidence
+    window.emotionIntensity = confidence;
     
     // Update the emotion panel
     const emotionLabel = document.getElementById("emotion-label");
@@ -420,7 +370,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     
     if (intensityFill) {
-      intensityFill.style.width = `${Math.round(adjustedConfidence * 100)}%`;
+      intensityFill.style.width = `${Math.round(confidence * 100)}%`;
       
       // Color based on emotion
       const emotionColors = {
@@ -437,9 +387,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     
     // Display the detected emotion in status
-    statusText.textContent = `${detectedEmotion} (${Math.round(adjustedConfidence * 100)}%)`;
+    statusText.textContent = `${detectedEmotion} (${Math.round(confidence * 100)}%)`;
     
-    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', adjustedConfidence);
+    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', confidence);
     
     // Add user's speech to chat history
     if (chatHistory) {
@@ -450,7 +400,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // Send to Make.com webhook
     const emotionData = {
       emotion: detectedEmotion,
-      confidence: adjustedConfidence, // Use adjusted confidence
+      confidence: confidence,
       text: text,
       sessionId: chatId
     };
