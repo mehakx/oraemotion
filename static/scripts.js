@@ -12,12 +12,12 @@ async function sendEmotionToMake(emotionData) {
     
     // Create FLATTENED payload structure to match Make.com scenario
     const flattenedPayload = {
-        user_id: chatId,
+        user_id: chatId || 'anonymous',
         session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
-        primary_emotion: emotionData.emotion,
-        confidence_score: emotionData.confidence,
-        raw_text: emotionData.text,
+        primary_emotion: emotionData.emotion || 'neutral',
+        confidence_score: Math.round((emotionData.confidence || 0) * 100), // Convert to percentage
+        raw_text: emotionData.text || '',
         time_of_day: getTimeOfDay()
     };
     
@@ -31,7 +31,9 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(flattenedPayload)
+            body: JSON.stringify(flattenedPayload),
+            // Add timeout to prevent hanging
+            signal: AbortSignal.timeout(10000) // 10 second timeout
         });
         
         console.log('📡 Direct response status:', directResponse.status);
@@ -69,13 +71,17 @@ async function sendEmotionToMake(emotionData) {
         console.log('   Error message:', directError.message);
         console.log('   Full error:', directError);
         
-        // Check if it's a CORS error specifically
-        if (directError.message.includes('CORS') || directError.message.includes('cross-origin')) {
+        // Better CORS detection
+        if (directError.message.includes('CORS') || 
+            directError.message.includes('cross-origin') ||
+            directError.message.includes('Access-Control-Allow-Origin')) {
             console.log('🚫 Confirmed: This is a CORS error');
         } else if (directError.name === 'TypeError' && directError.message.includes('Failed to fetch')) {
-            console.log('🚫 This looks like a CORS or network error');
+            console.log('🚫 This looks like a CORS or network error (TypeError: Failed to fetch)');
+        } else if (directError.name === 'AbortError') {
+            console.log('⏰ Request timed out after 10 seconds');
         } else {
-            console.log('🤔 This is a different type of error');
+            console.log('🤔 This is a different type of error:', directError.name);
         }
         
         console.log('🔄 Trying CORS proxy as fallback...');
@@ -87,4 +93,128 @@ async function sendEmotionToMake(emotionData) {
         const proxyUrl = corsProxyUrl + encodeURIComponent(makeWebhookUrl);
         console.log('🌐 Proxy URL:', proxyUrl);
         
-        const response = await
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(flattenedPayload),
+            signal: AbortSignal.timeout(15000) // 15 second timeout for proxy
+        });
+        
+        console.log('🌐 Proxy response status:', response.status);
+        console.log('🌐 Proxy response ok:', response.ok);
+        
+        if (response.ok) {
+            const responseText = await response.text();
+            console.log('✅ Proxy response text:', responseText);
+            
+            // Handle the common "Oops... Request Timeout." from allorigins
+            if (responseText.includes('Request Timeout') || responseText.includes('Oops')) {
+                console.log('⚠️ Proxy service timed out or failed');
+                throw new Error('Proxy service timeout');
+            }
+            
+            try {
+                // Try to parse the response as JSON
+                const responseData = JSON.parse(responseText);
+                console.log('✅ Parsed proxy response data:', responseData);
+                displayOraResponse(responseData);
+                return true;
+            } catch (parseError) {
+                console.log('⚠️ Proxy response not JSON, treating as text');
+                // Even if parsing fails, display something
+                displayOraResponse({response: responseText, status: 'success'});
+                return true;
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('❌ Proxy failed with status:', response.status, errorText);
+            throw new Error(`Proxy error: ${response.status}`);
+        }
+        
+    } catch (proxyError) {
+        console.error('❌ Proxy method failed:');
+        console.log('   Error type:', proxyError.constructor.name);
+        console.log('   Error message:', proxyError.message);
+        console.log('   Full error:', proxyError);
+        
+        // Try one more alternative method
+        console.log('🔄 Trying alternative approach...');
+        return await tryAlternativeMethod(flattenedPayload, makeWebhookUrl);
+    }
+}
+
+// Alternative method: Use a different proxy or form submission
+async function tryAlternativeMethod(payload, webhookUrl) {
+    try {
+        // Method 1: Try a different CORS proxy
+        console.log('🔄 Trying cors-anywhere proxy...');
+        const corsAnywhereUrl = 'https://cors-anywhere.herokuapp.com/';
+        const response = await fetch(corsAnywhereUrl + webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(10000)
+        });
+        
+        if (response.ok) {
+            const responseText = await response.text();
+            console.log('✅ Alternative proxy success:', responseText);
+            displayOraResponse({response: responseText, status: 'success'});
+            return true;
+        }
+    } catch (altError) {
+        console.log('❌ Alternative proxy also failed:', altError.message);
+    }
+    
+    // Method 2: Try with FormData instead of JSON
+    try {
+        console.log('🔄 Trying FormData approach...');
+        const formData = new FormData();
+        Object.keys(payload).forEach(key => {
+            formData.append(key, payload[key]);
+        });
+        
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            body: formData // No Content-Type header - let browser set it
+        });
+        
+        if (response.ok) {
+            const responseText = await response.text();
+            console.log('✅ FormData approach success:', responseText);
+            displayOraResponse({response: responseText, status: 'success'});
+            return true;
+        }
+    } catch (formError) {
+        console.log('❌ FormData approach failed:', formError.message);
+    }
+    
+    // Final fallback: Show error to user
+    console.error('❌ All connection methods failed');
+    displayErrorMessage('Unable to connect to wellness agent. Please check your internet connection and try again.');
+    return false;
+}
+
+// Helper function to display error messages
+function displayErrorMessage(message) {
+    const chatHistory = document.getElementById("chatHistory");
+    if (chatHistory) {
+        chatHistory.innerHTML += `<div class="assistant error">⚠️ ${message}</div>`;
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+}
+
+// Helper function to get time of day
+function getTimeOfDay() {
+    const hour = new Date().getHours();
+    if (hour < 6) return "night";
+    if (hour < 12) return "morning";
+    if (hour < 17) return "afternoon";
+    if (hour < 22) return "evening";
+    return "night";
+}
