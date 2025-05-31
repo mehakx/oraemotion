@@ -1,351 +1,356 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ORA - Your Wellness Companion</title>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f8f9fa;
-      height: 100%;
+// Main variables
+window.currentEmotion = "neutral";
+window.emotionIntensity = 0;
+let chatId = null;
+let isFirstResponse = true;
+
+// Function to send data to Make.com webhook (handles both emotion and chat)
+async function sendToMakeWebhook(data) {
+    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
+    
+    console.log('🚀 Attempting to send to Make.com webhook:', data);
+    
+    // Create payload for Make.com
+    const payload = {
+        user_id: chatId,
+        session_id: chatId,
+        timestamp: new Date().toISOString(),
+        message_type: data.type || 'emotion', // 'emotion' or 'chat'
+        primary_emotion: data.emotion || 'neutral',
+        intensity_level: data.intensity || 0.7,
+        raw_text: data.text || '',
+        user_message: data.message || '',
+        time_of_day: getTimeOfDay()
+    };
+    
+    console.log('📦 Payload:', payload);
+    
+    try {
+        // Try direct connection first
+        const directResponse = await fetch(makeWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (directResponse.ok) {
+            const responseData = await directResponse.json();
+            console.log('✅ Direct Make.com webhook success:', responseData);
+            return responseData;
+        }
+        
+    } catch (directError) {
+        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
     }
     
-    .navbar {
-      background: #007bff;
-      color: white;
-      padding: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    // Fallback to CORS proxy
+    try {
+        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
+        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const responseText = await response.text();
+        console.log('✅ Proxy response:', responseText);
+        
+        try {
+            const responseData = JSON.parse(responseText);
+            console.log('Raw response received:', responseData);
+            return responseData;
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
+            return {response: responseText};
+        }
+    } catch (error) {
+        console.error('❌ Failed to send to proxy:', error);
+        return null;
+    }
+}
+
+// Helper function to get time of day
+function getTimeOfDay() {
+    const hour = new Date().getHours();
+    if (hour < 6) return "night";
+    if (hour < 12) return "morning";
+    if (hour < 17) return "afternoon";
+    if (hour < 22) return "evening";
+    return "night";
+}
+
+// Function to display ORA's response in the chat
+function displayOraResponse(responseData) {
+    const chatHistory = document.getElementById("chatHistory");
+    if (!chatHistory) return;
+    
+    console.log("Raw response received:", responseData);
+    
+    if (responseData && responseData.message) {
+        // Clean response from Make.com
+        let message = responseData.message;
+        
+        // Remove any JSON wrapper if present
+        if (typeof message === 'string' && message.includes('"')) {
+            try {
+                const parsed = JSON.parse(message);
+                if (parsed.response) {
+                    message = parsed.response;
+                }
+            } catch (e) {
+                // Keep original message if parsing fails
+            }
+        }
+        
+        // Display the message
+        chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> ${message}</div>`;
+    } else if (responseData && responseData.response) {
+        // Handle response field
+        chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> ${responseData.response}</div>`;
+    } else {
+        // Fallback message
+        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> I hear you. Let me provide some guidance based on what you've shared.</div>`;
     }
     
-    .logo {
-      width: 50px;
-      margin-right: 10px;
+    // Scroll to bottom
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+    
+    // Show chat interface after first response
+    if (isFirstResponse) {
+        document.getElementById("chat").style.display = "block";
+        isFirstResponse = false;
+    }
+}
+
+// Initialize when DOM is loaded
+window.addEventListener("DOMContentLoaded", () => {
+    const recordBtn = document.getElementById("recordBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const statusText = document.getElementById("status");
+    const chatHistory = document.getElementById("chatHistory");
+    const userMessage = document.getElementById("userMessage");
+    const sendBtn = document.getElementById("sendBtn");
+    
+    // Initialize chat ID
+    chatId = Date.now().toString();
+    console.log('🆔 Chat ID initialized:', chatId);
+    
+    // Set up event listeners
+    if (recordBtn) {
+        recordBtn.addEventListener("click", startRecording);
     }
     
-    .container {
-      max-width: 800px;
-      margin: 20px auto;
-      padding: 20px;
-      background: white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      text-align: center;
+    if (stopBtn) {
+        stopBtn.addEventListener("click", stopRecording);
     }
     
-    h1, h2 {
-      color: #007bff;
-      margin-bottom: 30px;
+    if (sendBtn) {
+        sendBtn.addEventListener("click", sendChatMessage);
     }
     
-    .controls {
-      margin-bottom: 20px;
+    if (userMessage) {
+        userMessage.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                sendChatMessage();
+            }
+        });
     }
     
-    button {
-      padding: 12px 24px;
-      margin: 0 10px;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      transition: background-color 0.3s;
+    // Speech recognition setup
+    let recognition = null;
+    let isRecording = false;
+    
+    function startRecording() {
+        if (isRecording) return;
+        
+        if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+            statusText.textContent = "Speech recognition not supported in this browser.";
+            return;
+        }
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+        
+        recognition.onstart = () => {
+            isRecording = true;
+            statusText.textContent = "Listening...";
+            recordBtn.disabled = true;
+            stopBtn.disabled = false;
+            console.log('🎤 Recording started');
+        };
+        
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            const confidence = event.results[0][0].confidence;
+            
+            console.log('🗣️ Speech recognized:', transcript, 'Confidence:', confidence);
+            
+            // Process the speech
+            processEmotion(transcript, confidence);
+        };
+        
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error", event.error);
+            statusText.textContent = `Error: ${event.error}`;
+            resetRecording();
+        };
+        
+        recognition.onend = () => {
+            if (isRecording) {
+                statusText.textContent = "Ready to record again";
+                resetRecording();
+            }
+        };
+        
+        recognition.start();
     }
     
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    function stopRecording() {
+        if (!isRecording) return;
+        
+        if (recognition) {
+            recognition.stop();
+        }
+        
+        resetRecording();
     }
     
-    #recordBtn {
-      background-color: #ffdb58;
-      color: #333;
+    function resetRecording() {
+        isRecording = false;
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
     }
     
-    #recordBtn:hover:not(:disabled) {
-      background-color: #f0c030;
+    // Process emotion from speech
+    async function processEmotion(text, confidence) {
+        // Simple emotion detection based on keywords
+        const emotions = {
+            happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased", "cheerful", "delighted"],
+            sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken", "dejected", "melancholy"],
+            angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed", "livid", "outraged"],
+            fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic", "fearful", "alarmed"],
+            surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible", "stunned", "astounded"],
+            disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick", "repulsed", "appalled"],
+            neutral: []
+        };
+        
+        let detectedEmotion = "neutral";
+        let maxCount = 0;
+        
+        // Count emotion keywords
+        for (const [emotion, keywords] of Object.entries(emotions)) {
+            const count = keywords.filter(keyword => 
+                text.toLowerCase().includes(keyword)
+            ).length;
+            
+            if (count > maxCount) {
+                maxCount = count;
+                detectedEmotion = emotion;
+            }
+        }
+        
+        // Calculate intensity based on emotion detection
+        let intensity = 0.7; // Default intensity
+        if (maxCount > 0) {
+            intensity = Math.min(0.6 + (maxCount * 0.2), 1.0);
+        }
+        
+        // Update global variables for visualization
+        window.currentEmotion = detectedEmotion;
+        window.emotionIntensity = intensity;
+        
+        // Update the emotion panel
+        const emotionLabel = document.getElementById("emotion-label");
+        const intensityFill = document.getElementById("intensity-fill");
+        
+        if (emotionLabel) {
+            emotionLabel.textContent = detectedEmotion;
+        }
+        
+        if (intensityFill) {
+            intensityFill.style.width = `${Math.round(intensity * 100)}%`;
+            
+            // Color based on emotion
+            const emotionColors = {
+                happy: "#4CAF50",
+                sad: "#2196F3", 
+                angry: "#F44336",
+                fear: "#9C27B0",
+                surprise: "#FF9800",
+                disgust: "#795548",
+                neutral: "#9E9E9E"
+            };
+            
+            intensityFill.style.background = emotionColors[detectedEmotion] || "#9E9E9E";
+        }
+        
+        // Display the detected emotion in status
+        statusText.textContent = `${detectedEmotion} (${Math.round(intensity * 100)}%)`;
+        
+        console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', intensity);
+        
+        // Add user's speech to chat history
+        if (chatHistory) {
+            chatHistory.innerHTML += `<div class="user">🧑 "${text}"</div>`;
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // Send emotion data to Make.com
+        const emotionData = {
+            type: 'emotion',
+            emotion: detectedEmotion,
+            intensity: intensity,
+            text: text
+        };
+        
+        const response = await sendToMakeWebhook(emotionData);
+        
+        if (response) {
+            console.log('✅ Emotion data sent successfully to Make.com');
+            displayOraResponse(response);
+        } else {
+            console.error('❌ Failed to send emotion data to Make.com');
+            if (chatHistory) {
+                chatHistory.innerHTML += `<div class="error">⚠️ Unable to connect to ORA wellness agent.</div>`;
+            }
+        }
     }
-    
-    #stopBtn {
-      background-color: #e0e0e0;
-      color: #333;
+
+    // Function to send chat messages
+    async function sendChatMessage() {
+        if (!chatHistory || !userMessage) return;
+        
+        const text = userMessage.value.trim();
+        if (!text) return;
+
+        // Add user message to chat
+        chatHistory.innerHTML += `<div class="user">🧑 ${text}</div>`;
+        userMessage.value = "";
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+        // Send chat message to Make.com
+        const chatData = {
+            type: 'chat',
+            message: text,
+            emotion: window.currentEmotion,
+            intensity: window.emotionIntensity
+        };
+        
+        const response = await sendToMakeWebhook(chatData);
+        
+        if (response) {
+            console.log('✅ Chat message sent successfully to Make.com');
+            displayOraResponse(response);
+        } else {
+            console.error('❌ Failed to send chat message to Make.com');
+            chatHistory.innerHTML += `<div class="error">⚠️ Unable to send message to ORA.</div>`;
+        }
     }
-    
-    #stopBtn:hover:not(:disabled) {
-      background-color: #d0d0d0;
-    }
-    
-    .btn {
-      background-color: #007bff;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-    .btn.success {
-      background-color: #28a745;
-    }
-    
-    .btn:hover {
-      opacity: 0.8;
-    }
-    
-    #status {
-      margin: 15px 0;
-      font-size: 18px;
-      color: #555;
-      min-height: 25px;
-    }
-    
-    #visualization-container {
-      width: 100%;
-      height: 400px;
-      margin: 20px 0;
-      border-radius: 10px;
-      overflow: hidden;
-      position: relative;
-      background-color: #1a1a1a;
-    }
-    
-    #emotion-panel {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      text-align: center;
-      background-color: rgba(0, 0, 0, 0.8);
-      color: white;
-      border-radius: 8px;
-      padding: 10px;
-      z-index: 10;
-    }
-    
-    #emotion-label {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 8px;
-      text-transform: lowercase;
-    }
-    
-    #intensity-bar {
-      height: 15px;
-      width: 100%;
-      background-color: #333;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 5px;
-    }
-    
-    #intensity-fill {
-      height: 100%;
-      width: 0%;
-      background: repeating-linear-gradient(
-        45deg,
-        #555,
-        #555 5px,
-        #777 5px,
-        #777 10px
-      );
-      transition: width 0.5s, background 0.5s;
-    }
-    
-    /* Chat Interface Styles */
-    #chat {
-      display: none;
-      margin-top: 30px;
-      border-top: 2px solid #007bff;
-      padding-top: 20px;
-      text-align: left;
-    }
-    
-    #chat h3 {
-      text-align: center;
-      color: #007bff;
-      margin-bottom: 20px;
-    }
-    
-    .chat-history {
-      margin-bottom: 15px;
-      max-height: 300px;
-      overflow-y: auto;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border: 1px solid #dee2e6;
-    }
-    
-    .chat-history div {
-      margin-bottom: 15px;
-      padding: 12px;
-      border-radius: 8px;
-      line-height: 1.4;
-    }
-    
-    .chat-history .user {
-      background-color: #007bff;
-      color: white;
-      margin-left: 20px;
-      text-align: right;
-      border-radius: 15px 15px 5px 15px;
-    }
-    
-    .chat-history .assistant {
-      background-color: #e9ecef;
-      color: #333;
-      margin-right: 20px;
-      border-radius: 15px 15px 15px 5px;
-    }
-    
-    .chat-history .assistant-content {
-      background-color: #d4edda;
-      color: #155724;
-      margin-right: 20px;
-      border-radius: 15px 15px 15px 5px;
-      border-left: 4px solid #28a745;
-    }
-    
-    .chat-history .error {
-      background-color: #f8d7da;
-      color: #721c24;
-      border-left: 4px solid #dc3545;
-    }
-    
-    .chat-input {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    
-    .chat-input input {
-      flex-grow: 1;
-      padding: 12px;
-      border: 2px solid #dee2e6;
-      border-radius: 25px;
-      font-size: 16px;
-      outline: none;
-      transition: border-color 0.3s;
-    }
-    
-    .chat-input input:focus {
-      border-color: #007bff;
-    }
-    
-    .chat-input button {
-      padding: 12px 20px;
-      background-color: #28a745;
-      color: white;
-      border: none;
-      border-radius: 25px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background-color 0.3s;
-    }
-    
-    .chat-input button:hover {
-      background-color: #218838;
-    }
-    
-    /* p5.js canvas */
-    #p5-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    
-    /* Animation for emotion change flash */
-    @keyframes emotion-flash {
-      0% { opacity: 0; }
-      50% { opacity: 0.5; }
-      100% { opacity: 0; }
-    }
-    
-    .emotion-flash {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 100;
-      animation: emotion-flash 0.5s ease-out;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-      .container {
-        margin: 10px;
-        padding: 15px;
-      }
-      
-      #visualization-container {
-        height: 300px;
-      }
-      
-      button {
-        padding: 10px 20px;
-        font-size: 14px;
-      }
-      
-      .chat-history {
-        max-height: 200px;
-      }
-    }
-  </style>
-  <!-- Load p5.js before our scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
-</head>
-<body>
-  <div class="navbar">
-    <img src="/static/logo.png" alt="ORA Logo" class="logo">
-    <h1>ORA - Your Wellness Companion</h1>
-  </div>
-  
-  <div class="container">
-    <h2>Emotion Analyzer</h2>
-    
-    <div class="controls">
-      <button id="recordBtn">🎤 Record</button>
-      <button id="stopBtn" disabled>⏹ Stop</button>
-    </div>
-    
-    <p id="status">Ready to record</p>
-    
-    <div id="visualization-container">
-      <!-- p5.js will create canvas here -->
-      <div id="p5-canvas"></div>
-      
-      <!-- Emotion panel overlay -->
-      <div id="emotion-panel">
-        <div id="emotion-label">waiting...</div>
-        <div id="intensity-bar">
-          <div id="intensity-fill"></div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Chat Interface (hidden until after first analysis) -->
-    <div id="chat">
-      <h3>💬 Continue Your Wellness Journey with ORA</h3>
-      <div id="chatHistory" class="chat-history"></div>
-      <div class="chat-input">
-        <input type="text" id="userMessage" placeholder="Share more about how you're feeling, or ask ORA for guidance..." />
-        <button id="sendBtn">Send</button>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Load our scripts in the correct order -->
-  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-  <script src="{{ url_for('static', filename='p5-sketch.js') }}"></script>
-</body>
-</html>
+});
