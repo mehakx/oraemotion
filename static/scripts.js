@@ -179,8 +179,19 @@ function displayOraResponse(responseData) {
         if (responseData && responseData.response) {
             console.log("🔍 Parsing Make.com response:", responseData.response);
             
+            // Fix malformed JSON with duplicate keys before parsing
+            let cleanedResponse = responseData.response;
+            
+            // Remove duplicate "emotion": "happy" entries (keep only the first)
+            cleanedResponse = cleanedResponse.replace(/"emotion":\s*"[^"]*",\s*"emotion":\s*"[^"]*"/g, match => {
+                const firstMatch = match.match(/"emotion":\s*"[^"]*"/);
+                return firstMatch ? firstMatch[0] : match;
+            });
+            
+            console.log("🧹 Cleaned response:", cleanedResponse);
+            
             // The response is a JSON string, parse it
-            const makeResponse = JSON.parse(responseData.response);
+            const makeResponse = JSON.parse(cleanedResponse);
             console.log("📋 Make.com response structure:", makeResponse);
             
             if (makeResponse.response && typeof makeResponse.response === 'string') {
