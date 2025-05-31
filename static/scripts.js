@@ -177,13 +177,36 @@ function displayOraResponse(responseData) {
         
         // Parse the nested response structure from Make.com
         if (responseData && responseData.response) {
-            // The response is a JSON string, parse it
-            const makeResponse = JSON.parse(responseData.response);
-            
-            if (makeResponse.response && makeResponse.response.text) {
-                // Parse Claude's JSON response
-                claudeResponse = JSON.parse(makeResponse.response.text);
-                console.log("✅ Parsed Claude response:", claudeResponse);
+            try {
+                // The response is a JSON string, parse it
+                const makeResponse = JSON.parse(responseData.response);
+                console.log("📋 Make.com response structure:", makeResponse);
+                
+                if (makeResponse.response && makeResponse.response.text) {
+                    // Clean the response text before parsing (remove extra quotes/escapes)
+                    let cleanText = makeResponse.response.text;
+                    
+                    // Remove extra escaping and fix malformed JSON
+                    cleanText = cleanText.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+                    
+                    console.log("🧹 Cleaned response text:", cleanText);
+                    
+                    // Parse Claude's JSON response
+                    claudeResponse = JSON.parse(cleanText);
+                    console.log("✅ Parsed Claude response:", claudeResponse);
+                }
+            } catch (parseError) {
+                console.log("⚠️ Error parsing Make.com response:", parseError);
+                console.log("Raw response that failed:", responseData.response);
+                
+                // Try to extract text directly if JSON parsing fails
+                if (typeof responseData.response === 'string' && responseData.response.includes('acknowledgment')) {
+                    // Try to extract the meaningful content even if JSON is malformed
+                    const match = responseData.response.match(/"acknowledgment":\s*"([^"]+)"/);
+                    if (match) {
+                        claudeResponse = { acknowledgment: match[1] };
+                    }
+                }
             }
         }
         
@@ -354,7 +377,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     // Update global variables for visualization
     window.currentEmotion = detectedEmotion;
-    window.emotionIntensity = confidence;
+    window.emotionIntensity = adjustedConfidence; // Use adjusted confidence
     
     // Update the emotion panel
     const emotionLabel = document.getElementById("emotion-label");
@@ -365,7 +388,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     
     if (intensityFill) {
-      intensityFill.style.width = `${Math.round(confidence * 100)}%`;
+      intensityFill.style.width = `${Math.round(adjustedConfidence * 100)}%`;
       
       // Color based on emotion
       const emotionColors = {
@@ -382,9 +405,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     
     // Display the detected emotion in status
-    statusText.textContent = `${detectedEmotion} (${Math.round(confidence * 100)}%)`;
+    statusText.textContent = `${detectedEmotion} (${Math.round(adjustedConfidence * 100)}%)`;
     
-    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', confidence);
+    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', adjustedConfidence);
     
     // Add user's speech to chat history
     if (chatHistory) {
@@ -395,7 +418,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // Send to Make.com webhook
     const emotionData = {
       emotion: detectedEmotion,
-      confidence: confidence,
+      confidence: adjustedConfidence, // Use adjusted confidence
       text: text,
       sessionId: chatId
     };
