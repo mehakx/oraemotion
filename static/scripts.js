@@ -84,13 +84,13 @@ async function sendEmotionToMake(emotionData) {
     }
 }
 
-// NEW: Function to send chat messages (uses same webhook)
+// Function to send chat messages (uses same webhook, same format)
 async function sendChatMessage(messageText) {
     const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
     console.log('💬 Sending chat message:', messageText);
     
-    // Create payload for chat message
+    // Create payload for chat message - SAME FORMAT as emotion data
     const chatPayload = {
         user_id: chatId,
         session_id: chatId,
@@ -98,8 +98,8 @@ async function sendChatMessage(messageText) {
         primary_emotion: window.currentEmotion || 'neutral',
         intensity_level: window.emotionIntensity || 0.7,
         raw_text: messageText,
-        time_of_day: getTimeOfDay(),
-        message_type: 'chat' // Flag to indicate this is a chat message
+        time_of_day: getTimeOfDay()
+        // Removed message_type to keep same format as working emotion data
     };
     
     console.log('📦 Chat payload:', chatPayload);
@@ -164,7 +164,7 @@ function getTimeOfDay() {
     return "night";
 }
 
-// Function to display ORA's response in the chat (YOUR ORIGINAL + IMPROVEMENTS)
+// Function to display ORA's response in the chat
 function displayOraResponse(responseData) {
     const chatHistory = document.getElementById("chatHistory");
     if (!chatHistory) return;
@@ -230,7 +230,7 @@ function displayOraResponse(responseData) {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-// Initialize when DOM is fully loaded (YOUR ORIGINAL CODE)
+// Initialize when DOM is fully loaded
 window.addEventListener("DOMContentLoaded", () => {
   const recordBtn = document.getElementById("recordBtn");
   const stopBtn = document.getElementById("stopBtn");
@@ -264,7 +264,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
   
-  // Speech recognition setup (YOUR ORIGINAL CODE)
+  // Speech recognition setup
   let recognition = null;
   let isRecording = false;
   
@@ -334,7 +334,7 @@ window.addEventListener("DOMContentLoaded", () => {
     stopBtn.disabled = true;
   }
   
-  // Process emotion from speech (YOUR ORIGINAL CODE)
+  // Process emotion from speech
   async function processEmotion(text, confidence) {
     // Simple emotion detection based on keywords
     const emotions = {
@@ -434,7 +434,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // NEW: Function to send chat messages
+  // Function to send chat messages
   async function sendMessage() {
     if (!chatHistory) return;
     
