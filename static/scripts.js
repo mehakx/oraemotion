@@ -23,6 +23,7 @@ async function sendEmotionToMake(emotionData) {
     };
     
     console.log('📦 Flattened payload:', flattenedPayload);
+    console.log('Mits',JSON.stringify(flattenedPayload));
     
     try {
         // Try direct connection first (without CORS proxy)
