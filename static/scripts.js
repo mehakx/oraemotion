@@ -3,272 +3,10 @@
 window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
-let lastDetectedEmotion = '';
-
-// Add beautiful CSS styling inspired by the holographic design
-const style = document.createElement('style');
-style.textContent = `
-  /* Holographic ORA Theme */
-  body {
-    background: #000000;
-    color: #ffffff;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    background-image: 
-      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
-  }
-
-  .container {
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 30px;
-  }
-
-  h1, h2 {
-    background: linear-gradient(135deg, #ff6b9d, #c471ed, #12c2e9, #c471ed, #ff6b9d);
-    background-size: 300% 300%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: holographicShift 3s ease-in-out infinite;
-    text-align: center;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-
-  @keyframes holographicShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-
-  /* Record Button Styling */
-  button {
-    background: linear-gradient(135deg, #ff6b9d, #c471ed, #12c2e9);
-    background-size: 300% 300%;
-    border: none;
-    border-radius: 50px;
-    color: white;
-    font-weight: 600;
-    padding: 15px 30px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
-    animation: holographicShift 3s ease-in-out infinite;
-    font-size: 16px;
-    letter-spacing: 0.5px;
-  }
-
-  button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 107, 157, 0.6);
-  }
-
-  button:active {
-    transform: translateY(0);
-  }
-
-  /* Chat Interface */
-  #chat {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    margin-top: 20px;
-    backdrop-filter: blur(10px);
-  }
-
-  #chatHistory {
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 15px;
-    border-radius: 15px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    margin-bottom: 15px;
-  }
-
-  /* Custom Scrollbar */
-  #chatHistory::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  #chatHistory::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-  }
-
-  #chatHistory::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #ff6b9d, #c471ed);
-    border-radius: 3px;
-  }
-
-  /* Chat Messages */
-  .user {
-    background: linear-gradient(135deg, rgba(255, 107, 157, 0.2), rgba(196, 113, 237, 0.2));
-    border: 1px solid rgba(255, 107, 157, 0.3);
-    border-radius: 18px 18px 5px 18px;
-    padding: 12px 16px;
-    margin: 10px 0;
-    margin-left: 20%;
-    color: #ffffff;
-    box-shadow: 0 4px 15px rgba(255, 107, 157, 0.2);
-    backdrop-filter: blur(10px);
-  }
-
-  .assistant {
-    background: linear-gradient(135deg, rgba(18, 194, 233, 0.2), rgba(196, 113, 237, 0.2));
-    border: 1px solid rgba(18, 194, 233, 0.3);
-    border-radius: 18px 18px 18px 5px;
-    padding: 12px 16px;
-    margin: 10px 0;
-    margin-right: 20%;
-    color: #ffffff;
-    box-shadow: 0 4px 15px rgba(18, 194, 233, 0.2);
-    backdrop-filter: blur(10px);
-  }
-
-  /* Chat Input */
-  .chat-input {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  #userMessage {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 25px;
-    padding: 12px 20px;
-    color: #ffffff;
-    font-size: 16px;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-  }
-
-  #userMessage:focus {
-    outline: none;
-    border-color: rgba(255, 107, 157, 0.5);
-    box-shadow: 0 0 20px rgba(255, 107, 157, 0.3);
-  }
-
-  #userMessage::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  #sendBtn {
-    padding: 12px 20px;
-    border-radius: 25px;
-    font-size: 14px;
-  }
-
-  /* Status Text */
-  #status {
-    text-align: center;
-    margin: 20px 0;
-    padding: 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-  }
-
-  /* Emotion Visualization */
-  .emotion-display {
-    text-align: center;
-    margin: 20px 0;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  #emotion-label {
-    font-size: 24px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #ff6b9d, #c471ed, #12c2e9);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 10px;
-    text-transform: capitalize;
-  }
-
-  .intensity-bar {
-    width: 100%;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-top: 10px;
-  }
-
-  #intensity-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff6b9d, #c471ed, #12c2e9);
-    border-radius: 4px;
-    transition: width 0.5s ease;
-    box-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
-  }
-
-  /* Floating Animation */
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-  }
-
-  .floating {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  /* Glow Effects */
-  .glow {
-    box-shadow: 
-      0 0 20px rgba(255, 107, 157, 0.3),
-      0 0 40px rgba(196, 113, 237, 0.2),
-      0 0 60px rgba(18, 194, 233, 0.1);
-  }
-
-  /* Responsive Design */
-  @media (max-width: 768px) {
-    .container {
-      margin: 10px;
-      padding: 20px;
-    }
-    
-    .user, .assistant {
-      margin-left: 10%;
-      margin-right: 10%;
-    }
-    
-    button {
-      padding: 12px 24px;
-      font-size: 14px;
-    }
-  }
-
-  /* Hide default elements that might conflict */
-  .btn {
-    display: none;
-  }
-`;
-
-document.head.appendChild(style);
 
 // Function to send emotion data to Make.com webhook (EMOTION ASSESSMENT)
 async function sendEmotionToMake(emotionData) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/1748846057780"; // FIXED: Using working webhook URL
+    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
     console.log('🎯 Sending EMOTION ASSESSMENT to Make.com:', emotionData);
     
@@ -280,17 +18,16 @@ async function sendEmotionToMake(emotionData) {
         message_type: "emotion_assessment",           // KEY: This tells Make.com it's emotion assessment
         emotion: emotionData.emotion,
         intensity: emotionData.intensity,
-        text: emotionData.text,                       // This will be the speech text
+        text: emotionData.text,
         time_of_day: getTimeOfDay(),
         request_id: Math.random().toString(36)        // Unique ID to prevent caching
     };
     
-    // Store the detected emotion for context
-    lastDetectedEmotion = emotionData.emotion;
-    
     console.log('📦 Emotion Assessment payload:', emotionPayload);
+    console.log('Mits',JSON.stringify(emotionPayload));
     
     try {
+        // Try direct connection first (without CORS proxy)
         const directResponse = await fetch(makeWebhookUrl, {
             method: 'POST',
             headers: {
@@ -300,35 +37,72 @@ async function sendEmotionToMake(emotionData) {
         });
         
         if (directResponse.ok) {
+            // FIXED: Get response as text first, then try to parse as JSON
             const responseText = await directResponse.text();
             console.log('✅ Emotion Assessment success (raw):', responseText);
             
             let responseData;
             try {
+                // Try to parse as JSON
                 responseData = JSON.parse(responseText);
                 console.log('✅ Parsed JSON response:', responseData);
             } catch (parseError) {
                 console.log('ℹ️ Response is not JSON, using as text:', responseText);
+                // If not JSON, create a simple object with the text
                 responseData = { 
                     status: 'success', 
                     message: responseText || 'Emotion assessment completed' 
                 };
             }
             
+            // Display the ORA response in the chat
             displayOraResponse(responseData);
+            
             return true;
         }
         
     } catch (directError) {
-        console.log('⚠️ Direct connection failed:', directError.message);
-        document.getElementById("status").textContent = "Error sending data to Make.com";
+        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
+    }
+    
+    // Fallback to CORS proxy with flattened payload
+    try {
+        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
+        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(emotionPayload)
+        });
+        
+        const responseText = await response.text();
+        console.log('✅ Proxy response:', responseText);
+        
+        try {
+            // Try to parse the response as JSON
+            const responseData = JSON.parse(responseText);
+            console.log('✅ Parsed response data:', responseData);
+            
+            // Display the ORA response in the chat
+            displayOraResponse(responseData);
+            
+            return true;
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
+            // Even if parsing fails, try to display something
+            displayOraResponse({response: responseText});
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ Failed to send to proxy:', error);
         return false;
     }
 }
 
 // Function to send chat messages (WELLNESS COACHING)
 async function sendChatMessage(messageText) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/1748846057780"; // FIXED: Using working webhook URL
+    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
     console.log('💬 Sending WELLNESS COACHING message:', messageText);
     
@@ -338,9 +112,9 @@ async function sendChatMessage(messageText) {
         session_id: chatId,
         timestamp: new Date().toISOString(),
         message_type: "wellness_coaching",            // KEY: This tells Make.com it's ongoing coaching
-        emotion: lastDetectedEmotion || 'neutral',    // Keep context of detected emotion
+        emotion: window.currentEmotion || 'neutral',  // Keep context of detected emotion
         intensity: window.emotionIntensity || 0.7,
-        text: messageText,                            // This will be the chat message text
+        text: messageText,
         time_of_day: getTimeOfDay(),
         request_id: Math.random().toString(36)        // Unique ID to prevent caching
     };
@@ -348,6 +122,7 @@ async function sendChatMessage(messageText) {
     console.log('📦 Wellness Coaching payload:', chatPayload);
     
     try {
+        // Try direct connection first
         const directResponse = await fetch(makeWebhookUrl, {
             method: 'POST',
             headers: {
@@ -357,6 +132,7 @@ async function sendChatMessage(messageText) {
         });
         
         if (directResponse.ok) {
+            // FIXED: Get response as text first, then try to parse as JSON
             const responseText = await directResponse.text();
             console.log('✅ Wellness Coaching success (raw):', responseText);
             
@@ -377,7 +153,34 @@ async function sendChatMessage(messageText) {
         }
         
     } catch (directError) {
-        console.log('⚠️ Direct connection failed:', directError.message);
+        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
+    }
+    
+    // Fallback to CORS proxy
+    try {
+        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
+        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(chatPayload)
+        });
+        
+        const responseText = await response.text();
+        console.log('✅ Chat proxy response:', responseText);
+        
+        try {
+            const responseData = JSON.parse(responseText);
+            displayOraResponse(responseData);
+            return true;
+        } catch (parseError) {
+            console.log('⚠️ Could not parse chat response as JSON:', responseText);
+            displayOraResponse({response: responseText});
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ Failed to send chat message:', error);
         return false;
     }
 }
@@ -392,16 +195,14 @@ function getTimeOfDay() {
     return "night";
 }
 
-// Enhanced function to display ORA's response in the chat
+// UPDATED Function to display ORA's response in the chat - SIMPLIFIED VERSION
 function displayOraResponse(responseData) {
     console.log("Raw response received:", responseData);
     
-    // Show the chat section with animation
+    // Show the chat section
     const chatDiv = document.getElementById("chat");
     if (chatDiv) {
         chatDiv.style.display = "block";
-        chatDiv.classList.add("glow");
-        setTimeout(() => chatDiv.classList.remove("glow"), 2000);
     }
     
     // Get the chat history element
@@ -415,35 +216,23 @@ function displayOraResponse(responseData) {
     let message = "";
     
     if (responseData && responseData.message) {
+        // Handle the 'message' field from Make.com
         message = responseData.message;
     } else if (responseData && responseData.response) {
+        // Handle the 'response' field
         message = responseData.response;
     } else if (responseData && responseData.status === "success") {
+        // Generic success message if no specific response
         message = "I hear you. How can I support your wellness journey today?";
     } else {
+        // Fallback for unexpected response format
         message = "I'm here to support you. Please share more about how you're feeling.";
         console.log("Unexpected response format:", responseData);
     }
     
-    // Add the message to chat history with typing animation
+    // Add the message to chat history
     if (message) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'assistant';
-        messageDiv.innerHTML = `🧘 <strong>ORA:</strong> <span class="typing-text"></span>`;
-        chatHistory.appendChild(messageDiv);
-        
-        // Typing animation
-        const typingElement = messageDiv.querySelector('.typing-text');
-        let i = 0;
-        const typeWriter = () => {
-            if (i < message.length) {
-                typingElement.textContent += message.charAt(i);
-                i++;
-                setTimeout(typeWriter, 30);
-            }
-        };
-        typeWriter();
-        
+        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> ${message}</div>`;
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 }
@@ -460,9 +249,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // Initialize chat ID
   chatId = Date.now().toString();
   console.log('🆔 Chat ID initialized:', chatId);
-  
-  // Add floating animation to main elements
-  if (recordBtn) recordBtn.classList.add("floating");
   
   // Set up event listeners
   if (recordBtn) {
@@ -505,7 +291,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     recognition.onstart = () => {
       isRecording = true;
-      statusText.textContent = "✨ Listening to your emotions...";
+      statusText.textContent = "Listening...";
       recordBtn.style.display = "none";
       stopBtn.style.display = "inline-block";
       stopBtn.disabled = false;
@@ -518,7 +304,7 @@ window.addEventListener("DOMContentLoaded", () => {
       
       console.log('🗣️ Speech recognized:', transcript, 'Confidence:', confidence);
       
-      // Process the speech for EMOTION ASSESSMENT
+      // Process the speech
       processEmotion(transcript, confidence);
     };
     
@@ -530,7 +316,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     recognition.onend = () => {
       if (isRecording) {
-        statusText.textContent = "✨ Ready to listen again";
+        statusText.textContent = "Ready to record again";
         resetRecording();
       }
     };
@@ -555,7 +341,7 @@ window.addEventListener("DOMContentLoaded", () => {
     stopBtn.disabled = true;
   }
   
-  // Process emotion from speech (EMOTION ASSESSMENT ONLY)
+  // Process emotion from speech
   async function processEmotion(text, confidence) {
     // Simple emotion detection based on keywords
     const emotions = {
@@ -596,7 +382,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     // Update global variables for visualization
     window.currentEmotion = detectedEmotion;
-    window.emotionIntensity = intensity;
+    window.emotionIntensity = intensity; // Use calculated intensity instead of speech confidence
     
     // Update the emotion panel
     const emotionLabel = document.getElementById("emotion-label");
@@ -611,78 +397,62 @@ window.addEventListener("DOMContentLoaded", () => {
       
       // Color based on emotion
       const emotionColors = {
-        happy: "linear-gradient(90deg, #FFD700, #FFA500)",
-        sad: "linear-gradient(90deg, #4169E1, #1E90FF)",
-        angry: "linear-gradient(90deg, #FF4500, #DC143C)",
-        fear: "linear-gradient(90deg, #9370DB, #8A2BE2)",
-        surprise: "linear-gradient(90deg, #FF69B4, #FF1493)",
-        disgust: "linear-gradient(90deg, #32CD32, #228B22)",
-        neutral: "linear-gradient(90deg, #ff6b9d, #c471ed, #12c2e9)"
+        happy: "#4CAF50",
+        sad: "#2196F3", 
+        angry: "#F44336",
+        fear: "#9C27B0",
+        surprise: "#FF9800",
+        disgust: "#795548",
+        neutral: "#9E9E9E"
       };
       
-      intensityFill.style.background = emotionColors[detectedEmotion] || emotionColors.neutral;
+      intensityFill.style.background = emotionColors[detectedEmotion] || "#9E9E9E";
     }
     
-    console.log(`🎯 Emotion detected: ${detectedEmotion} (intensity: ${intensity})`);
+    // Display the detected emotion in status
+    statusText.textContent = `${detectedEmotion} (${Math.round(intensity * 100)}%)`;
     
-    // Add user message to chat showing what they said
+    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', intensity);
+    
+    // Add user's speech to chat history
     if (chatHistory) {
-      const userDiv = document.createElement('div');
-      userDiv.className = 'user';
-      userDiv.innerHTML = `💬 <strong>You said:</strong> "${text}"`;
-      chatHistory.appendChild(userDiv);
+      chatHistory.innerHTML += `<div class="user">🧑 "${text}"</div>`;
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
     
-    // Send to Make.com for EMOTION ASSESSMENT
+    // Send to Make.com webhook with intensity instead of confidence
     const emotionData = {
       emotion: detectedEmotion,
-      intensity: intensity,
-      text: text,  // The speech text
-      confidence: confidence,
+      intensity: intensity,  // Use intensity instead of confidence
+      text: text,
       sessionId: chatId
     };
     
-    statusText.textContent = "✨ Analyzing your emotions...";
-    
+    // Send to Make.com webhook
     const success = await sendEmotionToMake(emotionData);
     
     if (success) {
       console.log('✅ Emotion data sent successfully to Make.com');
-      statusText.textContent = "✨ Emotion analysis complete!";
     } else {
-      console.log('❌ Failed to send emotion data to Make.com');
-      statusText.textContent = "❌ Failed to send emotion data";
+      console.error('❌ Failed to send emotion data to Make.com');
+      statusText.textContent = "Error sending data to Make.com";
     }
   }
   
-  // Send chat message function (WELLNESS COACHING ONLY)
-  async function sendMessage() {
+  // Send chat message function
+  function sendMessage() {
     const messageText = userMessage.value.trim();
     if (!messageText) return;
     
-    console.log('💬 User typed message:', messageText);
-    
     // Add user message to chat
-    if (chatHistory) {
-      const userDiv = document.createElement('div');
-      userDiv.className = 'user';
-      userDiv.innerHTML = `💬 <strong>You:</strong> ${messageText}`;
-      chatHistory.appendChild(userDiv);
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
+    chatHistory.innerHTML += `<div class="user">🧑 ${messageText}</div>`;
+    chatHistory.scrollTop = chatHistory.scrollHeight;
     
     // Clear input
-    userMessage.value = '';
+    userMessage.value = "";
     
-    // Send as WELLNESS COACHING (no emotion re-analysis)
-    const success = await sendChatMessage(messageText);
-    
-    if (success) {
-      console.log('✅ Chat message sent successfully');
-    } else {
-      console.log('❌ Failed to send chat message');
-    }
+    // Send to Make.com
+    sendChatMessage(messageText);
   }
 });
 
