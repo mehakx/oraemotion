@@ -223,8 +223,6 @@ function displayOraResponse(responseData) {
         message = responseData.message;
     } else if (responseData && responseData.response) {
         message = responseData.response;
-    } else if (responseData && responseData.status === "success") {
-        message = "I hear you. How can I support your wellness journey today?";
     } else {
         message = "I'm here to support you. Please share more about how you're feeling.";
         console.log("Unexpected response format:", responseData);
@@ -465,7 +463,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
-
 
 
 
