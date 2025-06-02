@@ -193,70 +193,46 @@ function getTimeOfDay() {
     return "night";
 }
 
-// Function to display ORA's response in the chat
+// UPDATED Function to display ORA's response in the chat - SIMPLIFIED VERSION
 function displayOraResponse(responseData) {
-    const chatHistory = document.getElementById("chatHistory");
-    if (!chatHistory) return;
-    
     console.log("Raw response received:", responseData);
     
-    // Show chat interface after first response
+    // Show the chat section
     const chatDiv = document.getElementById("chat");
-    if (chatDiv && chatDiv.style.display === "none") {
+    if (chatDiv) {
         chatDiv.style.display = "block";
     }
     
-    // Try to display structured response if available
-    try {
-        if (responseData && responseData.message) {
-            // Handle the 'message' field from Make.com
-            let message = responseData.message;
-            chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> ${message}</div>`;
-        } else if (responseData && responseData.response) {
-            let response = responseData.response;
-            
-            // If response is a string, try to parse it as JSON
-            if (typeof response === 'string') {
-                try {
-                    response = JSON.parse(response);
-                } catch (e) {
-                    // If parsing fails, just display the string
-                    chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> ${response}</div>`;
-                    chatHistory.scrollTop = chatHistory.scrollHeight;
-                    return;
-                }
-            }
-            
-            // If we have a structured response object
-            if (response.acknowledgment || response.mindfulness_practice) {
-                chatHistory.innerHTML += `
-                    <div class="assistant-content">
-                        🧘 <strong>ORA Wellness Guidance:</strong><br>
-                        ${response.acknowledgment ? `<p><strong>💝 Acknowledgment:</strong> ${response.acknowledgment}</p>` : ''}
-                        ${response.mindfulness_practice ? `<p><strong>🧠 Mindfulness Practice:</strong> ${response.mindfulness_practice}</p>` : ''}
-                        ${response.mind_body_exercise ? `<p><strong>🧘 Mind-Body Exercise:</strong> ${response.mind_body_exercise}</p>` : ''}
-                        ${response.empowering_reflection ? `<p><strong>💪 Empowering Reflection:</strong> ${response.empowering_reflection}</p>` : ''}
-                        ${response.physical_action ? `<p><strong>🏃 Physical Action:</strong> ${response.physical_action}</p>` : ''}
-                    </div>
-                `;
-            } else {
-                chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> ${response}</div>`;
-            }
-        } else if (responseData && responseData.status === "success") {
-            // Generic success message if no specific response
-            chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> I hear you. How can I support your wellness journey today?</div>`;
-        } else {
-            // Fallback for unexpected response format
-            chatHistory.innerHTML += `<div class="assistant-content">🧘 <strong>ORA:</strong> I'm here to support you. Please share more about how you're feeling.</div>`;
-            console.log("Unexpected response format:", responseData);
-        }
-    } catch (error) {
-        console.error("Error displaying ORA response:", error);
-        chatHistory.innerHTML += `<div class="assistant error">⚠️ Error displaying ORA response.</div>`;
+    // Get the chat history element
+    const chatHistory = document.getElementById("chatHistory");
+    if (!chatHistory) {
+        console.error("Chat history element not found!");
+        return;
     }
     
-    // Scroll chat to bottom
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    // Extract the message from the response
+    let message = "";
+    
+    if (responseData && responseData.message) {
+        // Handle the 'message' field from Make.com
+        message = responseData.message;
+    } else if (responseData && responseData.response) {
+        // Handle the 'response' field
+        message = responseData.response;
+    } else if (responseData && responseData.status === "success") {
+        // Generic success message if no specific response
+        message = "I hear you. How can I support your wellness journey today?";
+    } else {
+        // Fallback for unexpected response format
+        message = "I'm here to support you. Please share more about how you're feeling.";
+        console.log("Unexpected response format:", responseData);
+    }
+    
+    // Add the message to chat history
+    if (message) {
+        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> ${message}</div>`;
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
 }
 
 // Initialize when DOM is fully loaded
@@ -477,4 +453,5 @@ window.addEventListener("DOMContentLoaded", () => {
     sendChatMessage(messageText);
   }
 });
+
 
