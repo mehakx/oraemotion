@@ -3,189 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emotion Analyzer with Visualization</title>
+  <title>ORA - Empathizes with you</title>
   <style>
-    body, html {
+    /* ORA Color Scheme Variables */
+    :root {
+      --primary-purple: #9333ea;
+      --primary-cyan: #06b6d4;
+      --primary-pink: #db2777;
+      --primary-amber: #f59e0b;
+      --primary-green: #10b981;
+      --primary-blue: #3b82f6;
+      --black: #000000;
+      --white: #ffffff;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+    }
+
+    * {
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      height: 100%;
+      box-sizing: border-box;
     }
-    
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      text-align: center;
-    }
-    
-    h1 {
-      margin-bottom: 30px;
-      color: #333;
-    }
-    
-    .controls {
-      margin-bottom: 20px;
-    }
-    
-    button {
-      padding: 12px 24px;
-      margin: 0 10px;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      transition: background-color 0.3s;
-    }
-    
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    #recordBtn {
-      background-color: #ffdb58;
-      color: #333;
-    }
-    
-    #recordBtn:hover:not(:disabled) {
-      background-color: #f0c030;
-    }
-    
-    #stopBtn {
-      background-color: #e0e0e0;
-      color: #333;
-    }
-    
-    #stopBtn:hover:not(:disabled) {
-      background-color: #d0d0d0;
-    }
-    
-    #status {
-      margin: 15px 0;
-      font-size: 18px;
-      color: #555;
-      min-height: 25px;
-    }
-    
-    #visualization-container {
-      width: 100%;
-      height: 400px;
-      margin: 20px 0;
-      border-radius: 10px;
+
+    body, html {
+      height: 100vh;
+      width: 100vw;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--black);
+      color: var(--white);
       overflow: hidden;
       position: relative;
-      background-color: #1a1a1a; /* Darker default background */
     }
-    
-    #emotion-panel {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      text-align: center;
-      background-color: rgba(0, 0, 0, 0.8);
-      color: white;
-      border-radius: 8px;
-      padding: 10px;
-      z-index: 10; /* Ensure it's above the canvas */
+
+    /* Eye Visualization Background */
+    #visualization-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      background: var(--black);
     }
-    
-    #emotion-label {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 8px;
-      text-transform: lowercase;
-    }
-    
-    #intensity-bar {
-      height: 15px;
-      width: 100%;
-      background-color: #333;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 5px;
-    }
-    
-    #intensity-fill {
-      height: 100%;
-      width: 0%;
-      background: repeating-linear-gradient(
-        45deg,
-        #555,
-        #555 5px,
-        #777 5px,
-        #777 10px
-      );
-      transition: width 0.5s, background 0.5s;
-    }
-    
-    #chat {
-      display: none;
-      margin-top: 20px;
-      border-top: 1px solid #ddd;
-      padding-top: 20px;
-    }
-    
-    .chat-history {
-      margin-bottom: 15px;
-      max-height: 200px;
-      overflow-y: auto;
-      text-align: left;
-      padding: 10px;
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .chat-history div {
-      margin-bottom: 10px;
-      padding: 8px 12px;
-      border-radius: 8px;
-    }
-    
-    .chat-history .user {
-      background-color: #e7f5ff;
-      margin-left: 20px;
-      text-align: right;
-    }
-    
-    .chat-history .assistant {
-      background-color: #f0f0f0;
-      margin-right: 20px;
-    }
-    
-    .chat-history .error {
-      background-color: #ffebee;
-      color: #c62828;
-    }
-    
-    .chat-input {
-      display: flex;
-      gap: 10px;
-    }
-    
-    .chat-input input {
-      flex-grow: 1;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-    
-    .chat-input button {
-      padding: 10px 15px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    
-    /* p5.js canvas will be appended to this container */
+
     #p5-canvas {
       position: absolute;
       top: 0;
@@ -193,14 +60,324 @@
       width: 100%;
       height: 100%;
     }
-    
+
+    /* Main Content Overlay */
+    .main-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .main-overlay > * {
+      pointer-events: auto;
+    }
+
+    /* ORA Logo/Title */
+    .ora-title {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .ora-title h1 {
+      font-size: 4rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan), var(--primary-pink), var(--primary-amber));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 300% 100%;
+      animation: gradient-shift 8s ease infinite;
+      margin-bottom: 0.5rem;
+    }
+
+    .ora-title p {
+      font-size: 1.5rem;
+      color: var(--gray-300);
+      font-weight: 300;
+    }
+
+    @keyframes gradient-shift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Controls Section */
+    .controls-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    button {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    #recordBtn {
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      color: var(--white);
+      box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3);
+    }
+
+    #recordBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(147, 51, 234, 0.4);
+    }
+
+    #stopBtn {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--gray-300);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #stopBtn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+      color: var(--white);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Status Text */
+    #status {
+      font-size: 1.1rem;
+      color: var(--gray-400);
+      text-align: center;
+      min-height: 1.5rem;
+      font-weight: 400;
+    }
+
+    /* Emotion Panel */
+    #emotion-panel {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      z-index: 20;
+      min-width: 200px;
+    }
+
+    #emotion-label {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      text-transform: capitalize;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    #intensity-bar {
+      height: 8px;
+      width: 100%;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    #intensity-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary-pink), var(--primary-amber));
+      transition: width 0.5s ease, background 0.5s ease;
+      border-radius: 4px;
+    }
+
+    /* Chat Interface */
+    #chat {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 600px;
+      max-height: 70vh;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 2rem;
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+    }
+
+    .chat-history {
+      flex: 1;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 1.5rem;
+      padding-right: 0.5rem;
+    }
+
+    .chat-history::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-history::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .chat-history::-webkit-scrollbar-thumb {
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      border-radius: 3px;
+    }
+
+    .chat-history div {
+      margin-bottom: 1rem;
+      padding: 1rem 1.5rem;
+      border-radius: 16px;
+      line-height: 1.5;
+    }
+
+    .chat-history .user {
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink));
+      margin-left: 2rem;
+      text-align: right;
+      color: var(--white);
+    }
+
+    .chat-history .assistant {
+      background: rgba(255, 255, 255, 0.05);
+      margin-right: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--gray-100);
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50px;
+      color: var(--white);
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .chat-input input:focus {
+      border-color: var(--primary-purple);
+      box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+    }
+
+    .chat-input input::placeholder {
+      color: var(--gray-400);
+    }
+
+    #sendBtn {
+      background: linear-gradient(90deg, var(--primary-cyan), var(--primary-blue));
+      color: var(--white);
+      padding: 1rem 1.5rem;
+      border-radius: 50px;
+      font-weight: 600;
+    }
+
+    #sendBtn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .ora-title h1 {
+        font-size: 3rem;
+      }
+      
+      .ora-title p {
+        font-size: 1.2rem;
+      }
+
+      #chat {
+        width: 95%;
+        padding: 1.5rem;
+        max-height: 80vh;
+      }
+
+      .chat-history .user,
+      .chat-history .assistant {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .controls {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      button {
+        padding: 0.875rem 1.75rem;
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .ora-title h1 {
+        font-size: 2.5rem;
+      }
+
+      #emotion-panel {
+        bottom: 1rem;
+        left: 1rem;
+        right: 1rem;
+        transform: none;
+        min-width: auto;
+      }
+    }
+
     /* Animation for emotion change flash */
     @keyframes emotion-flash {
       0% { opacity: 0; }
-      50% { opacity: 0.5; }
+      50% { opacity: 0.3; }
       100% { opacity: 0; }
     }
-    
+
     .emotion-flash {
       position: fixed;
       top: 0;
@@ -211,57 +388,48 @@
       z-index: 100;
       animation: emotion-flash 0.5s ease-out;
     }
-    
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-      .container {
-        padding: 10px;
-      }
-      
-      #visualization-container {
-        height: 300px;
-      }
-      
-      button {
-        padding: 10px 20px;
-        font-size: 14px;
-      }
-    }
   </style>
   <!-- Load p5.js before our scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>Emotion Analyzer</h1>
-    
-    <div class="controls">
-      <button id="recordBtn">🎤 Record</button>
-      <button id="stopBtn" disabled>⏹ Stop</button>
+  <!-- Eye Visualization Background -->
+  <div id="visualization-container">
+    <div id="p5-canvas"></div>
+  </div>
+
+  <!-- Main Content Overlay -->
+  <div class="main-overlay">
+    <!-- ORA Title -->
+    <div class="ora-title">
+      <h1>ORA</h1>
+      <p>Empathizes with you</p>
     </div>
-    
-    <p id="status">Ready to record</p>
-    
-    <div id="visualization-container">
-      <!-- p5.js will create canvas here -->
-      <div id="p5-canvas"></div>
-      
-      <!-- Emotion panel overlay -->
-      <div id="emotion-panel">
-        <div id="emotion-label">waiting...</div>
-        <div id="intensity-bar">
-          <div id="intensity-fill"></div>
-        </div>
+
+    <!-- Controls Section -->
+    <div class="controls-section">
+      <div class="controls">
+        <button id="recordBtn">🎤 Record</button>
+        <button id="stopBtn" disabled>⏹ Stop</button>
       </div>
+      <p id="status">Ready to listen to your emotions</p>
     </div>
-    
-    <!-- Chat box (hidden until after first analysis) -->
-    <div id="chat">
-      <div id="chatHistory" class="chat-history"></div>
-      <div class="chat-input">
-        <input type="text" id="userMessage" placeholder="Type your message…" />
-        <button id="sendBtn">Send</button>
-      </div>
+  </div>
+
+  <!-- Emotion Panel -->
+  <div id="emotion-panel">
+    <div id="emotion-label">waiting...</div>
+    <div id="intensity-bar">
+      <div id="intensity-fill"></div>
+    </div>
+  </div>
+
+  <!-- Chat Interface -->
+  <div id="chat">
+    <div id="chatHistory" class="chat-history"></div>
+    <div class="chat-input">
+      <input type="text" id="userMessage" placeholder="Type your message…" />
+      <button id="sendBtn">Send</button>
     </div>
   </div>
   
@@ -273,47 +441,5 @@
 </body>
 </html>
 
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Ora Emotion Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" />
 
-  <script src="{{ url_for('static', filename='scripts.js') }}" defer></script>
-
-
-
-</head>
-<body>
-  <header>
-    <h1>Emotion Analyzer</h1>
-  </header>
-
-  <main>
-    <button id="recordBtn">🎤 Record</button>
-    <button id="stopBtn" disabled>⏹ Stop</button>
-    
-
-    <p id="status">Press “Record” and speak for a few seconds.</p>
-    <p id="emotionLabel"></p>
-    <p id="chatReply"></p>
-
-  
-    <div id="result" class="hidden">
-      <p><strong>Emotion:</strong> <span id="emotionLabel">—</span></p>
-      <p><strong>Reply:</strong> <span id="chatReply">—</span></p>
-    </div>
-    <div id="chat" class="hidden">
-        <div id="chatHistory" class="chat-history"></div>
-        <div class="chat-input">
-          <input type="text" id="userMessage" placeholder="Type your message…" />
-          <button id="sendBtn">Send</button>
-        </div>
-      </div>
-      
-  </main>
-</body>
-</html> -->
 
