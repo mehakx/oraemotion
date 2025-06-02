@@ -4,26 +4,27 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
-// Function to send emotion data to Make.com webhook (FIXED VERSION)
+// Function to send emotion data to Make.com webhook (EMOTION ASSESSMENT)
 async function sendEmotionToMake(emotionData) {
     const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
-    console.log('🚀 Attempting to send to Make.com webhook:', emotionData);
+    console.log('🎯 Sending EMOTION ASSESSMENT to Make.com:', emotionData);
     
-    // Create FLATTENED payload structure to match Make.com scenario
-    // This avoids nested objects which Make.com has trouble parsing
-    const flattenedPayload = {
+    // Create payload for EMOTION ASSESSMENT
+    const emotionPayload = {
         user_id: chatId,
         session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
-        emotion: emotionData.emotion,              // CHANGED: was primary_emotion
-        intensity: emotionData.intensity,          // CHANGED: was intensity_level
-        text: emotionData.text,                    // CHANGED: was raw_text
-        time_of_day: getTimeOfDay()
+        message_type: "emotion_assessment",           // KEY: This tells Make.com it's emotion assessment
+        emotion: emotionData.emotion,
+        intensity: emotionData.intensity,
+        text: emotionData.text,
+        time_of_day: getTimeOfDay(),
+        request_id: Math.random().toString(36)        // Unique ID to prevent caching
     };
     
-    console.log('📦 Flattened payload:', flattenedPayload);
-    console.log('Mits',JSON.stringify(flattenedPayload));
+    console.log('📦 Emotion Assessment payload:', emotionPayload);
+    console.log('Mits',JSON.stringify(emotionPayload));
     
     try {
         // Try direct connection first (without CORS proxy)
@@ -32,13 +33,13 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(flattenedPayload)
+            body: JSON.stringify(emotionPayload)
         });
         
         if (directResponse.ok) {
             // FIXED: Get response as text first, then try to parse as JSON
             const responseText = await directResponse.text();
-            console.log('✅ Direct Make.com webhook success (raw):', responseText);
+            console.log('✅ Emotion Assessment success (raw):', responseText);
             
             let responseData;
             try {
@@ -50,7 +51,7 @@ async function sendEmotionToMake(emotionData) {
                 // If not JSON, create a simple object with the text
                 responseData = { 
                     status: 'success', 
-                    message: responseText || 'Data received successfully' 
+                    message: responseText || 'Emotion assessment completed' 
                 };
             }
             
@@ -72,7 +73,7 @@ async function sendEmotionToMake(emotionData) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(flattenedPayload)
+            body: JSON.stringify(emotionPayload)
         });
         
         const responseText = await response.text();
@@ -99,25 +100,26 @@ async function sendEmotionToMake(emotionData) {
     }
 }
 
-// Function to send chat messages (FIXED VERSION)
+// Function to send chat messages (WELLNESS COACHING)
 async function sendChatMessage(messageText) {
     const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
-    console.log('💬 Sending chat message:', messageText);
+    console.log('💬 Sending WELLNESS COACHING message:', messageText);
     
-    // Create payload for chat message - SAME FORMAT as emotion data
+    // Create payload for WELLNESS COACHING
     const chatPayload = {
         user_id: chatId,
         session_id: chatId,
         timestamp: new Date().toISOString(),
-        emotion: window.currentEmotion || 'neutral',    // CHANGED: was primary_emotion
-        intensity: window.emotionIntensity || 0.7,      // CHANGED: was intensity_level
-        text: messageText,                              // CHANGED: was raw_text
-        time_of_day: getTimeOfDay()
-        // Removed message_type to keep same format as working emotion data
+        message_type: "wellness_coaching",            // KEY: This tells Make.com it's ongoing coaching
+        emotion: window.currentEmotion || 'neutral',  // Keep context of detected emotion
+        intensity: window.emotionIntensity || 0.7,
+        text: messageText,
+        time_of_day: getTimeOfDay(),
+        request_id: Math.random().toString(36)        // Unique ID to prevent caching
     };
     
-    console.log('📦 Chat payload:', chatPayload);
+    console.log('📦 Wellness Coaching payload:', chatPayload);
     
     try {
         // Try direct connection first
@@ -132,7 +134,7 @@ async function sendChatMessage(messageText) {
         if (directResponse.ok) {
             // FIXED: Get response as text first, then try to parse as JSON
             const responseText = await directResponse.text();
-            console.log('✅ Chat message success (raw):', responseText);
+            console.log('✅ Wellness Coaching success (raw):', responseText);
             
             let responseData;
             try {
@@ -142,7 +144,7 @@ async function sendChatMessage(messageText) {
                 console.log('ℹ️ Response is not JSON, using as text:', responseText);
                 responseData = { 
                     status: 'success', 
-                    message: responseText || 'Message sent successfully' 
+                    message: responseText || 'Wellness coaching response received' 
                 };
             }
             
@@ -453,5 +455,4 @@ window.addEventListener("DOMContentLoaded", () => {
     sendChatMessage(messageText);
   }
 });
-
 
