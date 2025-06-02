@@ -16,9 +16,9 @@ async function sendEmotionToMake(emotionData) {
         user_id: chatId,
         session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
-        primary_emotion: emotionData.emotion,
-        intensity_level: emotionData.intensity,  // Changed from confidence_score to intensity_level
-        raw_text: emotionData.text,
+        emotion: emotionData.emotion,              // CHANGED: was primary_emotion
+        intensity: emotionData.intensity,          // CHANGED: was intensity_level
+        text: emotionData.text,                    // CHANGED: was raw_text
         time_of_day: getTimeOfDay()
     };
     
@@ -96,9 +96,9 @@ async function sendChatMessage(messageText) {
         user_id: chatId,
         session_id: chatId,
         timestamp: new Date().toISOString(),
-        primary_emotion: window.currentEmotion || 'neutral',
-        intensity_level: window.emotionIntensity || 0.7,
-        raw_text: messageText,
+        emotion: window.currentEmotion || 'neutral',    // CHANGED: was primary_emotion
+        intensity: window.emotionIntensity || 0.7,      // CHANGED: was intensity_level
+        text: messageText,                              // CHANGED: was raw_text
         time_of_day: getTimeOfDay()
         // Removed message_type to keep same format as working emotion data
     };
