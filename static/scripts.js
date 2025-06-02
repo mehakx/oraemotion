@@ -11,17 +11,12 @@ async function sendEmotionToMake(emotionData) {
     
     console.log('🎯 Sending EMOTION ASSESSMENT to Make.com:', emotionData);
     
-    // Create payload for EMOTION ASSESSMENT
+    // UPDATED: Simplified payload for EMOTION ASSESSMENT
     const emotionPayload = {
         user_id: chatId,
-        session_id: emotionData.sessionId || 'default',
         timestamp: new Date().toISOString(),
-        message_type: "emotion_assessment",           // KEY: This tells Make.com it's emotion assessment
-        emotion: emotionData.emotion,
-        intensity: emotionData.intensity,
-        text: emotionData.text,                       // Speech text
-        time_of_day: getTimeOfDay(),
-        request_id: Math.random().toString(36)        // Unique ID to prevent caching
+        text: emotionData.text,
+        request_id: Math.random().toString(36)
     };
     
     // Store the detected emotion for context
@@ -110,17 +105,12 @@ async function sendChatMessage(messageText) {
     
     console.log('💬 Sending WELLNESS COACHING message:', messageText);
     
-    // Create payload for WELLNESS COACHING
+    // UPDATED: Simplified payload for WELLNESS COACHING
     const chatPayload = {
         user_id: chatId,
-        session_id: chatId,
         timestamp: new Date().toISOString(),
-        message_type: "wellness_coaching",            // KEY: This tells Make.com it's ongoing coaching
-        emotion: lastDetectedEmotion || 'neutral',    // Keep context of detected emotion
-        intensity: window.emotionIntensity || 0.7,
-        text: messageText,                            // Chat message text
-        time_of_day: getTimeOfDay(),
-        request_id: Math.random().toString(36)        // Unique ID to prevent caching
+        text: messageText,
+        request_id: Math.random().toString(36)
     };
     
     console.log('📦 Wellness Coaching payload:', chatPayload);
@@ -463,8 +453,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
-
-
 
 
 
