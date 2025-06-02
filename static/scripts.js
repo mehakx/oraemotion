@@ -268,7 +268,7 @@ document.head.appendChild(style);
 
 // Function to send emotion data to Make.com webhook (EMOTION ASSESSMENT)
 async function sendEmotionToMake(emotionData) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/1748846057780";
+    const makeWebhookUrl = "https://hook.eu2.make.com/1748846057780"; // FIXED: Using working webhook URL
     
     console.log('🎯 Sending EMOTION ASSESSMENT to Make.com:', emotionData);
     
@@ -280,7 +280,7 @@ async function sendEmotionToMake(emotionData) {
         message_type: "emotion_assessment",           // KEY: This tells Make.com it's emotion assessment
         emotion: emotionData.emotion,
         intensity: emotionData.intensity,
-        text: emotionData.text,                       // FIXED: This will be the speech text
+        text: emotionData.text,                       // This will be the speech text
         time_of_day: getTimeOfDay(),
         request_id: Math.random().toString(36)        // Unique ID to prevent caching
     };
@@ -321,13 +321,14 @@ async function sendEmotionToMake(emotionData) {
         
     } catch (directError) {
         console.log('⚠️ Direct connection failed:', directError.message);
+        document.getElementById("status").textContent = "Error sending data to Make.com";
         return false;
     }
 }
 
 // Function to send chat messages (WELLNESS COACHING)
 async function sendChatMessage(messageText) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/1748846057780";
+    const makeWebhookUrl = "https://hook.eu2.make.com/1748846057780"; // FIXED: Using working webhook URL
     
     console.log('💬 Sending WELLNESS COACHING message:', messageText);
     
@@ -339,7 +340,7 @@ async function sendChatMessage(messageText) {
         message_type: "wellness_coaching",            // KEY: This tells Make.com it's ongoing coaching
         emotion: lastDetectedEmotion || 'neutral',    // Keep context of detected emotion
         intensity: window.emotionIntensity || 0.7,
-        text: messageText,                            // FIXED: This will be the chat message text
+        text: messageText,                            // This will be the chat message text
         time_of_day: getTimeOfDay(),
         request_id: Math.random().toString(36)        // Unique ID to prevent caching
     };
@@ -517,7 +518,7 @@ window.addEventListener("DOMContentLoaded", () => {
       
       console.log('🗣️ Speech recognized:', transcript, 'Confidence:', confidence);
       
-      // Process the speech
+      // Process the speech for EMOTION ASSESSMENT
       processEmotion(transcript, confidence);
     };
     
@@ -554,16 +555,16 @@ window.addEventListener("DOMContentLoaded", () => {
     stopBtn.disabled = true;
   }
   
-  // Process emotion from speech
+  // Process emotion from speech (EMOTION ASSESSMENT ONLY)
   async function processEmotion(text, confidence) {
-    // Enhanced emotion detection
+    // Simple emotion detection based on keywords
     const emotions = {
-      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased", "cheerful", "delighted", "thrilled", "elated"],
-      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken", "dejected", "melancholy", "grief"],
-      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed", "livid", "outraged", "enraged"],
-      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic", "fearful", "alarmed", "stressed"],
-      surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible", "stunned", "astounded", "bewildered"],
-      disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick", "repulsed", "appalled", "revolted"],
+      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased", "cheerful", "delighted"],
+      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken", "dejected", "melancholy"],
+      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed", "livid", "outraged"],
+      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic", "fearful", "alarmed"],
+      surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible", "stunned", "astounded"],
+      disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick", "repulsed", "appalled"],
       neutral: []
     };
     
@@ -582,101 +583,106 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
     
-    // Calculate intensity
-    let intensity = 0.7;
-    if (maxCount > 0) {
-      intensity = Math.min(0.6 + (maxCount * 0.2), 1.0);
+    // If no emotion words found, use neutral
+    if (maxCount === 0) {
+      detectedEmotion = "neutral";
     }
     
-    // Update global variables
+    // Calculate intensity based on emotion detection and keywords found
+    let intensity = 0.7; // Default intensity
+    if (maxCount > 0) {
+      intensity = Math.min(0.6 + (maxCount * 0.2), 1.0); // Higher intensity for more emotion keywords
+    }
+    
+    // Update global variables for visualization
     window.currentEmotion = detectedEmotion;
     window.emotionIntensity = intensity;
     
-    // Update the emotion display with enhanced styling
+    // Update the emotion panel
     const emotionLabel = document.getElementById("emotion-label");
     const intensityFill = document.getElementById("intensity-fill");
     
     if (emotionLabel) {
       emotionLabel.textContent = detectedEmotion;
-      emotionLabel.classList.add("floating");
     }
     
     if (intensityFill) {
       intensityFill.style.width = `${Math.round(intensity * 100)}%`;
       
-      // Enhanced emotion colors
+      // Color based on emotion
       const emotionColors = {
-        happy: "linear-gradient(90deg, #ff6b9d, #ffd93d)",
-        sad: "linear-gradient(90deg, #4facfe, #00f2fe)", 
-        angry: "linear-gradient(90deg, #ff416c, #ff4b2b)",
-        fear: "linear-gradient(90deg, #a8edea, #fed6e3)",
-        surprise: "linear-gradient(90deg, #ffecd2, #fcb69f)",
-        disgust: "linear-gradient(90deg, #667eea, #764ba2)",
-        neutral: "linear-gradient(90deg, #bdc3c7, #2c3e50)"
+        happy: "linear-gradient(90deg, #FFD700, #FFA500)",
+        sad: "linear-gradient(90deg, #4169E1, #1E90FF)",
+        angry: "linear-gradient(90deg, #FF4500, #DC143C)",
+        fear: "linear-gradient(90deg, #9370DB, #8A2BE2)",
+        surprise: "linear-gradient(90deg, #FF69B4, #FF1493)",
+        disgust: "linear-gradient(90deg, #32CD32, #228B22)",
+        neutral: "linear-gradient(90deg, #ff6b9d, #c471ed, #12c2e9)"
       };
       
       intensityFill.style.background = emotionColors[detectedEmotion] || emotionColors.neutral;
     }
     
-    // Display status with emoji
-    const emotionEmojis = {
-      happy: "😊",
-      sad: "😢", 
-      angry: "😠",
-      fear: "😰",
-      surprise: "😲",
-      disgust: "🤢",
-      neutral: "😐"
-    };
+    console.log(`🎯 Emotion detected: ${detectedEmotion} (intensity: ${intensity})`);
     
-    statusText.textContent = `${emotionEmojis[detectedEmotion]} ${detectedEmotion} (${Math.round(intensity * 100)}%)`;
-    
-    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', intensity);
-    
-    // Add user's speech to chat history
+    // Add user message to chat showing what they said
     if (chatHistory) {
       const userDiv = document.createElement('div');
       userDiv.className = 'user';
-      userDiv.innerHTML = `🧑 "${text}"`;
+      userDiv.innerHTML = `💬 <strong>You said:</strong> "${text}"`;
       chatHistory.appendChild(userDiv);
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
     
-    // Send to Make.com webhook - FIXED: Use speech text for emotion assessment
+    // Send to Make.com for EMOTION ASSESSMENT
     const emotionData = {
       emotion: detectedEmotion,
       intensity: intensity,
-      text: text,                    // This is the speech text for emotion assessment
+      text: text,  // The speech text
+      confidence: confidence,
       sessionId: chatId
     };
+    
+    statusText.textContent = "✨ Analyzing your emotions...";
     
     const success = await sendEmotionToMake(emotionData);
     
     if (success) {
       console.log('✅ Emotion data sent successfully to Make.com');
+      statusText.textContent = "✨ Emotion analysis complete!";
     } else {
-      console.error('❌ Failed to send emotion data to Make.com');
-      statusText.textContent = "Error sending data to Make.com";
+      console.log('❌ Failed to send emotion data to Make.com');
+      statusText.textContent = "❌ Failed to send emotion data";
     }
   }
   
-  // Send chat message function - FIXED: Use chat message text for wellness coaching
-  function sendMessage() {
+  // Send chat message function (WELLNESS COACHING ONLY)
+  async function sendMessage() {
     const messageText = userMessage.value.trim();
     if (!messageText) return;
     
-    // Add user message to chat with animation
-    const userDiv = document.createElement('div');
-    userDiv.className = 'user';
-    userDiv.innerHTML = `🧑 ${messageText}`;
-    chatHistory.appendChild(userDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    console.log('💬 User typed message:', messageText);
+    
+    // Add user message to chat
+    if (chatHistory) {
+      const userDiv = document.createElement('div');
+      userDiv.className = 'user';
+      userDiv.innerHTML = `💬 <strong>You:</strong> ${messageText}`;
+      chatHistory.appendChild(userDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
     
     // Clear input
-    userMessage.value = "";
+    userMessage.value = '';
     
-    // Send to Make.com - FIXED: Use chat message text for wellness coaching
-    sendChatMessage(messageText);
+    // Send as WELLNESS COACHING (no emotion re-analysis)
+    const success = await sendChatMessage(messageText);
+    
+    if (success) {
+      console.log('✅ Chat message sent successfully');
+    } else {
+      console.log('❌ Failed to send chat message');
+    }
   }
 });
 
