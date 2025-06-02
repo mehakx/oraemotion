@@ -4,7 +4,7 @@ window.currentEmotion = "neutral";
 window.emotionIntensity = 0;
 let chatId = null;
 
-// Function to send emotion data to Make.com webhook (YOUR ORIGINAL WORKING VERSION)
+// Function to send emotion data to Make.com webhook (FIXED VERSION)
 async function sendEmotionToMake(emotionData) {
     const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
@@ -36,9 +36,23 @@ async function sendEmotionToMake(emotionData) {
         });
         
         if (directResponse.ok) {
-            // Parse and handle the response from Make.com
-            const responseData = await directResponse.json();
-            console.log('✅ Direct Make.com webhook success:', responseData);
+            // FIXED: Get response as text first, then try to parse as JSON
+            const responseText = await directResponse.text();
+            console.log('✅ Direct Make.com webhook success (raw):', responseText);
+            
+            let responseData;
+            try {
+                // Try to parse as JSON
+                responseData = JSON.parse(responseText);
+                console.log('✅ Parsed JSON response:', responseData);
+            } catch (parseError) {
+                console.log('ℹ️ Response is not JSON, using as text:', responseText);
+                // If not JSON, create a simple object with the text
+                responseData = { 
+                    status: 'success', 
+                    message: responseText || 'Data received successfully' 
+                };
+            }
             
             // Display the ORA response in the chat
             displayOraResponse(responseData);
@@ -85,7 +99,7 @@ async function sendEmotionToMake(emotionData) {
     }
 }
 
-// Function to send chat messages (uses same webhook, same format)
+// Function to send chat messages (FIXED VERSION)
 async function sendChatMessage(messageText) {
     const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
     
@@ -116,8 +130,22 @@ async function sendChatMessage(messageText) {
         });
         
         if (directResponse.ok) {
-            const responseData = await directResponse.json();
-            console.log('✅ Chat message success:', responseData);
+            // FIXED: Get response as text first, then try to parse as JSON
+            const responseText = await directResponse.text();
+            console.log('✅ Chat message success (raw):', responseText);
+            
+            let responseData;
+            try {
+                responseData = JSON.parse(responseText);
+                console.log('✅ Parsed JSON response:', responseData);
+            } catch (parseError) {
+                console.log('ℹ️ Response is not JSON, using as text:', responseText);
+                responseData = { 
+                    status: 'success', 
+                    message: responseText || 'Message sent successfully' 
+                };
+            }
+            
             displayOraResponse(responseData);
             return true;
         }
@@ -429,30 +457,24 @@ window.addEventListener("DOMContentLoaded", () => {
       console.log('✅ Emotion data sent successfully to Make.com');
     } else {
       console.error('❌ Failed to send emotion data to Make.com');
-      if (chatHistory) {
-        chatHistory.innerHTML += `<div class="assistant error">⚠️ Unable to connect to ORA wellness agent.</div>`;
-      }
+      statusText.textContent = "Error sending data to Make.com";
     }
   }
-
-  // Function to send chat messages
-  async function sendMessage() {
-    if (!chatHistory) return;
+  
+  // Send chat message function
+  function sendMessage() {
+    const messageText = userMessage.value.trim();
+    if (!messageText) return;
     
-    const text = userMessage.value.trim();
-    if (!text || !chatId) return;
-
     // Add user message to chat
-    chatHistory.innerHTML += `<div class="user">🧑 ${text}</div>`;
-    userMessage.value = "";
+    chatHistory.innerHTML += `<div class="user">🧑 ${messageText}</div>`;
     chatHistory.scrollTop = chatHistory.scrollHeight;
     
-    // Send chat message to Make.com
-    const success = await sendChatMessage(text);
+    // Clear input
+    userMessage.value = "";
     
-    if (!success) {
-      console.error('❌ Failed to send chat message to Make.com');
-      chatHistory.innerHTML += `<div class="assistant error">⚠️ Unable to send message to ORA.</div>`;
-    }
+    // Send to Make.com
+    sendChatMessage(messageText);
   }
 });
+
