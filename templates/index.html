@@ -147,4 +147,626 @@
     .btn-secondary {
       background: rgba(255, 255, 255, 0.1);
       color: var(--white);
-      border: 1px solid rgba(255, 255, 255,
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Emotion Display */
+    .emotion-display {
+      text-align: center;
+      margin-top: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+    }
+
+    .emotion-display.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .emotion-text {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, var(--primary-cyan), var(--primary-green));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .emotion-intensity {
+      width: 200px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .intensity-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-amber), var(--primary-pink));
+      border-radius: 4px;
+      transition: width 0.8s ease;
+      width: 0%;
+    }
+
+    /* Full Screen Chat Interface */
+    .chat-interface {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(100%);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .chat-interface.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Chat Header */
+    .chat-header {
+      padding: 2rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-header h2 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .chat-header p {
+      color: var(--gray-300);
+      font-size: 1rem;
+    }
+
+    /* Chat Messages Area */
+    .chat-messages {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Message Bubbles */
+    .message {
+      max-width: 80%;
+      padding: 1.5rem 2rem;
+      border-radius: 24px;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      animation: messageSlideIn 0.5s ease;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+      color: var(--white);
+      margin-left: auto;
+    }
+
+    .message.ora {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--white);
+    }
+
+    .message.ora .message-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+      color: var(--primary-cyan);
+    }
+
+    .ora-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+    }
+
+    @keyframes messageSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Chat Input */
+    .chat-input-container {
+      padding: 2rem;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-input-wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      color: var(--white);
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .chat-input:focus {
+      border-color: var(--primary-cyan);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+    }
+
+    .chat-input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .send-btn {
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
+      border: none;
+      border-radius: 25px;
+      color: var(--white);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .send-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Back Button */
+    .back-btn {
+      position: absolute;
+      top: 2rem;
+      left: 2rem;
+      padding: 0.8rem 1.2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      color: var(--white);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .ora-title h1 {
+        font-size: 3rem;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .chat-messages {
+        padding: 1rem;
+      }
+      
+      .message {
+        max-width: 90%;
+        padding: 1rem 1.5rem;
+      }
+      
+      .chat-input-wrapper {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .chat-input {
+        width: 100%;
+      }
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Eye Visualization Background -->
+  <div id="visualization-container">
+    <div id="p5-canvas"></div>
+  </div>
+
+  <!-- Initial State -->
+  <div class="initial-state" id="initialState">
+    <div class="ora-title">
+      <h1>ORA</h1>
+      <p>Empathizes with you</p>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="recordBtn">🎤 Record</button>
+      <button class="btn btn-secondary" id="stopBtn" style="display: none;">⏹ Stop</button>
+    </div>
+
+    <div class="emotion-display" id="emotionDisplay">
+      <div class="emotion-text" id="emotionText">Happy</div>
+      <div class="emotion-intensity">
+        <div class="intensity-bar" id="intensityBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Screen Chat Interface -->
+  <div class="chat-interface" id="chatInterface">
+    <button class="back-btn" id="backBtn">← Back to ORA</button>
+    
+    <div class="chat-header">
+      <h2>Wellness Conversation</h2>
+      <p>Continue your journey with ORA</p>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages will be added here dynamically -->
+    </div>
+
+    <div class="chat-input-container">
+      <div class="chat-input-wrapper">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Type your message...">
+        <button class="send-btn" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  <script>
+    // Fallback if p5.js doesn't load
+    if (typeof p5 === 'undefined') {
+      console.log('p5.js failed to load, creating simple background');
+      document.getElementById('visualization-container').style.background = 'linear-gradient(45deg, #000000, #1a1a1a)';
+    }
+  </script>
+  <script>
+    // Eye Visualization (p5.js)
+    let particles = [];
+    let centerX, centerY;
+    let pupilX, pupilY;
+    let blinkTimer = 0;
+    let isBlinking = false;
+
+    function setup() {
+      let canvas = createCanvas(windowWidth, windowHeight);
+      canvas.parent('p5-canvas');
+      
+      centerX = width / 2;
+      centerY = height / 2;
+      pupilX = centerX;
+      pupilY = centerY;
+      
+      // Create particles
+      for (let i = 0; i < 100; i++) {
+        particles.push({
+          x: random(width),
+          y: random(height),
+          vx: random(-0.5, 0.5),
+          vy: random(-0.5, 0.5),
+          size: random(1, 3),
+          alpha: random(0.3, 0.8)
+        });
+      }
+    }
+
+    function draw() {
+      background(0);
+      
+      // Update particles
+      for (let p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+        
+        stroke(100, 255, 200, p.alpha * 255);
+        strokeWeight(p.size);
+        point(p.x, p.y);
+      }
+      
+      // Draw connecting lines
+      stroke(100, 255, 200, 30);
+      strokeWeight(0.5);
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          let d = dist(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+          if (d < 100) {
+            line(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+          }
+        }
+      }
+      
+      // Draw eye
+      drawEye();
+    }
+
+    function drawEye() {
+      push();
+      translate(centerX, centerY);
+      
+      // Outer eye
+      noFill();
+      stroke(100, 255, 200, 150);
+      strokeWeight(3);
+      ellipse(0, 0, 300, 200);
+      
+      // Inner circles
+      for (let i = 1; i <= 5; i++) {
+        stroke(100, 255, 200, 100 - i * 15);
+        strokeWeight(2);
+        ellipse(0, 0, 300 - i * 40, 200 - i * 25);
+      }
+      
+      // Pupil
+      if (!isBlinking) {
+        fill(255, 255, 255);
+        noStroke();
+        ellipse(pupilX - centerX, pupilY - centerY, 20, 20);
+        
+        fill(0);
+        ellipse(pupilX - centerX, pupilY - centerY, 10, 10);
+      }
+      
+      // Blink animation
+      blinkTimer++;
+      if (blinkTimer > 180) { // Blink every 3 seconds
+        isBlinking = true;
+        if (blinkTimer > 190) {
+          isBlinking = false;
+          blinkTimer = 0;
+        }
+      }
+      
+      pop();
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      centerX = width / 2;
+      centerY = height / 2;
+    }
+
+    // Main App Logic
+    let isRecording = false;
+    let recognition;
+    let currentEmotion = '';
+    let currentIntensity = 0;
+
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = function(event) {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript;
+          }
+        }
+        if (transcript) {
+          processEmotion(transcript);
+        }
+      };
+    }
+
+    // Event Listeners
+    document.getElementById('recordBtn').addEventListener('click', startRecording);
+    document.getElementById('stopBtn').addEventListener('click', stopRecording);
+    document.getElementById('backBtn').addEventListener('click', backToInitial);
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    function startRecording() {
+      if (recognition) {
+        isRecording = true;
+        recognition.start();
+        document.getElementById('recordBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-block';
+      }
+    }
+
+    function stopRecording() {
+      if (recognition && isRecording) {
+        isRecording = false;
+        recognition.stop();
+        document.getElementById('recordBtn').style.display = 'inline-block';
+        document.getElementById('stopBtn').style.display = 'none';
+      }
+    }
+
+    function processEmotion(text) {
+      // Simple emotion detection (you can enhance this)
+      const emotions = {
+        'happy': ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing'],
+        'sad': ['sad', 'down', 'depressed', 'upset', 'unhappy'],
+        'angry': ['angry', 'mad', 'frustrated', 'annoyed'],
+        'anxious': ['anxious', 'worried', 'nervous', 'stressed'],
+        'calm': ['calm', 'peaceful', 'relaxed', 'serene']
+      };
+
+      let detectedEmotion = 'neutral';
+      let maxMatches = 0;
+
+      for (let emotion in emotions) {
+        let matches = emotions[emotion].filter(word => 
+          text.toLowerCase().includes(word)
+        ).length;
+        
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          detectedEmotion = emotion;
+        }
+      }
+
+      currentEmotion = detectedEmotion;
+      currentIntensity = Math.min(maxMatches * 25, 100);
+
+      displayEmotion(detectedEmotion, currentIntensity);
+      
+      // Send to Make.com
+      sendToMakecom(text, detectedEmotion, currentIntensity);
+    }
+
+    function displayEmotion(emotion, intensity) {
+      const emotionDisplay = document.getElementById('emotionDisplay');
+      const emotionText = document.getElementById('emotionText');
+      const intensityBar = document.getElementById('intensityBar');
+
+      emotionText.textContent = emotion.charAt(0).toUpperCase() + emotion.slice(1);
+      intensityBar.style.width = intensity + '%';
+      emotionDisplay.classList.add('visible');
+
+      // Transition to chat after 3 seconds
+      setTimeout(() => {
+        showChatInterface();
+      }, 3000);
+    }
+
+    function showChatInterface() {
+      document.getElementById('initialState').classList.add('hidden');
+      document.getElementById('chatInterface').classList.add('active');
+      
+      // Add initial ORA message
+      addMessage('ora', `I sense you're feeling ${currentEmotion}. Let's explore this together. How can I support you right now?`);
+    }
+
+    function backToInitial() {
+      document.getElementById('chatInterface').classList.remove('active');
+      document.getElementById('initialState').classList.remove('hidden');
+      
+      // Clear chat messages
+      document.getElementById('chatMessages').innerHTML = '';
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      
+      if (message) {
+        addMessage('user', message);
+        input.value = '';
+        
+        // Send to Make.com for wellness coaching
+        sendToMakecom(message, currentEmotion, currentIntensity, 'wellness_coaching');
+      }
+    }
+
+    function addMessage(sender, text) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${sender}`;
+      
+      if (sender === 'ora') {
+        messageDiv.innerHTML = `
+          <div class="message-header">
+            <div class="ora-icon"></div>
+            ORA
+          </div>
+          ${text}
+        `;
+      } else {
+        messageDiv.textContent = text;
+      }
+      
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function sendToMakecom(text, emotion, intensity, messageType = 'emotion_assessment') {
+      // Clean the text to remove problematic characters that break JSON
+      const cleanText = text.replace(/[\n\r\t\x00-\x1F\x7F]/g, ' ').trim();
+      
+      const payload = {
+        text: cleanText,
+        emotion: emotion,
+        intensity: intensity,
+        message_type: messageType,
+        timestamp: new Date().toISOString(),
+        user_id: 'user_' + Date.now(),
+        session_id: 'session_' + Date.now()
+      };
+
+      fetch('https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.message) {
+          addMessage('ora', data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        addMessage('ora', 'I apologize, but I\'m having trouble connecting right now. Please try again in a moment.');
+      });
+    }
+  </script>
+</body>
+</html>
