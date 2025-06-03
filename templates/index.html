@@ -736,25 +736,15 @@
     }
 
     function sendToMakecom(text, emotion, intensity, messageType = 'emotion_assessment') {
-      // Comprehensive text cleaning to prevent JSON errors
-      const cleanText = text
-        .replace(/[\n\r\t\x00-\x1F\x7F]/g, ' ')  // Remove control characters
-        .replace(/\\/g, '\\\\')                    // Escape backslashes
-        .replace(/"/g, '\\"')                      // Escape quotes
-        .replace(/'/g, "\\'")                      // Escape single quotes
-        .trim();
-      
       const payload = {
-        text: cleanText,
-        emotion: emotion || 'neutral',
-        intensity: intensity || 0,
+        text: text,
+        emotion: emotion,
+        intensity: intensity,
         message_type: messageType,
         timestamp: new Date().toISOString(),
         user_id: 'user_' + Date.now(),
         session_id: 'session_' + Date.now()
       };
-
-      console.log('Sending payload:', payload); // Debug log
 
       fetch('https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh', {
         method: 'POST',
@@ -763,23 +753,14 @@
         },
         body: JSON.stringify(payload)
       })
-      .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        console.log('Response data:', data);
         if (data && data.message) {
           addMessage('ora', data.message);
-        } else {
-          addMessage('ora', 'I received your message but need a moment to process it. Please try again.');
         }
       })
       .catch(error => {
-        console.error('Detailed Error:', error);
+        console.error('Error:', error);
         addMessage('ora', 'I apologize, but I\'m having trouble connecting right now. Please try again in a moment.');
       });
     }
