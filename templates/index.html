@@ -736,8 +736,11 @@
     }
 
     function sendToMakecom(text, emotion, intensity, messageType = 'emotion_assessment') {
+      // Clean only problematic characters that break JSON
+      const cleanText = text.replace(/[\n\r\t]/g, ' ').replace(/"/g, '\\"').trim();
+      
       const payload = {
-        text: text,
+        text: cleanText,
         emotion: emotion,
         intensity: intensity,
         message_type: messageType,
