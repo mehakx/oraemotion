@@ -1,458 +1,783 @@
-// Main variables
-// Make these global so p5-sketch.js can access them
-window.currentEmotion = "neutral";
-window.emotionIntensity = 0;
-let chatId = null;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ORA - Empathizes with you</title>
+  <style>
+    /* ORA Color Scheme Variables */
+    :root {
+      --primary-purple: #9333ea;
+      --primary-cyan: #06b6d4;
+      --primary-pink: #db2777;
+      --primary-amber: #f59e0b;
+      --primary-green: #10b981;
+      --primary-blue: #3b82f6;
+      --black: #000000;
+      --white: #ffffff;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+    }
 
-// Function to send emotion data to Make.com webhook (EMOTION ASSESSMENT)
-async function sendEmotionToMake(emotionData) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      height: 100vh;
+      width: 100vw;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--black);
+      color: var(--white);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Eye Visualization Background - Always Full Screen */
+    #visualization-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      background: var(--black);
+    }
+
+    #p5-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Initial State - Centered Content */
+    .initial-state {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .initial-state.hidden {
+      opacity: 0;
+      transform: scale(0.95);
+      pointer-events: none;
+    }
+
+    /* ORA Logo/Title */
+    .ora-title {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .ora-title h1 {
+      font-size: 5rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan), var(--primary-pink), var(--primary-amber));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-size: 300% 100%;
+      animation: gradient-shift 8s ease infinite;
+      margin-bottom: 1rem;
+    }
+
+    .ora-title p {
+      font-size: 1.5rem;
+      color: var(--gray-400);
+      font-weight: 300;
+    }
+
+    @keyframes gradient-shift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Control Buttons */
+    .controls {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+      color: var(--white);
+      box-shadow: 0 8px 32px rgba(147, 51, 234, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(147, 51, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--white);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Emotion Display */
+    .emotion-display {
+      text-align: center;
+      margin-top: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+    }
+
+    .emotion-display.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .emotion-text {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, var(--primary-cyan), var(--primary-green));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .emotion-intensity {
+      width: 200px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .intensity-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-amber), var(--primary-pink));
+      border-radius: 4px;
+      transition: width 0.8s ease;
+      width: 0%;
+    }
+
+    /* Full Screen Chat Interface */
+    .chat-interface {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(100%);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .chat-interface.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Chat Header */
+    .chat-header {
+      padding: 2rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-header h2 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .chat-header p {
+      color: var(--gray-300);
+      font-size: 1rem;
+    }
+
+    /* Chat Messages Area */
+    .chat-messages {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Message Bubbles */
+    .message {
+      max-width: 80%;
+      padding: 1.5rem 2rem;
+      border-radius: 24px;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      animation: messageSlideIn 0.5s ease;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+      color: var(--white);
+      margin-left: auto;
+    }
+
+    .message.ora {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--white);
+    }
+
+    .message.ora .message-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+      color: var(--primary-cyan);
+    }
+
+    .ora-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+    }
+
+    @keyframes messageSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Chat Input */
+    .chat-input-container {
+      padding: 2rem;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chat-input-wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      color: var(--white);
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .chat-input:focus {
+      border-color: var(--primary-cyan);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+    }
+
+    .chat-input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .send-btn {
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
+      border: none;
+      border-radius: 25px;
+      color: var(--white);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .send-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Back Button */
+    .back-btn {
+      position: absolute;
+      top: 2rem;
+      left: 2rem;
+      padding: 0.8rem 1.2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      color: var(--white);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .ora-title h1 {
+        font-size: 3rem;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .chat-messages {
+        padding: 1rem;
+      }
+      
+      .message {
+        max-width: 90%;
+        padding: 1rem 1.5rem;
+      }
+      
+      .chat-input-wrapper {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .chat-input {
+        width: 100%;
+      }
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Eye Visualization Background -->
+  <div id="visualization-container">
+    <div id="p5-canvas"></div>
+  </div>
+
+  <!-- Initial State -->
+  <div class="initial-state" id="initialState">
+    <div class="ora-title">
+      <h1>ORA</h1>
+      <p>Empathizes with you</p>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="recordBtn">🎤 Record</button>
+      <button class="btn btn-secondary" id="stopBtn" style="display: none;">⏹ Stop</button>
+    </div>
+
+    <div class="emotion-display" id="emotionDisplay">
+      <div class="emotion-text" id="emotionText">Happy</div>
+      <div class="emotion-intensity">
+        <div class="intensity-bar" id="intensityBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Screen Chat Interface -->
+  <div class="chat-interface" id="chatInterface">
+    <button class="back-btn" id="backBtn">← Back to ORA</button>
     
-    console.log('🎯 Sending EMOTION ASSESSMENT to Make.com:', emotionData);
-    
-    // Create payload for EMOTION ASSESSMENT
-    const emotionPayload = {
-        user_id: chatId,
-        session_id: emotionData.sessionId || 'default',
-        timestamp: new Date().toISOString(),
-        message_type: "emotion_assessment",           // KEY: This tells Make.com it's emotion assessment
-        emotion: emotionData.emotion,
-        intensity: emotionData.intensity,
-        text: emotionData.text,
-        time_of_day: getTimeOfDay(),
-        request_id: Math.random().toString(36)        // Unique ID to prevent caching
-    };
-    
-    console.log('📦 Emotion Assessment payload:', emotionPayload);
-    console.log('Mits',JSON.stringify(emotionPayload));
-    
-    try {
-        // Try direct connection first (without CORS proxy)
-        const directResponse = await fetch(makeWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emotionPayload)
+    <div class="chat-header">
+      <h2>Wellness Conversation</h2>
+      <p>Continue your journey with ORA</p>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages will be added here dynamically -->
+    </div>
+
+    <div class="chat-input-container">
+      <div class="chat-input-wrapper">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Type your message...">
+        <button class="send-btn" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  <script>
+    // Eye Visualization (p5.js)
+    let particles = [];
+    let centerX, centerY;
+    let pupilX, pupilY;
+    let blinkTimer = 0;
+    let isBlinking = false;
+
+    function setup() {
+      let canvas = createCanvas(windowWidth, windowHeight);
+      canvas.parent('p5-canvas');
+      
+      centerX = width / 2;
+      centerY = height / 2;
+      pupilX = centerX;
+      pupilY = centerY;
+      
+      // Create particles
+      for (let i = 0; i < 100; i++) {
+        particles.push({
+          x: random(width),
+          y: random(height),
+          vx: random(-0.5, 0.5),
+          vy: random(-0.5, 0.5),
+          size: random(1, 3),
+          alpha: random(0.3, 0.8)
         });
-        
-        if (directResponse.ok) {
-            // FIXED: Get response as text first, then try to parse as JSON
-            const responseText = await directResponse.text();
-            console.log('✅ Emotion Assessment success (raw):', responseText);
-            
-            let responseData;
-            try {
-                // Try to parse as JSON
-                responseData = JSON.parse(responseText);
-                console.log('✅ Parsed JSON response:', responseData);
-            } catch (parseError) {
-                console.log('ℹ️ Response is not JSON, using as text:', responseText);
-                // If not JSON, create a simple object with the text
-                responseData = { 
-                    status: 'success', 
-                    message: responseText || 'Emotion assessment completed' 
-                };
-            }
-            
-            // Display the ORA response in the chat
-            displayOraResponse(responseData);
-            
-            return true;
-        }
-        
-    } catch (directError) {
-        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
+      }
     }
-    
-    // Fallback to CORS proxy with flattened payload
-    try {
-        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emotionPayload)
-        });
-        
-        const responseText = await response.text();
-        console.log('✅ Proxy response:', responseText);
-        
-        try {
-            // Try to parse the response as JSON
-            const responseData = JSON.parse(responseText);
-            console.log('✅ Parsed response data:', responseData);
-            
-            // Display the ORA response in the chat
-            displayOraResponse(responseData);
-            
-            return true;
-        } catch (parseError) {
-            console.log('⚠️ Could not parse response as JSON:', responseText);
-            // Even if parsing fails, try to display something
-            displayOraResponse({response: responseText});
-            return true;
-        }
-    } catch (error) {
-        console.error('❌ Failed to send to proxy:', error);
-        return false;
-    }
-}
 
-// Function to send chat messages (WELLNESS COACHING)
-async function sendChatMessage(messageText) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
-    
-    console.log('💬 Sending WELLNESS COACHING message:', messageText);
-    
-    // Create payload for WELLNESS COACHING
-    const chatPayload = {
-        user_id: chatId,
-        session_id: chatId,
-        timestamp: new Date().toISOString(),
-        message_type: "wellness_coaching",            // KEY: This tells Make.com it's ongoing coaching
-        emotion: window.currentEmotion || 'neutral',  // Keep context of detected emotion
-        intensity: window.emotionIntensity || 0.7,
-        text: messageText,
-        time_of_day: getTimeOfDay(),
-        request_id: Math.random().toString(36)        // Unique ID to prevent caching
-    };
-    
-    console.log('📦 Wellness Coaching payload:', chatPayload);
-    
-    try {
-        // Try direct connection first
-        const directResponse = await fetch(makeWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(chatPayload)
-        });
+    function draw() {
+      background(0);
+      
+      // Update particles
+      for (let p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
         
-        if (directResponse.ok) {
-            // FIXED: Get response as text first, then try to parse as JSON
-            const responseText = await directResponse.text();
-            console.log('✅ Wellness Coaching success (raw):', responseText);
-            
-            let responseData;
-            try {
-                responseData = JSON.parse(responseText);
-                console.log('✅ Parsed JSON response:', responseData);
-            } catch (parseError) {
-                console.log('ℹ️ Response is not JSON, using as text:', responseText);
-                responseData = { 
-                    status: 'success', 
-                    message: responseText || 'Wellness coaching response received' 
-                };
-            }
-            
-            displayOraResponse(responseData);
-            return true;
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+        
+        stroke(100, 255, 200, p.alpha * 255);
+        strokeWeight(p.size);
+        point(p.x, p.y);
+      }
+      
+      // Draw connecting lines
+      stroke(100, 255, 200, 30);
+      strokeWeight(0.5);
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          let d = dist(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+          if (d < 100) {
+            line(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+          }
         }
-        
-    } catch (directError) {
-        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
+      }
+      
+      // Draw eye
+      drawEye();
     }
-    
-    // Fallback to CORS proxy
-    try {
-        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(chatPayload)
-        });
+
+    function drawEye() {
+      push();
+      translate(centerX, centerY);
+      
+      // Outer eye
+      noFill();
+      stroke(100, 255, 200, 150);
+      strokeWeight(3);
+      ellipse(0, 0, 300, 200);
+      
+      // Inner circles
+      for (let i = 1; i <= 5; i++) {
+        stroke(100, 255, 200, 100 - i * 15);
+        strokeWeight(2);
+        ellipse(0, 0, 300 - i * 40, 200 - i * 25);
+      }
+      
+      // Pupil
+      if (!isBlinking) {
+        fill(255, 255, 255);
+        noStroke();
+        ellipse(pupilX - centerX, pupilY - centerY, 20, 20);
         
-        const responseText = await response.text();
-        console.log('✅ Chat proxy response:', responseText);
-        
-        try {
-            const responseData = JSON.parse(responseText);
-            displayOraResponse(responseData);
-            return true;
-        } catch (parseError) {
-            console.log('⚠️ Could not parse chat response as JSON:', responseText);
-            displayOraResponse({response: responseText});
-            return true;
+        fill(0);
+        ellipse(pupilX - centerX, pupilY - centerY, 10, 10);
+      }
+      
+      // Blink animation
+      blinkTimer++;
+      if (blinkTimer > 180) { // Blink every 3 seconds
+        isBlinking = true;
+        if (blinkTimer > 190) {
+          isBlinking = false;
+          blinkTimer = 0;
         }
-    } catch (error) {
-        console.error('❌ Failed to send chat message:', error);
-        return false;
+      }
+      
+      pop();
     }
-}
 
-// Helper function to get time of day
-function getTimeOfDay() {
-    const hour = new Date().getHours();
-    if (hour < 6) return "night";
-    if (hour < 12) return "morning";
-    if (hour < 17) return "afternoon";
-    if (hour < 22) return "evening";
-    return "night";
-}
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      centerX = width / 2;
+      centerY = height / 2;
+    }
 
-// UPDATED Function to display ORA's response in the chat - SIMPLIFIED VERSION
-function displayOraResponse(responseData) {
-    console.log("Raw response received:", responseData);
-    
-    // Show the chat section
-    const chatDiv = document.getElementById("chat");
-    if (chatDiv) {
-        chatDiv.style.display = "block";
-    }
-    
-    // Get the chat history element
-    const chatHistory = document.getElementById("chatHistory");
-    if (!chatHistory) {
-        console.error("Chat history element not found!");
-        return;
-    }
-    
-    // Extract the message from the response
-    let message = "";
-    
-    if (responseData && responseData.message) {
-        // Handle the 'message' field from Make.com
-        message = responseData.message;
-    } else if (responseData && responseData.response) {
-        // Handle the 'response' field
-        message = responseData.response;
-    } else if (responseData && responseData.status === "success") {
-        // Generic success message if no specific response
-        message = "I hear you. How can I support your wellness journey today?";
-    } else {
-        // Fallback for unexpected response format
-        message = "I'm here to support you. Please share more about how you're feeling.";
-        console.log("Unexpected response format:", responseData);
-    }
-    
-    // Add the message to chat history
-    if (message) {
-        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> ${message}</div>`;
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-}
+    // Main App Logic
+    let isRecording = false;
+    let recognition;
+    let currentEmotion = '';
+    let currentIntensity = 0;
 
-// Initialize when DOM is fully loaded
-window.addEventListener("DOMContentLoaded", () => {
-  const recordBtn = document.getElementById("recordBtn");
-  const stopBtn = document.getElementById("stopBtn");
-  const statusText = document.getElementById("status");
-  const chatHistory = document.getElementById("chatHistory");
-  const userMessage = document.getElementById("userMessage");
-  const sendBtn = document.getElementById("sendBtn");
-  
-  // Initialize chat ID
-  chatId = Date.now().toString();
-  console.log('🆔 Chat ID initialized:', chatId);
-  
-  // Set up event listeners
-  if (recordBtn) {
-    recordBtn.addEventListener("click", startRecording);
-  }
-  
-  if (stopBtn) {
-    stopBtn.addEventListener("click", stopRecording);
-  }
-  
-  if (sendBtn) {
-    sendBtn.addEventListener("click", sendMessage);
-  }
-  
-  if (userMessage) {
-    userMessage.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = function(event) {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript;
+          }
+        }
+        if (transcript) {
+          processEmotion(transcript);
+        }
+      };
+    }
+
+    // Event Listeners
+    document.getElementById('recordBtn').addEventListener('click', startRecording);
+    document.getElementById('stopBtn').addEventListener('click', stopRecording);
+    document.getElementById('backBtn').addEventListener('click', backToInitial);
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
         sendMessage();
       }
     });
-  }
-  
-  // Speech recognition setup
-  let recognition = null;
-  let isRecording = false;
-  
-  function startRecording() {
-    if (isRecording) return;
-    
-    if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
-      statusText.textContent = "Speech recognition not supported in this browser.";
-      return;
-    }
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-    
-    recognition.onstart = () => {
-      isRecording = true;
-      statusText.textContent = "Listening...";
-      recordBtn.style.display = "none";
-      stopBtn.style.display = "inline-block";
-      stopBtn.disabled = false;
-      console.log('🎤 Recording started');
-    };
-    
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      const confidence = event.results[0][0].confidence;
-      
-      console.log('🗣️ Speech recognized:', transcript, 'Confidence:', confidence);
-      
-      // Process the speech
-      processEmotion(transcript, confidence);
-    };
-    
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      statusText.textContent = `Error: ${event.error}`;
-      resetRecording();
-    };
-    
-    recognition.onend = () => {
-      if (isRecording) {
-        statusText.textContent = "Ready to record again";
-        resetRecording();
-      }
-    };
-    
-    recognition.start();
-  }
-  
-  function stopRecording() {
-    if (!isRecording) return;
-    
-    if (recognition) {
-      recognition.stop();
-    }
-    
-    resetRecording();
-  }
-  
-  function resetRecording() {
-    isRecording = false;
-    recordBtn.style.display = "inline-block";
-    stopBtn.style.display = "none";
-    stopBtn.disabled = true;
-  }
-  
-  // Process emotion from speech
-  async function processEmotion(text, confidence) {
-    // Simple emotion detection based on keywords
-    const emotions = {
-      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased", "cheerful", "delighted"],
-      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken", "dejected", "melancholy"],
-      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed", "livid", "outraged"],
-      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic", "fearful", "alarmed"],
-      surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible", "stunned", "astounded"],
-      disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick", "repulsed", "appalled"],
-      neutral: []
-    };
-    
-    let detectedEmotion = "neutral";
-    let maxCount = 0;
-    
-    // Count emotion keywords
-    for (const [emotion, keywords] of Object.entries(emotions)) {
-      const count = keywords.filter(keyword => 
-        text.toLowerCase().includes(keyword)
-      ).length;
-      
-      if (count > maxCount) {
-        maxCount = count;
-        detectedEmotion = emotion;
+
+    function startRecording() {
+      if (recognition) {
+        isRecording = true;
+        recognition.start();
+        document.getElementById('recordBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-block';
       }
     }
-    
-    // If no emotion words found, use neutral
-    if (maxCount === 0) {
-      detectedEmotion = "neutral";
+
+    function stopRecording() {
+      if (recognition && isRecording) {
+        isRecording = false;
+        recognition.stop();
+        document.getElementById('recordBtn').style.display = 'inline-block';
+        document.getElementById('stopBtn').style.display = 'none';
+      }
     }
-    
-    // Calculate intensity based on emotion detection and keywords found
-    let intensity = 0.7; // Default intensity
-    if (maxCount > 0) {
-      intensity = Math.min(0.6 + (maxCount * 0.2), 1.0); // Higher intensity for more emotion keywords
-    }
-    
-    // Update global variables for visualization
-    window.currentEmotion = detectedEmotion;
-    window.emotionIntensity = intensity; // Use calculated intensity instead of speech confidence
-    
-    // Update the emotion panel
-    const emotionLabel = document.getElementById("emotion-label");
-    const intensityFill = document.getElementById("intensity-fill");
-    
-    if (emotionLabel) {
-      emotionLabel.textContent = detectedEmotion;
-    }
-    
-    if (intensityFill) {
-      intensityFill.style.width = `${Math.round(intensity * 100)}%`;
-      
-      // Color based on emotion
-      const emotionColors = {
-        happy: "#4CAF50",
-        sad: "#2196F3", 
-        angry: "#F44336",
-        fear: "#9C27B0",
-        surprise: "#FF9800",
-        disgust: "#795548",
-        neutral: "#9E9E9E"
+
+    function processEmotion(text) {
+      // Simple emotion detection
+      const emotions = {
+        'happy': ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing'],
+        'sad': ['sad', 'down', 'depressed', 'upset', 'crying', 'tears'],
+        'angry': ['angry', 'mad', 'furious', 'annoyed', 'frustrated'],
+        'anxious': ['anxious', 'worried', 'nervous', 'stressed', 'panic'],
+        'calm': ['calm', 'peaceful', 'relaxed', 'serene', 'tranquil'],
+        'neutral': ['okay', 'fine', 'alright', 'normal', 'nothing']
       };
+
+      let detectedEmotion = 'neutral';
+      let intensity = 50;
+
+      for (const [emotion, keywords] of Object.entries(emotions)) {
+        for (const keyword of keywords) {
+          if (text.toLowerCase().includes(keyword)) {
+            detectedEmotion = emotion;
+            intensity = Math.random() * 40 + 60; // 60-100%
+            break;
+          }
+        }
+        if (detectedEmotion !== 'neutral') break;
+      }
+
+      currentEmotion = detectedEmotion;
+      currentIntensity = intensity;
+
+      displayEmotion(detectedEmotion, intensity);
+      sendToMakecom(text, detectedEmotion, intensity, 'emotion_assessment');
+    }
+
+    function displayEmotion(emotion, intensity) {
+      const emotionDisplay = document.getElementById('emotionDisplay');
+      const emotionText = document.getElementById('emotionText');
+      const intensityBar = document.getElementById('intensityBar');
+
+      emotionText.textContent = emotion.charAt(0).toUpperCase() + emotion.slice(1);
+      intensityBar.style.width = intensity + '%';
+      emotionDisplay.classList.add('visible');
+
+      // Transition to chat after 3 seconds
+      setTimeout(() => {
+        showChatInterface();
+      }, 3000);
+    }
+
+    function showChatInterface() {
+      document.getElementById('initialState').classList.add('hidden');
+      document.getElementById('chatInterface').classList.add('active');
       
-      intensityFill.style.background = emotionColors[detectedEmotion] || "#9E9E9E";
+      // Add initial ORA message
+      addMessage('ora', `I sense you're feeling ${currentEmotion}. Let's explore this together. How can I support you right now?`);
     }
-    
-    // Display the detected emotion in status
-    statusText.textContent = `${detectedEmotion} (${Math.round(intensity * 100)}%)`;
-    
-    console.log('😊 Emotion detected:', detectedEmotion, 'Intensity:', intensity);
-    
-    // Add user's speech to chat history
-    if (chatHistory) {
-      chatHistory.innerHTML += `<div class="user">🧑 "${text}"</div>`;
-      chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    function backToInitial() {
+      document.getElementById('chatInterface').classList.remove('active');
+      document.getElementById('initialState').classList.remove('hidden');
+      
+      // Clear chat messages
+      document.getElementById('chatMessages').innerHTML = '';
     }
-    
-    // Send to Make.com webhook with intensity instead of confidence
-    const emotionData = {
-      emotion: detectedEmotion,
-      intensity: intensity,  // Use intensity instead of confidence
-      text: text,
-      sessionId: chatId
-    };
-    
-    // Send to Make.com webhook
-    const success = await sendEmotionToMake(emotionData);
-    
-    if (success) {
-      console.log('✅ Emotion data sent successfully to Make.com');
-    } else {
-      console.error('❌ Failed to send emotion data to Make.com');
-      statusText.textContent = "Error sending data to Make.com";
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      
+      if (message) {
+        addMessage('user', message);
+        input.value = '';
+        
+        // Send to Make.com for wellness coaching
+        sendToMakecom(message, currentEmotion, currentIntensity, 'wellness_coaching');
+      }
     }
-  }
-  
-  // Send chat message function
-  function sendMessage() {
-    const messageText = userMessage.value.trim();
-    if (!messageText) return;
-    
-    // Add user message to chat
-    chatHistory.innerHTML += `<div class="user">🧑 ${messageText}</div>`;
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-    
-    // Clear input
-    userMessage.value = "";
-    
-    // Send to Make.com
-    sendChatMessage(messageText);
-  }
-});
+
+    function addMessage(sender, text) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${sender}`;
+      
+      if (sender === 'ora') {
+        messageDiv.innerHTML = `
+          <div class="message-header">
+            <div class="ora-icon"></div>
+            ORA
+          </div>
+          ${text}
+        `;
+      } else {
+        messageDiv.textContent = text;
+      }
+      
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function sendToMakecom(text, emotion, intensity, messageType = 'emotion_assessment') {
+      const payload = {
+        text: text,
+        emotion: emotion,
+        intensity: intensity,
+        message_type: messageType,
+        timestamp: new Date().toISOString(),
+        user_id: 'user_' + Date.now(),
+        session_id: 'session_' + Date.now()
+      };
+
+      console.log('Sending payload:', payload);
+
+      fetch('https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+      })
+      .then(data => {
+        console.log('Raw response:', data);
+        try {
+          const jsonData = JSON.parse(data);
+          if (jsonData && jsonData.message) {
+            addMessage('ora', jsonData.message);
+          } else {
+            addMessage('ora', 'I received your message and I\'m processing it. How are you feeling right now?');
+          }
+        } catch (e) {
+          console.log('Response is not JSON, treating as plain text');
+          if (data && data.trim()) {
+            addMessage('ora', data);
+          } else {
+            addMessage('ora', 'I hear you. Let me think about how I can best support you right now.');
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Fetch error:', error);
+        addMessage('ora', 'I\'m here with you. Sometimes connections take a moment - let\'s try again or continue our conversation.');
+      });
+    }
+  </script>
+</body>
+</html>
 
