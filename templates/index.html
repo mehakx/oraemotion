@@ -221,29 +221,24 @@
       border-radius: 4px;
     }
 
-    /* Chat Interface */
+    /* Chat Interface - Full Screen */
     #chat {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
-      max-width: 600px;
-      max-height: 70vh;
-      background: rgba(0, 0, 0, 0.9);
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 2rem;
       z-index: 30;
       display: none;
       flex-direction: column;
+      padding: 2rem;
     }
 
     .chat-history {
       flex: 1;
-      max-height: 400px;
       overflow-y: auto;
       margin-bottom: 1.5rem;
       padding-right: 0.5rem;
@@ -335,9 +330,7 @@
       }
 
       #chat {
-        width: 95%;
         padding: 1.5rem;
-        max-height: 80vh;
       }
 
       .chat-history .user,
@@ -368,6 +361,10 @@
         right: 1rem;
         transform: none;
         min-width: auto;
+      }
+
+      #chat {
+        padding: 1rem;
       }
     }
 
