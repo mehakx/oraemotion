@@ -4,28 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ORA - Voice Wellness Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        /* ORA Color Scheme Variables */
-        :root {
-            --primary-purple: #9333ea;
-            --primary-cyan: #06b6d4;
-            --primary-pink: #db2777;
-            --primary-amber: #f59e0b;
-            --primary-green: #10b981;
-            --primary-blue: #3b82f6;
-            --black: #000000;
-            --white: #ffffff;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -35,275 +15,834 @@
         body, html {
             height: 100vh;
             width: 100vw;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 50%, var(--primary-cyan) 100%);
-            color: var(--white);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            color: #ffffff;
             overflow: hidden;
             position: relative;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Subtle ambient glow */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: ambientBreath 8s ease-in-out infinite;
+        }
+
+        @keyframes ambientBreath {
+            0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
         }
 
         /* Main Container */
         .voice-interface {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             height: 100vh;
             padding: 2rem;
             position: relative;
+            z-index: 1;
         }
 
-        /* Timer Section */
-        .timer-section {
+        /* Elegant status indicator */
+        .status-indicator {
+            position: absolute;
+            top: 4rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+            transition: all 0.4s ease;
+            text-align: center;
+        }
+
+        .status-indicator.listening {
+            color: rgba(0, 122, 255, 0.8);
+        }
+
+        .status-indicator.thinking {
+            color: rgba(255, 149, 0, 0.8);
+        }
+
+        .status-indicator.speaking {
+            color: rgba(255, 69, 58, 0.8);
+        }
+
+        /* Premium sun container */
+        .sun-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 2rem;
-        }
-
-        .timer {
-            font-size: 3rem;
-            font-weight: 300;
-            color: var(--white);
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            margin-bottom: 0.5rem;
-        }
-
-        .session-label {
-            font-size: 1rem;
-            color: rgba(255,255,255,0.8);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        /* Center Logo and Status */
-        .center-section {
-            display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex: 1;
+        }
+
+        .abstract-sun {
+            width: 200px;
+            height: 200px;
             position: relative;
         }
 
-        .ora-logo {
-            font-size: 8rem;
-            font-weight: 700;
-            color: rgba(255,255,255,0.15);
-            text-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            margin-bottom: 2rem;
-            letter-spacing: 0.5rem;
+        /* Warm understanding aura */
+        .sun-aura {
+            width: 400%;
+            height: 400%;
+            background: radial-gradient(circle, 
+                rgba(255, 204, 102, 0.15) 0%,
+                rgba(255, 179, 71, 0.12) 30%,
+                rgba(255, 149, 0, 0.08) 60%,
+                transparent 80%);
+            position: absolute;
+            top: -150%;
+            left: -150%;
+            animation: warmGlow 10s ease-in-out infinite;
+            filter: blur(40px);
         }
 
-        .status-text {
-            font-size: 1.5rem;
-            font-weight: 500;
-            color: var(--white);
-            text-align: center;
-            margin-bottom: 1rem;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
+        @keyframes warmGlow {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1.2) rotate(180deg);
+                opacity: 1;
+            }
         }
 
-        /* Speaking Animation */
-        .speaking-indicator {
+        /* Abstract sun core */
+        .sun-core {
             width: 120px;
             height: 120px;
+            background: radial-gradient(circle, 
+                rgba(255, 255, 255, 0.5) 0%,
+                rgba(255, 204, 102, 0.4) 30%,
+                rgba(255, 179, 71, 0.3) 70%,
+                rgba(255, 149, 0, 0.15) 100%);
             border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            margin: 2rem 0;
-            animation: pulse 2s infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: gentlePulse 6s ease-in-out infinite, colorCycle 15s ease-in-out infinite;
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 204, 102, 0.5);
+            box-shadow: 
+                0 0 40px rgba(255, 204, 102, 0.6),
+                0 0 80px rgba(255, 179, 71, 0.4),
+                inset 0 0 30px rgba(255, 255, 255, 0.25);
         }
 
-        .speaking-indicator.active {
-            display: flex;
+        /* Beautiful color cycling for idle state */
+        @keyframes colorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 204, 102, 0.4) 30%,
+                    rgba(255, 179, 71, 0.3) 70%,
+                    rgba(255, 149, 0, 0.15) 100%);
+                border-color: rgba(255, 204, 102, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 204, 102, 0.6),
+                    0 0 80px rgba(255, 179, 71, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 193, 7, 0.4) 30%,
+                    rgba(255, 167, 38, 0.3) 70%,
+                    rgba(255, 138, 101, 0.15) 100%);
+                border-color: rgba(255, 193, 7, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 193, 7, 0.6),
+                    0 0 80px rgba(255, 167, 38, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 183, 77, 0.4) 30%,
+                    rgba(255, 154, 158, 0.3) 70%,
+                    rgba(255, 138, 128, 0.15) 100%);
+                border-color: rgba(255, 183, 77, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 183, 77, 0.6),
+                    0 0 80px rgba(255, 154, 158, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 171, 145, 0.4) 30%,
+                    rgba(255, 138, 101, 0.3) 70%,
+                    rgba(255, 160, 122, 0.15) 100%);
+                border-color: rgba(255, 171, 145, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 171, 145, 0.6),
+                    0 0 80px rgba(255, 138, 101, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 204, 102, 0.4) 30%,
+                    rgba(255, 179, 71, 0.3) 70%,
+                    rgba(255, 149, 0, 0.15) 100%);
+                border-color: rgba(255, 204, 102, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 204, 102, 0.6),
+                    0 0 80px rgba(255, 179, 71, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.7; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.7; }
+        /* Abstract sun rays */
+        .sun-ray {
+            position: absolute;
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 204, 102, 0.7) 50%,
+                transparent 100%);
+            border-radius: 50px;
+            transform-origin: center;
+            animation: gentleRotate 20s linear infinite, rayColorCycle 15s ease-in-out infinite;
         }
 
-        /* Bottom Controls */
-        .controls-section {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 3rem;
-            margin-bottom: 3rem;
+        /* Ray color cycling */
+        @keyframes rayColorCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 0.7) 50%,
+                    transparent 100%);
+            }
+            25% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 193, 7, 0.7) 50%,
+                    transparent 100%);
+            }
+            50% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 183, 77, 0.7) 50%,
+                    transparent 100%);
+            }
+            75% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 171, 145, 0.7) 50%,
+                    transparent 100%);
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 0.7) 50%,
+                    transparent 100%);
+            }
         }
 
-        .control-button {
+        .sun-ray:nth-child(1) {
             width: 80px;
-            height: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        .sun-ray:nth-child(2) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .sun-ray:nth-child(3) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        .sun-ray:nth-child(4) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(135deg);
+        }
+
+        .sun-ray:nth-child(5) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+
+        .sun-ray:nth-child(6) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(225deg);
+        }
+
+        .sun-ray:nth-child(7) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(270deg);
+        }
+
+        .sun-ray:nth-child(8) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(315deg);
+        }
+
+        @keyframes gentlePulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                opacity: 0.8; 
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.1); 
+                opacity: 1; 
+            }
+        }
+
+        @keyframes gentleRotate {
+            0% { transform: translate(-50%, -50%) rotate(var(--rotation, 0deg)); }
+            100% { transform: translate(-50%, -50%) rotate(calc(var(--rotation, 0deg) + 360deg)); }
+        }
+
+        /* Sun states with Apple colors - each with beautiful color cycling */
+        .abstract-sun.listening .sun-core {
+            background: radial-gradient(circle, 
+                rgba(0, 122, 255, 0.5) 0%,
+                rgba(0, 122, 255, 0.35) 50%,
+                rgba(0, 122, 255, 0.2) 100%) !important;
+            border-color: rgba(0, 122, 255, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(0, 122, 255, 0.7),
+                0 0 100px rgba(0, 122, 255, 0.4),
+                inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            animation: gentlePulse 4s ease-in-out infinite, listeningGlow 2s ease-in-out infinite, coolColorCycle 12s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.listening .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(0, 122, 255, 0.8) 50%,
+                transparent 100%) !important;
+            animation: gentleRotate 15s linear infinite, coolRayCycle 12s ease-in-out infinite !important;
+        }
+
+        /* Cool color cycling for listening state */
+        @keyframes coolColorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(0, 122, 255, 0.5) 0%,
+                    rgba(0, 122, 255, 0.35) 50%,
+                    rgba(0, 122, 255, 0.2) 100%) !important;
+                border-color: rgba(0, 122, 255, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(0, 122, 255, 0.7),
+                    0 0 100px rgba(0, 122, 255, 0.4),
+                    inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(30, 144, 255, 0.5) 0%,
+                    rgba(30, 144, 255, 0.35) 50%,
+                    rgba(30, 144, 255, 0.2) 100%) !important;
+                border-color: rgba(30, 144, 255, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(30, 144, 255, 0.7),
+                    0 0 100px rgba(30, 144, 255, 0.4),
+                    inset 0 0 30px rgba(30, 144, 255, 0.25) !important;
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(64, 224, 208, 0.5) 0%,
+                    rgba(64, 224, 208, 0.35) 50%,
+                    rgba(64, 224, 208, 0.2) 100%) !important;
+                border-color: rgba(64, 224, 208, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(64, 224, 208, 0.7),
+                    0 0 100px rgba(64, 224, 208, 0.4),
+                    inset 0 0 30px rgba(64, 224, 208, 0.25) !important;
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(138, 43, 226, 0.5) 0%,
+                    rgba(138, 43, 226, 0.35) 50%,
+                    rgba(138, 43, 226, 0.2) 100%) !important;
+                border-color: rgba(138, 43, 226, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(138, 43, 226, 0.7),
+                    0 0 100px rgba(138, 43, 226, 0.4),
+                    inset 0 0 30px rgba(138, 43, 226, 0.25) !important;
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(0, 122, 255, 0.5) 0%,
+                    rgba(0, 122, 255, 0.35) 50%,
+                    rgba(0, 122, 255, 0.2) 100%) !important;
+                border-color: rgba(0, 122, 255, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(0, 122, 255, 0.7),
+                    0 0 100px rgba(0, 122, 255, 0.4),
+                    inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            }
+        }
+
+        @keyframes coolRayCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(0, 122, 255, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            25% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(30, 144, 255, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            50% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(64, 224, 208, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            75% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(138, 43, 226, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(0, 122, 255, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+        }
+
+        .abstract-sun.thinking .sun-core {
+            background: radial-gradient(circle, 
+                rgba(255, 149, 0, 0.5) 0%,
+                rgba(255, 149, 0, 0.35) 50%,
+                rgba(255, 149, 0, 0.2) 100%) !important;
+            border-color: rgba(255, 149, 0, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(255, 149, 0, 0.7),
+                0 0 100px rgba(255, 149, 0, 0.4),
+                inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            animation: gentlePulse 3s ease-in-out infinite, thinkingShimmer 1.5s ease-in-out infinite, warmColorCycle 10s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.thinking .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 149, 0, 0.9) 50%,
+                transparent 100%) !important;
+            animation: gentleRotate 10s linear infinite, warmRayCycle 10s ease-in-out infinite !important;
+        }
+
+        /* Warm color cycling for thinking state */
+        @keyframes warmColorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 149, 0, 0.5) 0%,
+                    rgba(255, 149, 0, 0.35) 50%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 149, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 149, 0, 0.7),
+                    0 0 100px rgba(255, 149, 0, 0.4),
+                    inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            }
+            33% {
+                background: radial-gradient(circle, 
+                    rgba(255, 69, 0, 0.5) 0%,
+                    rgba(255, 69, 0, 0.35) 50%,
+                    rgba(255, 69, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 69, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 69, 0, 0.7),
+                    0 0 100px rgba(255, 69, 0, 0.4),
+                    inset 0 0 30px rgba(255, 69, 0, 0.25) !important;
+            }
+            66% {
+                background: radial-gradient(circle, 
+                    rgba(255, 140, 0, 0.5) 0%,
+                    rgba(255, 140, 0, 0.35) 50%,
+                    rgba(255, 140, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 140, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 140, 0, 0.7),
+                    0 0 100px rgba(255, 140, 0, 0.4),
+                    inset 0 0 30px rgba(255, 140, 0, 0.25) !important;
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 149, 0, 0.5) 0%,
+                    rgba(255, 149, 0, 0.35) 50%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 149, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 149, 0, 0.7),
+                    0 0 100px rgba(255, 149, 0, 0.4),
+                    inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            }
+        }
+
+        @keyframes warmRayCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 149, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+            33% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 69, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+            66% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 140, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 149, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+        }
+
+        .abstract-sun.speaking .sun-core {
+            background: radial-gradient(circle, 
+                rgba(255, 204, 102, 0.6) 0%,
+                rgba(255, 179, 71, 0.45) 30%,
+                rgba(255, 149, 0, 0.35) 70%,
+                rgba(255, 149, 0, 0.2) 100%) !important;
+            border-color: rgba(255, 204, 102, 0.7) !important;
+            box-shadow: 
+                0 0 60px rgba(255, 204, 102, 0.8),
+                0 0 120px rgba(255, 179, 71, 0.5),
+                inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            animation: gentlePulse 2s ease-in-out infinite, speakingRadiance 1s ease-in-out infinite, radiantColorCycle 8s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.speaking .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 204, 102, 1) 50%,
+                transparent 100%) !important;
+            animation: gentleRotate 8s linear infinite, radiantRayCycle 8s ease-in-out infinite !important;
+        }
+
+        /* Radiant color cycling for speaking state */
+        @keyframes radiantColorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 204, 102, 0.6) 0%,
+                    rgba(255, 179, 71, 0.45) 30%,
+                    rgba(255, 149, 0, 0.35) 70%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 204, 102, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 204, 102, 0.8),
+                    0 0 120px rgba(255, 179, 71, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(255, 215, 0, 0.6) 0%,
+                    rgba(255, 193, 7, 0.45) 30%,
+                    rgba(255, 171, 64, 0.35) 70%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 215, 0, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 215, 0, 0.8),
+                    0 0 120px rgba(255, 193, 7, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 224, 0.6) 0%,
+                    rgba(255, 228, 181, 0.45) 30%,
+                    rgba(255, 218, 185, 0.35) 70%,
+                    rgba(255, 192, 203, 0.2) 100%) !important;
+                border-color: rgba(255, 255, 224, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 255, 224, 0.8),
+                    0 0 120px rgba(255, 228, 181, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(255, 248, 220, 0.6) 0%,
+                    rgba(255, 239, 213, 0.45) 30%,
+                    rgba(255, 228, 196, 0.35) 70%,
+                    rgba(255, 218, 185, 0.2) 100%) !important;
+                border-color: rgba(255, 248, 220, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 248, 220, 0.8),
+                    0 0 120px rgba(255, 239, 213, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 204, 102, 0.6) 0%,
+                    rgba(255, 179, 71, 0.45) 30%,
+                    rgba(255, 149, 0, 0.35) 70%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 204, 102, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 204, 102, 0.8),
+                    0 0 120px rgba(255, 179, 71, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+        }
+
+        @keyframes radiantRayCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 1) 50%,
+                    transparent 100%) !important;
+            }
+            25% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 215, 0, 1) 50%,
+                    transparent 100%) !important;
+            }
+            50% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 255, 224, 1) 50%,
+                    transparent 100%) !important;
+            }
+            75% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 248, 220, 1) 50%,
+                    transparent 100%) !important;
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 1) 50%,
+                    transparent 100%) !important;
+            }
+        }
+
+        @keyframes listeningGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        @keyframes thinkingShimmer {
+            0%, 100% { filter: brightness(1) saturate(1); }
+            50% { filter: brightness(1.3) saturate(1.2); }
+        }
+
+        @keyframes speakingRadiance {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                filter: brightness(1);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.15); 
+                filter: brightness(1.4);
+            }
+        }
+
+        /* Elegant interaction hint */
+        .interaction-hint {
+            position: absolute;
+            bottom: 6rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.85rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.3px;
+            text-align: center;
+            transition: all 0.4s ease;
+            opacity: 1;
+        }
+
+        .interaction-hint.hidden {
+            opacity: 0;
+        }
+
+        /* Subtle end call indicator */
+        .end-call-hint {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
-            border: none;
-            cursor: pointer;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            position: relative;
-            overflow: hidden;
+            opacity: 0;
+            animation: fadeInDelay 2s ease-out 3s forwards;
         }
 
-        .control-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+        @keyframes fadeInDelay {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
         }
 
-        .control-button:active {
-            transform: translateY(0);
+        .end-call-hint:hover {
+            background: rgba(255, 69, 58, 0.1);
+            border-color: rgba(255, 69, 58, 0.3);
+            color: rgba(255, 69, 58, 0.8);
+            transform: scale(1.1);
         }
 
-        /* Microphone Button */
-        .mic-button {
-            background: var(--gray-600);
-            color: var(--white);
+        /* Credibility elements */
+        .credibility-badge {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            font-weight: 300;
+            letter-spacing: 0.2px;
         }
 
-        .mic-button.listening {
-            background: #ef4444;
-            animation: pulse-red 1.5s infinite;
+        .security-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(52, 199, 89, 0.8);
+            animation: securityPulse 2s ease-in-out infinite;
         }
 
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        /* Main Action Button */
-        .main-button {
-            background: #ef4444;
-            color: var(--white);
-            width: 100px;
-            height: 100px;
-            font-size: 2.5rem;
-        }
-
-        /* Add Button */
-        .add-button {
-            background: var(--gray-600);
-            color: var(--white);
+        @keyframes securityPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
         }
 
         /* Responsive Design */
         @media (max-width: 768px) {
-            .timer {
-                font-size: 2.5rem;
+            .sun-container {
+                width: 280px;
+                height: 280px;
             }
             
-            .ora-logo {
-                font-size: 6rem;
+            .abstract-sun {
+                width: 160px;
+                height: 160px;
             }
             
-            .status-text {
-                font-size: 1.2rem;
+            .status-indicator {
+                top: 3rem;
+                font-size: 0.8rem;
             }
             
-            .control-button {
-                width: 70px;
-                height: 70px;
-                font-size: 1.8rem;
-            }
-            
-            .main-button {
-                width: 85px;
-                height: 85px;
-                font-size: 2.2rem;
-            }
-            
-            .controls-section {
-                gap: 2rem;
+            .interaction-hint {
+                bottom: 5rem;
+                font-size: 0.8rem;
             }
         }
 
-        /* Hidden elements */
-        .hidden {
-            display: none !important;
+        /* Haptic feedback simulation */
+        .haptic-feedback {
+            animation: hapticPulse 0.1s ease-out;
         }
 
-        /* Subtle background animation */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%);
-            animation: shimmer 8s infinite;
-            pointer-events: none;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+        @keyframes hapticPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <div class="voice-interface">
-        <!-- Timer Section -->
-        <div class="timer-section">
-            <div class="timer" id="timer">00:00</div>
-            <div class="session-label">SESSION TIME</div>
-        </div>
+        <!-- Status Indicator -->
+        <div class="status-indicator" id="statusIndicator">Ready to listen</div>
 
-        <!-- Center Logo and Status -->
-        <div class="center-section">
-            <div class="ora-logo">ORA</div>
-            <div class="status-text" id="statusText">✨ Ready to listen</div>
-            <div class="speaking-indicator" id="speakingIndicator">
-                <span style="font-size: 3rem;">🔊</span>
+        <!-- End Call Hint -->
+        <div class="end-call-hint" id="endCallHint">✕</div>
+
+        <!-- Premium Abstract Sun -->
+        <div class="sun-container">
+            <div class="abstract-sun" id="abstractSun">
+                <div class="sun-aura"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-core"></div>
             </div>
         </div>
 
-        <!-- Bottom Controls -->
-        <div class="controls-section">
-            <button class="control-button mic-button" id="micButton">
-                🎤
-            </button>
-            <button class="control-button main-button" id="mainButton">
-                📞
-            </button>
-            <button class="control-button add-button" id="addButton">
-                ➕
-            </button>
+        <!-- Interaction Hint -->
+        <div class="interaction-hint" id="interactionHint">Tap anywhere to speak</div>
+
+        <!-- Credibility Badge -->
+        <div class="credibility-badge">
+            <div class="security-dot"></div>
+            <span>Private & Secure</span>
         </div>
     </div>
 
     <script>
-        // Voice-only ORA Wellness Agent with Behavioral Learning
+        // Apple-style ORA Voice Interface
         let isListening = false;
         let recognition = null;
         let currentAudio = null;
-        let startTime = Date.now();
-        let timerInterval;
-
-        // Timer functionality
-        function updateTimer() {
-            const elapsed = Date.now() - startTime;
-            const minutes = Math.floor(elapsed / 60000);
-            const seconds = Math.floor((elapsed % 60000) / 1000);
-            const timerElement = document.getElementById('timer');
-            if (timerElement) {
-                timerElement.textContent = 
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-
-        function startTimer() {
-            startTime = Date.now();
-            timerInterval = setInterval(updateTimer, 1000);
-        }
+        let interactionStarted = false;
 
         // Initialize speech recognition
         function initializeSpeechRecognition() {
@@ -318,35 +857,86 @@
                 recognition.onstart = function() {
                     console.log('🎤 Speech recognition started');
                     isListening = true;
-                    updateMicrophoneButton(true);
-                    updateStatus('👂 Listening...');
+                    setSunState('listening');
+                    updateStatus('Listening...');
+                    hideInteractionHint();
                 };
                 
                 recognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
                     console.log('🗣️ User said:', transcript);
                     
-                    updateStatus('🧠 Analyzing personality...');
+                    setSunState('thinking');
+                    updateStatus('Understanding...');
                     analyzePersonalityAndSend(transcript);
                 };
                 
                 recognition.onerror = function(event) {
                     console.error('❌ Speech recognition error:', event.error);
-                    updateStatus('❌ Could not hear you clearly. Try again.');
-                    resetMicrophone();
+                    resetToReady();
                 };
                 
                 recognition.onend = function() {
                     console.log('🎤 Speech recognition ended');
                     isListening = false;
-                    updateMicrophoneButton(false);
                 };
                 
                 console.log('✅ Speech recognition initialized');
             } else {
                 console.error('❌ Speech recognition not supported');
-                updateStatus('❌ Voice not supported in this browser');
+                updateStatus('Voice not supported');
             }
+        }
+
+        // Set sun visual state
+        function setSunState(state) {
+            const sun = document.getElementById('abstractSun');
+            const statusIndicator = document.getElementById('statusIndicator');
+            
+            sun.className = 'abstract-sun ' + state;
+            statusIndicator.className = 'status-indicator ' + state;
+        }
+
+        // Update status text
+        function updateStatus(message) {
+            const statusElement = document.getElementById('statusIndicator');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+        }
+
+        // Hide interaction hint
+        function hideInteractionHint() {
+            const hint = document.getElementById('interactionHint');
+            hint.classList.add('hidden');
+            interactionStarted = true;
+        }
+
+        // Show interaction hint
+        function showInteractionHint() {
+            if (!interactionStarted) {
+                const hint = document.getElementById('interactionHint');
+                hint.classList.remove('hidden');
+            }
+        }
+
+        // Reset to ready state
+        function resetToReady() {
+            isListening = false;
+            setSunState('idle');
+            updateStatus('Ready to listen');
+            if (interactionStarted) {
+                setTimeout(showInteractionHint, 2000);
+            }
+        }
+
+        // Haptic feedback simulation
+        function simulateHaptic() {
+            const sun = document.getElementById('abstractSun');
+            sun.classList.add('haptic-feedback');
+            setTimeout(() => {
+                sun.classList.remove('haptic-feedback');
+            }, 100);
         }
 
         // Analyze personality with Humantic AI then send to ORA
@@ -357,13 +947,10 @@
                 const personalityData = await callHumanticAI(userInput);
                 console.log('✅ Personality analysis complete:', personalityData);
                 
-                updateStatus('🤔 ORA is thinking...');
                 sendToOraAPI(userInput, personalityData);
                 
             } catch (error) {
                 console.error('❌ Personality analysis failed:', error);
-                // Fallback: send without personality data
-                updateStatus('🤔 ORA is thinking...');
                 sendToOraAPI(userInput, null);
             }
         }
@@ -412,27 +999,23 @@
             })
             .then(response => {
                 console.log('📥 Response status:', response.status);
-                // Get response as text first to debug
                 return response.text();
             })
             .then(textData => {
                 console.log('📥 Raw response text:', textData);
                 
-                // The response is plain text, not JSON - extract the audio URL
                 const audioUrlMatch = textData.match(/https:\/\/murf\.ai[^\s"]+/);
                 if (audioUrlMatch) {
                     console.log('🎵 Found audio URL:', audioUrlMatch[0]);
                     handleOraResponse({ audio_url: audioUrlMatch[0] });
                 } else {
                     console.log('❌ No audio URL found in response');
-                    updateStatus('❌ No voice response received');
-                    resetMicrophone();
+                    resetToReady();
                 }
             })
             .catch(error => {
                 console.error('❌ Error calling ORA API:', error);
-                updateStatus('❌ Connection error. Please try again.');
-                resetMicrophone();
+                resetToReady();
             });
         }
 
@@ -440,7 +1023,6 @@
         function handleOraResponse(responseData) {
             console.log("📥 Raw response received:", responseData);
             
-            // Find audio URL
             let audioUrl = "";
             if (responseData) {
                 audioUrl = responseData.audio_url || 
@@ -455,8 +1037,8 @@
             if (audioUrl) {
                 console.log("🔊 Playing audio:", audioUrl);
                 
-                updateStatus('🔊 ORA is speaking...');
-                showSpeakingIndicator();
+                setSunState('speaking');
+                updateStatus('Speaking...');
                 
                 if (currentAudio) {
                     currentAudio.pause();
@@ -465,14 +1047,11 @@
                 
                 currentAudio = new Audio(audioUrl);
                 
-                // Try to play
                 currentAudio.play().then(() => {
                     console.log("✅ Audio playing successfully");
                 }).catch(error => {
                     console.error("❌ Audio autoplay blocked:", error);
-                    
-                    // Show tap to play overlay
-                    updateStatus('🔊 Tap anywhere to hear ORA');
+                    updateStatus('Tap to hear response');
                     
                     const playOverlay = document.createElement('div');
                     playOverlay.style.cssText = `
@@ -481,125 +1060,101 @@
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background: rgba(0,0,0,0.3);
+                        background: rgba(0,0,0,0.8);
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        z-index: 1000;
+                        color: white;
+                        font-size: 1.2rem;
+                        font-weight: 300;
                         cursor: pointer;
+                        z-index: 1000;
+                        backdrop-filter: blur(20px);
                     `;
-                    
-                    playOverlay.innerHTML = `
-                        <div style="
-                            background: #ef4444;
-                            color: white;
-                            padding: 2rem 3rem;
-                            border-radius: 20px;
-                            font-size: 1.5rem;
-                            text-align: center;
-                            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                        ">
-                            🔊 Tap to hear ORA's response
-                        </div>
-                    `;
-                    
-                    document.body.appendChild(playOverlay);
+                    playOverlay.innerHTML = 'Tap to hear ORA';
                     
                     playOverlay.onclick = () => {
                         currentAudio.play();
                         document.body.removeChild(playOverlay);
-                        updateStatus('🔊 ORA is speaking...');
-                        showSpeakingIndicator();
                     };
+                    
+                    document.body.appendChild(playOverlay);
                 });
                 
-                // When audio ends
-                currentAudio.addEventListener('ended', () => {
-                    console.log("🔊 Audio completed");
-                    updateStatus('✨ Ready to listen again');
-                    hideSpeakingIndicator();
-                    resetMicrophone();
-                });
+                currentAudio.onended = () => {
+                    console.log("✅ Audio finished playing");
+                    resetToReady();
+                };
+                
+                currentAudio.onerror = (error) => {
+                    console.error("❌ Audio playback error:", error);
+                    resetToReady();
+                };
                 
             } else {
-                console.log("❌ No audio URL found");
-                updateStatus('❌ No voice response received');
-                resetMicrophone();
+                console.log("❌ No audio URL found in response");
+                resetToReady();
             }
         }
 
-        // UI Helper Functions
-        function updateStatus(text) {
-            const statusElement = document.getElementById('statusText');
-            if (statusElement) {
-                statusElement.textContent = text;
-            }
-            console.log('📱 Status:', text);
-        }
-
-        function updateMicrophoneButton(listening) {
-            const micButton = document.getElementById('micButton');
-            if (micButton) {
-                if (listening) {
-                    micButton.classList.add('listening');
-                } else {
-                    micButton.classList.remove('listening');
-                }
-            }
-        }
-
-        function showSpeakingIndicator() {
-            const indicator = document.getElementById('speakingIndicator');
-            if (indicator) {
-                indicator.classList.add('active');
-            }
-        }
-
-        function hideSpeakingIndicator() {
-            const indicator = document.getElementById('speakingIndicator');
-            if (indicator) {
-                indicator.classList.remove('active');
-            }
-        }
-
-        function resetMicrophone() {
-            isListening = false;
-            updateMicrophoneButton(false);
-            if (recognition) {
-                recognition.abort();
-            }
-        }
-
+        // Start listening
         function startListening() {
-            if (!recognition) {
-                updateStatus('❌ Voice not available');
-                return;
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                setSunState('idle');
             }
             
-            if (isListening) {
-                recognition.stop();
-                resetMicrophone();
-                updateStatus('✨ Ready to listen');
-                return;
+            if (recognition && !isListening) {
+                simulateHaptic();
+                recognition.start();
             }
-            
-            console.log('🎤 Starting to listen');
-            recognition.start();
         }
 
-        // Initialize when page loads
+        // End call
+        function endCall() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            
+            updateStatus('Session ended');
+            setSunState('idle');
+            setTimeout(() => {
+                updateStatus('Ready to listen');
+                showInteractionHint();
+                interactionStarted = false;
+            }, 2000);
+        }
+
+        // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 ORA Voice Interface Loading...');
+            console.log('🚀 Apple-style ORA Interface Loading...');
             
-            startTimer();
             initializeSpeechRecognition();
+            setSunState('idle');
             
-            // Button listeners
-            document.getElementById('micButton').addEventListener('click', startListening);
-            document.getElementById('mainButton').addEventListener('click', startListening);
+            // Tap anywhere to speak
+            document.body.addEventListener('click', function(e) {
+                if (e.target.id !== 'endCallHint') {
+                    startListening();
+                }
+            });
             
-            updateStatus('✨ Ready to listen');
-            console.log('✅ ORA Ready!');
+            // End call button
+            const endCallHint = document.getElementById('endCallHint');
+            if (endCallHint) {
+                endCallHint.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    endCall();
+                });
+            }
+            
+            console.log('✅ Apple-style ORA Interface Ready');
         });
     </script>
 </body>
