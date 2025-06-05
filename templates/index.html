@@ -370,11 +370,31 @@
             })
             .then(response => {
                 console.log('📥 Response status:', response.status);
-                return response.json();
+                // Get response as text first to debug
+                return response.text();
             })
-            .then(data => {
-                console.log('📥 Response received:', data);
-                handleOraResponse(data);
+            .then(textData => {
+                console.log('📥 Raw response text:', textData);
+                
+                // Try to parse as JSON
+                try {
+                    const data = JSON.parse(textData);
+                    console.log('📥 Parsed JSON:', data);
+                    handleOraResponse(data);
+                } catch (error) {
+                    console.error('❌ JSON parse error:', error);
+                    console.log('📋 Raw response that failed to parse:', textData);
+                    
+                    // Try to extract audio URL from text if JSON parsing fails
+                    const audioUrlMatch = textData.match(/https:\/\/[^\s"]+\.mp3/);
+                    if (audioUrlMatch) {
+                        console.log('🎵 Found audio URL in text:', audioUrlMatch[0]);
+                        handleOraResponse({ audio_url: audioUrlMatch[0] });
+                    } else {
+                        updateStatus('❌ Invalid response format');
+                        resetMicrophone();
+                    }
+                }
             })
             .catch(error => {
                 console.error('❌ Error calling ORA API:', error);
@@ -551,5 +571,6 @@
     </script>
 </body>
 </html>
+
 
 
