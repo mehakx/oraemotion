@@ -1,270 +1,25 @@
-// Main variables
-// Make these global so p5-sketch.js can access them
-window.currentEmotion = "neutral";
-window.emotionIntensity = 0;
+// Voice-only conversation with ORA
+// No text interface - pure voice-to-voice
+
 let chatId = null;
-let lastDetectedEmotion = '';
-
-// Function to send emotion data to Make.com webhook (EMOTION ASSESSMENT)
-async function sendEmotionToMake(emotionData) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
-    
-    console.log('🎯 Sending EMOTION ASSESSMENT to Make.com:', emotionData);
-    
-    // UPDATED: Simplified payload for EMOTION ASSESSMENT
-    const emotionPayload = {
-        user_id: chatId,
-        timestamp: new Date().toISOString(),
-        text: emotionData.text,
-        request_id: Math.random().toString(36)
-    };
-    
-    // Store the detected emotion for context
-    lastDetectedEmotion = emotionData.emotion;
-    
-    console.log('📦 Emotion Assessment payload:', emotionPayload);
-    console.log('Mits',JSON.stringify(emotionPayload));
-    
-    try {
-        // Try direct connection first (without CORS proxy)
-        const directResponse = await fetch(makeWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emotionPayload)
-        });
-        
-        if (directResponse.ok) {
-            // FIXED: Get response as text first, then try to parse as JSON
-            const responseText = await directResponse.text();
-            console.log('✅ Emotion Assessment success (raw):', responseText);
-            
-            let responseData;
-            try {
-                // Try to parse as JSON
-                responseData = JSON.parse(responseText);
-                console.log('✅ Parsed JSON response:', responseData);
-            } catch (parseError) {
-                console.log('ℹ️ Response is not JSON, using as text:', responseText);
-                // If not JSON, create a simple object with the text
-                responseData = { 
-                    status: 'success', 
-                    message: responseText || 'Emotion assessment completed' 
-                };
-            }
-            
-            // Display the ORA response in the chat
-            displayOraResponse(responseData);
-            
-            return true;
-        }
-        
-    } catch (directError) {
-        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
-    }
-    
-    // Fallback to CORS proxy with flattened payload
-    try {
-        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emotionPayload)
-        });
-        
-        const responseText = await response.text();
-        console.log('✅ Proxy response:', responseText);
-        
-        try {
-            // Try to parse the response as JSON
-            const responseData = JSON.parse(responseText);
-            console.log('✅ Parsed response data:', responseData);
-            
-            // Display the ORA response in the chat
-            displayOraResponse(responseData);
-            
-            return true;
-        } catch (parseError) {
-            console.log('⚠️ Could not parse response as JSON:', responseText);
-            // Even if parsing fails, try to display something
-            displayOraResponse({response: responseText});
-            return true;
-        }
-    } catch (error) {
-        console.error('❌ Failed to send to proxy:', error);
-        return false;
-    }
-}
-
-// Function to send chat messages (WELLNESS COACHING)
-async function sendChatMessage(messageText) {
-    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
-    
-    console.log('💬 Sending WELLNESS COACHING message:', messageText);
-    
-    // UPDATED: Simplified payload for WELLNESS COACHING
-    const chatPayload = {
-        user_id: chatId,
-        timestamp: new Date().toISOString(),
-        text: messageText,
-        request_id: Math.random().toString(36)
-    };
-    
-    console.log('📦 Wellness Coaching payload:', chatPayload);
-    
-    try {
-        // Try direct connection first
-        const directResponse = await fetch(makeWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(chatPayload)
-        });
-        
-        if (directResponse.ok) {
-            // FIXED: Get response as text first, then try to parse as JSON
-            const responseText = await directResponse.text();
-            console.log('✅ Wellness Coaching success (raw):', responseText);
-            
-            let responseData;
-            try {
-                responseData = JSON.parse(responseText);
-                console.log('✅ Parsed JSON response:', responseData);
-            } catch (parseError) {
-                console.log('ℹ️ Response is not JSON, using as text:', responseText);
-                responseData = { 
-                    status: 'success', 
-                    message: responseText || 'Wellness coaching response received' 
-                };
-            }
-            
-            displayOraResponse(responseData);
-            return true;
-        }
-        
-    } catch (directError) {
-        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
-    }
-    
-    // Fallback to CORS proxy
-    try {
-        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
-        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(chatPayload)
-        });
-        
-        const responseText = await response.text();
-        console.log('✅ Chat proxy response:', responseText);
-        
-        try {
-            const responseData = JSON.parse(responseText);
-            displayOraResponse(responseData);
-            return true;
-        } catch (parseError) {
-            console.log('⚠️ Could not parse chat response as JSON:', responseText);
-            displayOraResponse({response: responseText});
-            return true;
-        }
-    } catch (error) {
-        console.error('❌ Failed to send chat message:', error);
-        return false;
-    }
-}
-
-// Helper function to get time of day
-function getTimeOfDay() {
-    const hour = new Date().getHours();
-    if (hour < 6) return "night";
-    if (hour < 12) return "morning";
-    if (hour < 17) return "afternoon";
-    if (hour < 22) return "evening";
-    return "night";
-}
-
-// Enhanced function to display ORA's response in the chat
-function displayOraResponse(responseData) {
-    console.log("Raw response received:", responseData);
-    console.log("Response type:", typeof responseData);
-    console.log("Response keys:", Object.keys(responseData || {}));
-    
-    // Show the chat section with animation
-    const chatDiv = document.getElementById("chat");
-    if (chatDiv) {
-        chatDiv.style.display = "block";
-    }
-    
-    // Get the chat history element
-    const chatHistory = document.getElementById("chatHistory");
-    if (!chatHistory) {
-        console.error("Chat history element not found!");
-        return;
-    }
-    
-    // FIXED: Check multiple possible locations for audio URL
-    let audioUrl = "";
-    
-    // Try different possible paths for the audio URL
-    if (responseData) {
-        audioUrl = responseData.audio_url || 
-                  responseData.audioUrl || 
-                  responseData.Audio_File || 
-                  responseData.audio_file ||
-                  (responseData.data && responseData.data.audio_url) ||
-                  "";
-    }
-    
-    console.log('🎵 Searching for audio URL...');
-    console.log('🎵 Found audio URL:', audioUrl);
-    
-    // AUTO-PLAY THE AUDIO (Voice-only response)
-    if (audioUrl) {
-        console.log("🔊 Playing audio:", audioUrl);
-        
-        // Add a visual indicator that ORA is speaking
-        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> 🔊 <em>Speaking...</em></div>`;
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-        
-        const audio = new Audio(audioUrl);
-        audio.play().catch(error => {
-            console.error("Audio playback failed:", error);
-            // Fallback: show audio controls if autoplay fails
-            chatHistory.innerHTML += `<div class="assistant">🎵 <audio controls><source src="${audioUrl}" type="audio/wav"></audio></div>`;
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        });
-        
-        // Optional: Remove the "Speaking..." indicator when audio ends
-        audio.addEventListener('ended', () => {
-            console.log("🔊 Audio playback completed");
-        });
-    } else {
-        // If no audio URL, show a fallback message and log the full response
-        console.log("❌ No audio URL found in response");
-        console.log("Full response structure:", JSON.stringify(responseData, null, 2));
-        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> <em>Response received (no audio)</em></div>`;
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-}
+let isRecording = false;
+let recognition = null;
 
 // Initialize when DOM is fully loaded
 window.addEventListener("DOMContentLoaded", () => {
   const recordBtn = document.getElementById("recordBtn");
   const stopBtn = document.getElementById("stopBtn");
   const statusText = document.getElementById("status");
-  const chatHistory = document.getElementById("chatHistory");
-  const userMessage = document.getElementById("userMessage");
-  const sendBtn = document.getElementById("sendBtn");
   
   // Initialize chat ID
   chatId = Date.now().toString();
   console.log('🆔 Chat ID initialized:', chatId);
+  
+  // Hide text interface completely
+  const userMessage = document.getElementById("userMessage");
+  const sendBtn = document.getElementById("sendBtn");
+  if (userMessage) userMessage.style.display = "none";
+  if (sendBtn) sendBtn.style.display = "none";
   
   // Set up event listeners
   if (recordBtn) {
@@ -274,22 +29,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (stopBtn) {
     stopBtn.addEventListener("click", stopRecording);
   }
-  
-  if (sendBtn) {
-    sendBtn.addEventListener("click", sendMessage);
-  }
-  
-  if (userMessage) {
-    userMessage.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        sendMessage();
-      }
-    });
-  }
-  
-  // Speech recognition setup
-  let recognition = null;
-  let isRecording = false;
   
   function startRecording() {
     if (isRecording) return;
@@ -307,7 +46,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     recognition.onstart = () => {
       isRecording = true;
-      statusText.textContent = "✨ Listening to your emotions...";
+      statusText.textContent = "✨ Listening...";
       recordBtn.style.display = "none";
       stopBtn.style.display = "inline-block";
       stopBtn.disabled = false;
@@ -318,10 +57,10 @@ window.addEventListener("DOMContentLoaded", () => {
       const transcript = event.results[0][0].transcript;
       const confidence = event.results[0][0].confidence;
       
-      console.log('🗣️ Speech recognized:', transcript, 'Confidence:', confidence);
+      console.log('🗣️ Speech recognized:', transcript);
       
-      // Process the speech for EMOTION ASSESSMENT
-      processEmotion(transcript, confidence);
+      // Send to Make.com for voice response
+      sendVoiceMessage(transcript);
     };
     
     recognition.onerror = (event) => {
@@ -332,7 +71,7 @@ window.addEventListener("DOMContentLoaded", () => {
     
     recognition.onend = () => {
       if (isRecording) {
-        statusText.textContent = "✨ Ready to listen again";
+        statusText.textContent = "✨ Ready to listen";
         resetRecording();
       }
     };
@@ -357,130 +96,113 @@ window.addEventListener("DOMContentLoaded", () => {
     stopBtn.disabled = true;
   }
   
-  // Process emotion from speech (EMOTION ASSESSMENT ONLY)
-  async function processEmotion(text, confidence) {
-    // Simple emotion detection based on keywords
-    const emotions = {
-      happy: ["happy", "joy", "excited", "great", "wonderful", "fantastic", "amazing", "awesome", "love", "pleased", "cheerful", "delighted"],
-      sad: ["sad", "unhappy", "depressed", "down", "blue", "upset", "disappointed", "miserable", "heartbroken", "dejected", "melancholy"],
-      angry: ["angry", "mad", "furious", "annoyed", "irritated", "frustrated", "rage", "hate", "pissed", "livid", "outraged"],
-      fear: ["afraid", "scared", "frightened", "terrified", "anxious", "nervous", "worried", "panic", "fearful", "alarmed"],
-      surprise: ["surprised", "shocked", "amazed", "astonished", "wow", "unbelievable", "incredible", "stunned", "astounded"],
-      disgust: ["disgusted", "gross", "yuck", "ew", "nasty", "revolting", "sick", "repulsed", "appalled"],
-      neutral: []
+  // Send voice message to Make.com
+  async function sendVoiceMessage(transcript) {
+    const makeWebhookUrl = "https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh";
+    
+    console.log('🎤 Sending voice message:', transcript);
+    
+    const payload = {
+      user_id: chatId,
+      timestamp: new Date().toISOString(),
+      text: transcript,
+      request_id: Math.random().toString(36)
     };
     
-    let detectedEmotion = "neutral";
-    let maxCount = 0;
+    statusText.textContent = "🤖 ORA is thinking...";
     
-    // Count emotion keywords
-    for (const [emotion, keywords] of Object.entries(emotions)) {
-      const count = keywords.filter(keyword => 
-        text.toLowerCase().includes(keyword)
-      ).length;
+    try {
+      const response = await fetch(makeWebhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
       
-      if (count > maxCount) {
-        maxCount = count;
-        detectedEmotion = emotion;
+      if (response.ok) {
+        const responseText = await response.text();
+        console.log('✅ Raw response:', responseText);
+        
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+          console.log('✅ Parsed response:', responseData);
+        } catch (parseError) {
+          console.log('⚠️ Response is not JSON:', responseText);
+          responseData = { message: responseText };
+        }
+        
+        // Play the voice response
+        playVoiceResponse(responseData);
+        
+      } else {
+        console.error('❌ Response not ok:', response.status);
+        statusText.textContent = "❌ Failed to get response";
       }
-    }
-    
-    // If no emotion words found, use neutral
-    if (maxCount === 0) {
-      detectedEmotion = "neutral";
-    }
-    
-    // Calculate intensity based on emotion detection and keywords found
-    let intensity = 0.7; // Default intensity
-    if (maxCount > 0) {
-      intensity = Math.min(0.6 + (maxCount * 0.2), 1.0); // Higher intensity for more emotion keywords
-    }
-    
-    // Update global variables for visualization
-    window.currentEmotion = detectedEmotion;
-    window.emotionIntensity = intensity;
-    
-    // Update the emotion panel
-    const emotionLabel = document.getElementById("emotion-label");
-    const intensityFill = document.getElementById("intensity-fill");
-    
-    if (emotionLabel) {
-      emotionLabel.textContent = detectedEmotion;
-    }
-    
-    if (intensityFill) {
-      intensityFill.style.width = `${Math.round(intensity * 100)}%`;
       
-      // Color based on emotion
-      const emotionColors = {
-        happy: "linear-gradient(90deg, #FFD700, #FFA500)",
-        sad: "linear-gradient(90deg, #4169E1, #1E90FF)",
-        angry: "linear-gradient(90deg, #FF4500, #DC143C)",
-        fear: "linear-gradient(90deg, #9370DB, #8A2BE2)",
-        surprise: "linear-gradient(90deg, #FF69B4, #FF1493)",
-        disgust: "linear-gradient(90deg, #32CD32, #228B22)",
-        neutral: "linear-gradient(90deg, #ff6b9d, #c471ed, #12c2e9)"
-      };
-      
-      intensityFill.style.background = emotionColors[detectedEmotion] || emotionColors.neutral;
-    }
-    
-    console.log(`🎯 Emotion detected: ${detectedEmotion} (intensity: ${intensity})`);
-    
-    // Add user message to chat showing what they said
-    if (chatHistory) {
-      chatHistory.innerHTML += `<div class="user">💬 <strong>You said:</strong> "${text}"</div>`;
-      chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
-    
-    // Send to Make.com for EMOTION ASSESSMENT
-    const emotionData = {
-      emotion: detectedEmotion,
-      intensity: intensity,
-      text: text,  // The speech text
-      confidence: confidence,
-      sessionId: chatId
-    };
-    
-    statusText.textContent = "✨ Analyzing your emotions...";
-    
-    const success = await sendEmotionToMake(emotionData);
-    
-    if (success) {
-      console.log('✅ Emotion data sent successfully to Make.com');
-      statusText.textContent = "✨ Emotion analysis complete!";
-    } else {
-      console.log('❌ Failed to send emotion data to Make.com');
-      statusText.textContent = "❌ Failed to send emotion data";
+    } catch (error) {
+      console.error('❌ Failed to send message:', error);
+      statusText.textContent = "❌ Connection failed";
     }
   }
   
-  // Send chat message function (WELLNESS COACHING ONLY)
-  async function sendMessage() {
-    const messageText = userMessage.value.trim();
-    if (!messageText) return;
+  // Play voice response (NO TEXT DISPLAY)
+  function playVoiceResponse(responseData) {
+    console.log('🔍 Looking for audio in response:', responseData);
     
-    console.log('💬 User typed message:', messageText);
+    // Extract audio URL
+    let audioUrl = "";
     
-    // Add user message to chat
-    if (chatHistory) {
-      chatHistory.innerHTML += `<div class="user">💬 <strong>You:</strong> ${messageText}</div>`;
-      chatHistory.scrollTop = chatHistory.scrollHeight;
+    if (responseData) {
+      // Check multiple possible locations for audio URL
+      audioUrl = responseData.audio_url || 
+                responseData.audioUrl || 
+                responseData.Audio_File || 
+                responseData.audio_file ||
+                "";
     }
     
-    // Clear input
-    userMessage.value = '';
+    console.log('🎵 Audio URL found:', audioUrl);
     
-    // Send as WELLNESS COACHING (no emotion re-analysis)
-    const success = await sendChatMessage(messageText);
-    
-    if (success) {
-      console.log('✅ Chat message sent successfully');
+    if (audioUrl && audioUrl.trim() !== "") {
+      console.log('🔊 Playing audio:', audioUrl);
+      statusText.textContent = "🔊 ORA is speaking...";
+      
+      const audio = new Audio(audioUrl);
+      
+      audio.onloadstart = () => {
+        console.log('🔄 Audio loading...');
+      };
+      
+      audio.oncanplay = () => {
+        console.log('✅ Audio ready to play');
+      };
+      
+      audio.onended = () => {
+        console.log('✅ Audio playback completed');
+        statusText.textContent = "✨ Ready to listen";
+      };
+      
+      audio.onerror = (error) => {
+        console.error('❌ Audio playback failed:', error);
+        statusText.textContent = "❌ Audio playback failed";
+      };
+      
+      // Play the audio
+      audio.play().catch(error => {
+        console.error('❌ Audio play failed:', error);
+        statusText.textContent = "❌ Could not play audio";
+      });
+      
     } else {
-      console.log('❌ Failed to send chat message');
+      console.log('❌ No audio URL found in response');
+      console.log('📋 Full response structure:', JSON.stringify(responseData, null, 2));
+      statusText.textContent = "❌ No audio received";
     }
   }
 });
+
 
 
 
