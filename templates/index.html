@@ -221,100 +221,186 @@
       border-radius: 4px;
     }
 
-    /* Chat Interface - Full Screen */
+    /* Chat Interface - Ultra Clean Design */
     #chat {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: var(--black);
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f172a 100%);
       z-index: 30;
       display: none;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 2rem;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 800px;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+    }
+
+    .chat-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin: 0;
     }
 
     .chat-history {
       flex: 1;
       overflow-y: auto;
-      margin-bottom: 1.5rem;
-      padding-right: 0.5rem;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
 
     .chat-history::-webkit-scrollbar {
-      width: 6px;
+      width: 4px;
     }
 
     .chat-history::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
+      background: transparent;
     }
 
     .chat-history::-webkit-scrollbar-thumb {
-      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
-      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
     }
 
-    .chat-history div {
-      margin-bottom: 1rem;
-      padding: 1rem 1.5rem;
-      border-radius: 16px;
-      line-height: 1.5;
+    .message {
+      max-width: 70%;
+      padding: 1.25rem 1.75rem;
+      border-radius: 20px;
+      font-size: 1rem;
+      line-height: 1.6;
+      animation: messageSlide 0.3s ease-out;
+    }
+
+    @keyframes messageSlide {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .chat-history .user {
-      background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink));
-      margin-left: 20%;
-      text-align: right;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
       color: var(--white);
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+      box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
     }
 
     .chat-history .assistant {
-      background: rgba(255, 255, 255, 0.05);
-      margin-right: 20%;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       color: var(--gray-100);
+      align-self: flex-start;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom-left-radius: 6px;
+    }
+
+    .chat-input-container {
+      padding: 1.5rem 2rem 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .chat-input {
+      position: relative;
       display: flex;
-      gap: 1rem;
       align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 25px;
+      padding: 0.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .chat-input:focus-within {
+      border-color: var(--primary-purple);
+      box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .chat-input input {
       flex: 1;
+      background: none;
+      border: none;
       padding: 1rem 1.5rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 50px;
       color: var(--white);
       font-size: 1rem;
       outline: none;
-      transition: all 0.3s ease;
-    }
-
-    .chat-input input:focus {
-      border-color: var(--primary-purple);
-      box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
     }
 
     .chat-input input::placeholder {
       color: var(--gray-400);
+      font-weight: 400;
     }
 
     #sendBtn {
-      background: linear-gradient(90deg, var(--primary-cyan), var(--primary-blue));
+      background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
       color: var(--white);
-      padding: 1rem 1.5rem;
-      border-radius: 50px;
+      border: none;
+      border-radius: 20px;
+      padding: 0.875rem 1.5rem;
       font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 10px rgba(6, 182, 212, 0.2);
     }
 
     #sendBtn:hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+      background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+    }
+
+    #sendBtn:active {
+      transform: translateY(0);
+    }
+
+    /* Empty state */
+    .chat-empty {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--gray-400);
+    }
+
+    .chat-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .chat-empty-text {
+      font-size: 1.1rem;
+      font-weight: 500;
     }
 
     /* Responsive Design */
@@ -421,10 +507,22 @@
 
   <!-- Chat Interface -->
   <div id="chat">
-    <div id="chatHistory" class="chat-history"></div>
-    <div class="chat-input">
-      <input type="text" id="userMessage" placeholder="Type your message…" />
-      <button id="sendBtn">Send</button>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h2>ORA</h2>
+      </div>
+      <div id="chatHistory" class="chat-history">
+        <div class="chat-empty">
+          <div class="chat-empty-icon">💬</div>
+          <div class="chat-empty-text">Start a conversation with ORA</div>
+        </div>
+      </div>
+      <div class="chat-input-container">
+        <div class="chat-input">
+          <input type="text" id="userMessage" placeholder="Type your message…" />
+          <button id="sendBtn">Send</button>
+        </div>
+      </div>
     </div>
   </div>
   
