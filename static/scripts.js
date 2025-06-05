@@ -192,6 +192,8 @@ function getTimeOfDay() {
 // Enhanced function to display ORA's response in the chat
 function displayOraResponse(responseData) {
     console.log("Raw response received:", responseData);
+    console.log("Response type:", typeof responseData);
+    console.log("Response keys:", Object.keys(responseData || {}));
     
     // Show the chat section with animation
     const chatDiv = document.getElementById("chat");
@@ -206,24 +208,21 @@ function displayOraResponse(responseData) {
         return;
     }
     
-    // FIXED: Handle string responses from Make.com
-    let parsedData = responseData;
-    if (typeof responseData === 'string') {
-        try {
-            parsedData = JSON.parse(responseData);
-            console.log('✅ Parsed string response:', parsedData);
-        } catch (e) {
-            console.log("Could not parse response as JSON:", responseData);
-            parsedData = { message: responseData };
-        }
+    // FIXED: Check multiple possible locations for audio URL
+    let audioUrl = "";
+    
+    // Try different possible paths for the audio URL
+    if (responseData) {
+        audioUrl = responseData.audio_url || 
+                  responseData.audioUrl || 
+                  responseData.Audio_File || 
+                  responseData.audio_file ||
+                  (responseData.data && responseData.data.audio_url) ||
+                  "";
     }
     
-    // Extract audio URL from parsed response
-    let audioUrl = "";
-    if (parsedData && parsedData.audio_url) {
-        audioUrl = parsedData.audio_url;
-        console.log('🎵 Found audio URL:', audioUrl);
-    }
+    console.log('🎵 Searching for audio URL...');
+    console.log('🎵 Found audio URL:', audioUrl);
     
     // AUTO-PLAY THE AUDIO (Voice-only response)
     if (audioUrl) {
@@ -246,8 +245,9 @@ function displayOraResponse(responseData) {
             console.log("🔊 Audio playback completed");
         });
     } else {
-        // If no audio URL, show a fallback message
+        // If no audio URL, show a fallback message and log the full response
         console.log("❌ No audio URL found in response");
+        console.log("Full response structure:", JSON.stringify(responseData, null, 2));
         chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> <em>Response received (no audio)</em></div>`;
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
@@ -481,6 +481,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
 
 
 
