@@ -280,7 +280,275 @@
         </div>
     </div>
 
-    <script src="voice_only_scripts.js"></script>
+    <script>
+        // Voice-only ORA Wellness Agent with Behavioral Learning
+        let isListening = false;
+        let recognition = null;
+        let currentAudio = null;
+        let startTime = Date.now();
+        let timerInterval;
+
+        // Timer functionality
+        function updateTimer() {
+            const elapsed = Date.now() - startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const timerElement = document.getElementById('timer');
+            if (timerElement) {
+                timerElement.textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        // Initialize speech recognition
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = function() {
+                    console.log('🎤 Speech recognition started');
+                    isListening = true;
+                    updateMicrophoneButton(true);
+                    updateStatus('👂 Listening...');
+                };
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    console.log('🗣️ User said:', transcript);
+                    
+                    updateStatus('🤔 ORA is thinking...');
+                    sendToOraAPI(transcript);
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('❌ Speech recognition error:', event.error);
+                    updateStatus('❌ Could not hear you clearly. Try again.');
+                    resetMicrophone();
+                };
+                
+                recognition.onend = function() {
+                    console.log('🎤 Speech recognition ended');
+                    isListening = false;
+                    updateMicrophoneButton(false);
+                };
+                
+                console.log('✅ Speech recognition initialized');
+            } else {
+                console.error('❌ Speech recognition not supported');
+                updateStatus('❌ Voice not supported in this browser');
+            }
+        }
+
+        // Send user input to ORA API (Make.com webhook)
+        function sendToOraAPI(userInput) {
+            console.log('📤 Sending to ORA API:', userInput);
+            
+            const webhookURL = 'https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh';
+            
+            const payload = {
+                message: userInput,
+                timestamp: new Date().toISOString(),
+                user_id: 'user_' + Date.now()
+            };
+            
+            fetch(webhookURL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                console.log('📥 Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📥 Response received:', data);
+                handleOraResponse(data);
+            })
+            .catch(error => {
+                console.error('❌ Error calling ORA API:', error);
+                updateStatus('❌ Connection error. Please try again.');
+                resetMicrophone();
+            });
+        }
+
+        // Handle ORA's response
+        function handleOraResponse(responseData) {
+            console.log("📥 Raw response received:", responseData);
+            
+            // Find audio URL
+            let audioUrl = "";
+            if (responseData) {
+                audioUrl = responseData.audio_url || 
+                          responseData.audioUrl || 
+                          responseData.Audio_File || 
+                          responseData.audio_file ||
+                          "";
+            }
+            
+            console.log('🎵 Found audio URL:', audioUrl);
+            
+            if (audioUrl) {
+                console.log("🔊 Playing audio:", audioUrl);
+                
+                updateStatus('🔊 ORA is speaking...');
+                showSpeakingIndicator();
+                
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                
+                currentAudio = new Audio(audioUrl);
+                
+                // Try to play
+                currentAudio.play().then(() => {
+                    console.log("✅ Audio playing successfully");
+                }).catch(error => {
+                    console.error("❌ Audio autoplay blocked:", error);
+                    
+                    // Show tap to play overlay
+                    updateStatus('🔊 Tap anywhere to hear ORA');
+                    
+                    const playOverlay = document.createElement('div');
+                    playOverlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 1000;
+                        cursor: pointer;
+                    `;
+                    
+                    playOverlay.innerHTML = `
+                        <div style="
+                            background: #ef4444;
+                            color: white;
+                            padding: 2rem 3rem;
+                            border-radius: 20px;
+                            font-size: 1.5rem;
+                            text-align: center;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                        ">
+                            🔊 Tap to hear ORA's response
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(playOverlay);
+                    
+                    playOverlay.onclick = () => {
+                        currentAudio.play();
+                        document.body.removeChild(playOverlay);
+                        updateStatus('🔊 ORA is speaking...');
+                        showSpeakingIndicator();
+                    };
+                });
+                
+                // When audio ends
+                currentAudio.addEventListener('ended', () => {
+                    console.log("🔊 Audio completed");
+                    updateStatus('✨ Ready to listen again');
+                    hideSpeakingIndicator();
+                    resetMicrophone();
+                });
+                
+            } else {
+                console.log("❌ No audio URL found");
+                updateStatus('❌ No voice response received');
+                resetMicrophone();
+            }
+        }
+
+        // UI Helper Functions
+        function updateStatus(text) {
+            const statusElement = document.getElementById('statusText');
+            if (statusElement) {
+                statusElement.textContent = text;
+            }
+            console.log('📱 Status:', text);
+        }
+
+        function updateMicrophoneButton(listening) {
+            const micButton = document.getElementById('micButton');
+            if (micButton) {
+                if (listening) {
+                    micButton.classList.add('listening');
+                } else {
+                    micButton.classList.remove('listening');
+                }
+            }
+        }
+
+        function showSpeakingIndicator() {
+            const indicator = document.getElementById('speakingIndicator');
+            if (indicator) {
+                indicator.classList.add('active');
+            }
+        }
+
+        function hideSpeakingIndicator() {
+            const indicator = document.getElementById('speakingIndicator');
+            if (indicator) {
+                indicator.classList.remove('active');
+            }
+        }
+
+        function resetMicrophone() {
+            isListening = false;
+            updateMicrophoneButton(false);
+            if (recognition) {
+                recognition.abort();
+            }
+        }
+
+        function startListening() {
+            if (!recognition) {
+                updateStatus('❌ Voice not available');
+                return;
+            }
+            
+            if (isListening) {
+                recognition.stop();
+                resetMicrophone();
+                updateStatus('✨ Ready to listen');
+                return;
+            }
+            
+            console.log('🎤 Starting to listen');
+            recognition.start();
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 ORA Voice Interface Loading...');
+            
+            startTimer();
+            initializeSpeechRecognition();
+            
+            // Button listeners
+            document.getElementById('micButton').addEventListener('click', startListening);
+            document.getElementById('mainButton').addEventListener('click', startListening);
+            
+            updateStatus('✨ Ready to listen');
+            console.log('✅ ORA Ready!');
+        });
+    </script>
 </body>
 </html>
 
