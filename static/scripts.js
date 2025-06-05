@@ -53,67 +53,51 @@ async function sendEmotionToMake(emotionData) {
                     message: responseText || 'Emotion assessment completed' 
                 };
             }
-   // Enhanced function to display ORA's response in the chat
-function displayOraResponse(responseData) {
-    console.log("Raw response received:", responseData);
-    
-    // Show the chat section with animation
-    const chatDiv = document.getElementById("chat");
-    if (chatDiv) {
-        chatDiv.style.display = "block";
-    }
-    
-    // Get the chat history element
-    const chatHistory = document.getElementById("chatHistory");
-    if (!chatHistory) {
-        console.error("Chat history element not found!");
-        return;
-    }
-    
-    // FIXED: Handle string responses from Make.com
-    let parsedData = responseData;
-    if (typeof responseData === 'string') {
-        try {
-            parsedData = JSON.parse(responseData);
-        } catch (e) {
-            console.log("Could not parse response as JSON:", responseData);
-            parsedData = { message: responseData };
+            
+            // Display the ORA response in the chat
+            displayOraResponse(responseData);
+            
+            return true;
         }
+        
+    } catch (directError) {
+        console.log('⚠️ Direct connection failed, trying CORS proxy:', directError.message);
     }
     
-    // Extract audio URL from parsed response
-    let audioUrl = "";
-    if (parsedData && parsedData.audio_url) {
-        audioUrl = parsedData.audio_url;
-    }
-    
-    // AUTO-PLAY THE AUDIO (Voice-only response)
-    if (audioUrl) {
-        console.log("🔊 Playing audio:", audioUrl);
-        
-        // Add a visual indicator that ORA is speaking
-        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> 🔊 <em>Speaking...</em></div>`;
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-        
-        const audio = new Audio(audioUrl);
-        audio.play().catch(error => {
-            console.error("Audio playback failed:", error);
-            // Fallback: show audio controls if autoplay fails
-            chatHistory.innerHTML += `<div class="assistant">🎵 <audio controls><source src="${audioUrl}" type="audio/wav"></audio></div>`;
-            chatHistory.scrollTop = chatHistory.scrollHeight;
+    // Fallback to CORS proxy with flattened payload
+    try {
+        const corsProxyUrl = "https://api.allorigins.win/raw?url=";
+        const response = await fetch(corsProxyUrl + encodeURIComponent(makeWebhookUrl), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(emotionPayload)
         });
         
-        // Optional: Remove the "Speaking..." indicator when audio ends
-        audio.addEventListener('ended', () => {
-            console.log("🔊 Audio playback completed");
-        });
-    } else {
-        // If no audio URL, show a fallback message
-        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> <em>Response received (no audio)</em></div>`;
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+        const responseText = await response.text();
+        console.log('✅ Proxy response:', responseText);
+        
+        try {
+            // Try to parse the response as JSON
+            const responseData = JSON.parse(responseText);
+            console.log('✅ Parsed response data:', responseData);
+            
+            // Display the ORA response in the chat
+            displayOraResponse(responseData);
+            
+            return true;
+        } catch (parseError) {
+            console.log('⚠️ Could not parse response as JSON:', responseText);
+            // Even if parsing fails, try to display something
+            displayOraResponse({response: responseText});
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ Failed to send to proxy:', error);
+        return false;
     }
 }
-
 
 // Function to send chat messages (WELLNESS COACHING)
 async function sendChatMessage(messageText) {
@@ -222,30 +206,24 @@ function displayOraResponse(responseData) {
         return;
     }
     
-    // Extract the message from the response
-    let message = "";
+    // FIXED: Handle string responses from Make.com
+    let parsedData = responseData;
+    if (typeof responseData === 'string') {
+        try {
+            parsedData = JSON.parse(responseData);
+            console.log('✅ Parsed string response:', parsedData);
+        } catch (e) {
+            console.log("Could not parse response as JSON:", responseData);
+            parsedData = { message: responseData };
+        }
+    }
+    
+    // Extract audio URL from parsed response
     let audioUrl = "";
-    
-    if (responseData && responseData.message) {
-        message = responseData.message;
-    } else if (responseData && responseData.response) {
-        message = responseData.response;
-    } else {
-        message = "I'm here to support you. Please share more about how you're feeling.";
-        console.log("Unexpected response format:", responseData);
+    if (parsedData && parsedData.audio_url) {
+        audioUrl = parsedData.audio_url;
+        console.log('🎵 Found audio URL:', audioUrl);
     }
-    
-    // Extract audio URL from response
-    if (responseData && responseData.audio_url) {
-        audioUrl = responseData.audio_url;
-    }
-    
-    // COMMENTED OUT: Text display (now voice-only)
-    // Add the message to chat history
-    // if (message) {
-    //     chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> ${message}</div>`;
-    //     chatHistory.scrollTop = chatHistory.scrollHeight;
-    // }
     
     // AUTO-PLAY THE AUDIO (Voice-only response)
     if (audioUrl) {
@@ -269,6 +247,7 @@ function displayOraResponse(responseData) {
         });
     } else {
         // If no audio URL, show a fallback message
+        console.log("❌ No audio URL found in response");
         chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> <em>Response received (no audio)</em></div>`;
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
@@ -502,4 +481,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+
 
