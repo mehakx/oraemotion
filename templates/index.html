@@ -1,535 +1,287 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ORA - Empathizes with you</title>
-  <style>
-    /* ORA Color Scheme Variables */
-    :root {
-      --primary-purple: #9333ea;
-      --primary-cyan: #06b6d4;
-      --primary-pink: #db2777;
-      --primary-amber: #f59e0b;
-      --primary-green: #10b981;
-      --primary-blue: #3b82f6;
-      --black: #000000;
-      --white: #ffffff;
-      --gray-100: #f3f4f6;
-      --gray-200: #e5e7eb;
-      --gray-300: #d1d5db;
-      --gray-400: #9ca3af;
-      --gray-500: #6b7280;
-      --gray-600: #4b5563;
-      --gray-700: #374151;
-      --gray-800: #1f2937;
-      --gray-900: #111827;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORA - Voice Wellness Companion</title>
+    <style>
+        /* ORA Color Scheme Variables */
+        :root {
+            --primary-purple: #9333ea;
+            --primary-cyan: #06b6d4;
+            --primary-pink: #db2777;
+            --primary-amber: #f59e0b;
+            --primary-green: #10b981;
+            --primary-blue: #3b82f6;
+            --black: #000000;
+            --white: #ffffff;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body, html {
-      height: 100vh;
-      width: 100vw;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--black);
-      color: var(--white);
-      overflow: hidden;
-      position: relative;
-    }
+        body, html {
+            height: 100vh;
+            width: 100vw;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-pink) 50%, var(--primary-cyan) 100%);
+            color: var(--white);
+            overflow: hidden;
+            position: relative;
+        }
 
-    /* Eye Visualization Background */
-    #visualization-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1;
-      background: var(--black);
-    }
+        /* Main Container */
+        .voice-interface {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            height: 100vh;
+            padding: 2rem;
+            position: relative;
+        }
 
-    #p5-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
+        /* Timer Section */
+        .timer-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 2rem;
+        }
 
-    /* Main Content Overlay */
-    .main-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-    }
+        .timer {
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--white);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            margin-bottom: 0.5rem;
+        }
 
-    .main-overlay > * {
-      pointer-events: auto;
-    }
+        .session-label {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.8);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
 
-    /* ORA Logo/Title */
-    .ora-title {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
+        /* Center Logo and Status */
+        .center-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            position: relative;
+        }
 
-    .ora-title h1 {
-      font-size: 4rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan), var(--primary-pink), var(--primary-amber));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      background-size: 300% 100%;
-      animation: gradient-shift 8s ease infinite;
-      margin-bottom: 0.5rem;
-    }
+        .ora-logo {
+            font-size: 8rem;
+            font-weight: 700;
+            color: rgba(255,255,255,0.15);
+            text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
+            letter-spacing: 0.5rem;
+        }
 
-    .ora-title p {
-      font-size: 1.5rem;
-      color: var(--gray-300);
-      font-weight: 300;
-    }
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--white);
+            text-align: center;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
 
-    @keyframes gradient-shift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
+        /* Speaking Animation */
+        .speaking-indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+            animation: pulse 2s infinite;
+        }
 
-    /* Controls Section */
-    .controls-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
+        .speaking-indicator.active {
+            display: flex;
+        }
 
-    .controls {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
 
-    button {
-      padding: 1rem 2rem;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
+        /* Bottom Controls */
+        .controls-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
 
-    #recordBtn {
-      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
-      color: var(--white);
-      box-shadow: 0 4px 20px rgba(147, 51, 234, 0.3);
-    }
+        .control-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
 
-    #recordBtn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(147, 51, 234, 0.4);
-    }
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+        }
 
-    #stopBtn {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--gray-300);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
+        .control-button:active {
+            transform: translateY(0);
+        }
 
-    #stopBtn:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.2);
-      color: var(--white);
-    }
+        /* Microphone Button */
+        .mic-button {
+            background: var(--gray-600);
+            color: var(--white);
+        }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none !important;
-    }
+        .mic-button.listening {
+            background: #ef4444;
+            animation: pulse-red 1.5s infinite;
+        }
 
-    /* Status Text */
-    #status {
-      font-size: 1.1rem;
-      color: var(--gray-400);
-      text-align: center;
-      min-height: 1.5rem;
-      font-weight: 400;
-    }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
 
-    /* Emotion Panel */
-    #emotion-panel {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      padding: 1.5rem 2rem;
-      text-align: center;
-      z-index: 20;
-      min-width: 200px;
-    }
+        /* Main Action Button */
+        .main-button {
+            background: #ef4444;
+            color: var(--white);
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
 
-    #emotion-label {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.75rem;
-      text-transform: capitalize;
-      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
+        /* Add Button */
+        .add-button {
+            background: var(--gray-600);
+            color: var(--white);
+        }
 
-    #intensity-bar {
-      height: 8px;
-      width: 100%;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 0.5rem;
-    }
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .timer {
+                font-size: 2.5rem;
+            }
+            
+            .ora-logo {
+                font-size: 6rem;
+            }
+            
+            .status-text {
+                font-size: 1.2rem;
+            }
+            
+            .control-button {
+                width: 70px;
+                height: 70px;
+                font-size: 1.8rem;
+            }
+            
+            .main-button {
+                width: 85px;
+                height: 85px;
+                font-size: 2.2rem;
+            }
+            
+            .controls-section {
+                gap: 2rem;
+            }
+        }
 
-    #intensity-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--primary-pink), var(--primary-amber));
-      transition: width 0.5s ease, background 0.5s ease;
-      border-radius: 4px;
-    }
+        /* Hidden elements */
+        .hidden {
+            display: none !important;
+        }
 
-    /* Chat Interface - Ultra Clean Design */
-    #chat {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f172a 100%);
-      z-index: 30;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-    }
+        /* Subtle background animation */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%);
+            animation: shimmer 8s infinite;
+            pointer-events: none;
+        }
 
-    .chat-container {
-      width: 100%;
-      max-width: 800px;
-      height: 80vh;
-      display: flex;
-      flex-direction: column;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      overflow: hidden;
-    }
-
-    .chat-header {
-      padding: 1.5rem 2rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      text-align: center;
-    }
-
-    .chat-header h2 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin: 0;
-    }
-
-    .chat-history {
-      flex: 1;
-      overflow-y: auto;
-      padding: 2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .chat-history::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .chat-history::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .chat-history::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 2px;
-    }
-
-    .message {
-      max-width: 70%;
-      padding: 1.25rem 1.75rem;
-      border-radius: 20px;
-      font-size: 1rem;
-      line-height: 1.6;
-      animation: messageSlide 0.3s ease-out;
-    }
-
-    @keyframes messageSlide {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .chat-history .user {
-      background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
-      color: var(--white);
-      align-self: flex-end;
-      border-bottom-right-radius: 6px;
-      box-shadow: 0 4px 20px rgba(147, 51, 234, 0.2);
-    }
-
-    .chat-history .assistant {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--gray-100);
-      align-self: flex-start;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-bottom-left-radius: 6px;
-    }
-
-    .chat-input-container {
-      padding: 1.5rem 2rem 2rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .chat-input {
-      position: relative;
-      display: flex;
-      align-items: center;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 25px;
-      padding: 0.5rem;
-      transition: all 0.3s ease;
-    }
-
-    .chat-input:focus-within {
-      border-color: var(--primary-purple);
-      box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .chat-input input {
-      flex: 1;
-      background: none;
-      border: none;
-      padding: 1rem 1.5rem;
-      color: var(--white);
-      font-size: 1rem;
-      outline: none;
-    }
-
-    .chat-input input::placeholder {
-      color: var(--gray-400);
-      font-weight: 400;
-    }
-
-    #sendBtn {
-      background: linear-gradient(135deg, var(--primary-cyan), var(--primary-blue));
-      color: var(--white);
-      border: none;
-      border-radius: 20px;
-      padding: 0.875rem 1.5rem;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 10px rgba(6, 182, 212, 0.2);
-    }
-
-    #sendBtn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
-      background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
-    }
-
-    #sendBtn:active {
-      transform: translateY(0);
-    }
-
-    /* Empty state */
-    .chat-empty {
-      text-align: center;
-      padding: 3rem 2rem;
-      color: var(--gray-400);
-    }
-
-    .chat-empty-icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-
-    .chat-empty-text {
-      font-size: 1.1rem;
-      font-weight: 500;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .ora-title h1 {
-        font-size: 3rem;
-      }
-      
-      .ora-title p {
-        font-size: 1.2rem;
-      }
-
-      #chat {
-        padding: 1.5rem;
-      }
-
-      .chat-history .user,
-      .chat-history .assistant {
-        margin-left: 0;
-        margin-right: 0;
-      }
-
-      .controls {
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-
-      button {
-        padding: 0.875rem 1.75rem;
-        font-size: 0.9rem;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .ora-title h1 {
-        font-size: 2.5rem;
-      }
-
-      #emotion-panel {
-        bottom: 1rem;
-        left: 1rem;
-        right: 1rem;
-        transform: none;
-        min-width: auto;
-      }
-
-      #chat {
-        padding: 1rem;
-      }
-    }
-
-    /* Animation for emotion change flash */
-    @keyframes emotion-flash {
-      0% { opacity: 0; }
-      50% { opacity: 0.3; }
-      100% { opacity: 0; }
-    }
-
-    .emotion-flash {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 100;
-      animation: emotion-flash 0.5s ease-out;
-    }
-  </style>
-  <!-- Load p5.js before our scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
 </head>
 <body>
-  <!-- Eye Visualization Background -->
-  <div id="visualization-container">
-    <div id="p5-canvas"></div>
-  </div>
-
-  <!-- Main Content Overlay -->
-  <div class="main-overlay">
-    <!-- ORA Title -->
-    <div class="ora-title">
-      <h1>ORA</h1>
-      <p>Empathizes with you</p>
-    </div>
-
-    <!-- Controls Section -->
-    <div class="controls-section">
-      <div class="controls">
-        <button id="recordBtn">🎤 Record</button>
-        <button id="stopBtn" disabled>⏹ Stop</button>
-      </div>
-      <p id="status">Ready to listen to your emotions</p>
-    </div>
-  </div>
-
-  <!-- Emotion Panel -->
-  <div id="emotion-panel">
-    <div id="emotion-label">waiting...</div>
-    <div id="intensity-bar">
-      <div id="intensity-fill"></div>
-    </div>
-  </div>
-
-  <!-- Chat Interface -->
-  <div id="chat">
-    <div class="chat-container">
-      <div class="chat-header">
-        <h2>ORA</h2>
-      </div>
-      <div id="chatHistory" class="chat-history">
-        <div class="chat-empty">
-          <div class="chat-empty-icon">💬</div>
-          <div class="chat-empty-text">Start a conversation with ORA</div>
+    <div class="voice-interface">
+        <!-- Timer Section -->
+        <div class="timer-section">
+            <div class="timer" id="timer">00:00</div>
+            <div class="session-label">SESSION TIME</div>
         </div>
-      </div>
-      <div class="chat-input-container">
-        <div class="chat-input">
-          <input type="text" id="userMessage" placeholder="Type your message…" />
-          <button id="sendBtn">Send</button>
+
+        <!-- Center Logo and Status -->
+        <div class="center-section">
+            <div class="ora-logo">ORA</div>
+            <div class="status-text" id="statusText">✨ Ready to listen</div>
+            <div class="speaking-indicator" id="speakingIndicator">
+                <span style="font-size: 3rem;">🔊</span>
+            </div>
         </div>
-      </div>
+
+        <!-- Bottom Controls -->
+        <div class="controls-section">
+            <button class="control-button mic-button" id="micButton">
+                🎤
+            </button>
+            <button class="control-button main-button" id="mainButton">
+                📞
+            </button>
+            <button class="control-button add-button" id="addButton">
+                ➕
+            </button>
+        </div>
     </div>
-  </div>
-  
-  <!-- Load our scripts in the correct order -->
-  <!-- First load scripts.js which defines the global variables -->
-  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-  <!-- Then load p5-sketch.js which uses those variables -->
-  <script src="{{ url_for('static', filename='p5-sketch.js') }}"></script>
+
+    <script src="voice_only_scripts.js"></script>
 </body>
 </html>
+
+
