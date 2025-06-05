@@ -208,6 +208,7 @@ function displayOraResponse(responseData) {
     
     // Extract the message from the response
     let message = "";
+    let audioUrl = "";
     
     if (responseData && responseData.message) {
         message = responseData.message;
@@ -218,9 +219,41 @@ function displayOraResponse(responseData) {
         console.log("Unexpected response format:", responseData);
     }
     
+    // Extract audio URL from response
+    if (responseData && responseData.audio_url) {
+        audioUrl = responseData.audio_url;
+    }
+    
+    // COMMENTED OUT: Text display (now voice-only)
     // Add the message to chat history
-    if (message) {
-        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> ${message}</div>`;
+    // if (message) {
+    //     chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> ${message}</div>`;
+    //     chatHistory.scrollTop = chatHistory.scrollHeight;
+    // }
+    
+    // AUTO-PLAY THE AUDIO (Voice-only response)
+    if (audioUrl) {
+        console.log("🔊 Playing audio:", audioUrl);
+        
+        // Add a visual indicator that ORA is speaking
+        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> 🔊 <em>Speaking...</em></div>`;
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+        const audio = new Audio(audioUrl);
+        audio.play().catch(error => {
+            console.error("Audio playback failed:", error);
+            // Fallback: show audio controls if autoplay fails
+            chatHistory.innerHTML += `<div class="assistant">🎵 <audio controls><source src="${audioUrl}" type="audio/wav"></audio></div>`;
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        });
+        
+        // Optional: Remove the "Speaking..." indicator when audio ends
+        audio.addEventListener('ended', () => {
+            console.log("🔊 Audio playback completed");
+        });
+    } else {
+        // If no audio URL, show a fallback message
+        chatHistory.innerHTML += `<div class="assistant">🧘 <strong>ORA:</strong> <em>Response received (no audio)</em></div>`;
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 }
@@ -453,6 +486,4 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
-
-
 
