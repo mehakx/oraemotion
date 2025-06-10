@@ -86,6 +86,7 @@ def root():
         'message': 'ORA Memory API is running! 🧠✨',
         'endpoints': {
             'health': '/health',
+            'admin_panel': '/admin',
             'get_user_context': '/api/memory/get-context',
             'save_conversation': '/api/memory/save-conversation',
             'update_profile': '/api/memory/update-profile',
@@ -93,6 +94,12 @@ def root():
         },
         'documentation': 'Send POST requests to the memory endpoints'
     })
+
+# Admin panel route
+@app.route('/admin')
+def admin_panel():
+    """Serve the admin panel HTML"""
+    return app.send_static_file('admin.html')
 
 if __name__ == '__main__':
     # Initialize database on startup
@@ -102,6 +109,8 @@ if __name__ == '__main__':
     print("📊 Database: SQLite")
     print("🧠 Memory: Enabled")
     print("🔗 Ready for Make.com integration!")
+    print("🎯 Admin Panel: Available at /admin")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
 
