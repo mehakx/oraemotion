@@ -138,7 +138,7 @@ progress = await therapeutic_service.analyze_user_progress(user_id, 30)
 
 ## 🎯 Admin Panel
 
-Access the enhanced admin panel at `/admin` or `/enhanced_admin.html`:
+Access the enhanced admin panel at `/enhanced_admin.html`:
 
 ### Features
 - **User Management**: View all therapeutic users
@@ -186,7 +186,6 @@ pip install -r requirements.txt
 
 # Set environment variables
 export OPENAI_API_KEY=your_key
-export COGNEE_API_KEY=your_cognee_key
 
 # Run with gunicorn
 gunicorn enhanced_app:app --bind 0.0.0.0:$PORT
