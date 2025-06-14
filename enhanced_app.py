@@ -1,434 +1,261 @@
-import os
-import json
-import uuid
-import asyncio
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
-from openai import OpenAI
-from dotenv import load_dotenv
-
-# Import enhanced memory and therapeutic services
-from memory_api.src.cognee_service import cognee_service
-from memory_api.src.therapeutic_service import therapeutic_service
-
-load_dotenv()
-
-# Initialize the OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-app = Flask(__name__, template_folder="templates", static_folder="static")
-CORS(app)
-
-# In-memory conversation store (keeping for backward compatibility)
-conversations = {}
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/classify", methods=["POST"])
-def classify():
-    """Enhanced emotion classification with therapeutic context"""
-    data = request.get_json()
-    text = data.get("text", "").strip()
-    user_id = data.get("user_id", f"user_{uuid.uuid4().hex[:8]}")
-    
-    if not text:
-        return jsonify({"error": "No text"}), 400
-    
-    try:
-        # Original emotion classification
-        prompt = f"Classify the primary emotion in this text in one word (e.g. Happy, Sad, Angry, Neutral, Anxious, Fear, Excited):\n\n\"{text}\""
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-            max_tokens=5
-        )
-        
-        emotion = response.choices[0].message.content.strip().split()[0]
-        
-        # Enhanced response with therapeutic context
-        return jsonify({
-            "emotion": emotion,
-            "user_id": user_id,
-            "timestamp": datetime.now().isoformat(),
-            "therapeutic_context": {
-                "emotion_intensity": "moderate",  # Could be enhanced with ML model
-                "requires_intervention": emotion.lower() in ["sad", "angry", "fear", "anxious"],
-                "suggested_response_type": "supportive" if emotion.lower() in ["sad", "fear"] else "neutral"
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/respond", methods=["POST"])
-def respond():
-    """Enhanced response generation with therapeutic AI and memory integration"""
-    data = request.get_json()
-    emotion = data.get("emotion", "Neutral")
-    text = data.get("text", "")
-    user_id = data.get("user_id", f"user_{uuid.uuid4().hex[:8]}")
-    
-    try:
-        # Get user context from Cognee
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        user_context = loop.run_until_complete(
-            cognee_service.get_user_context(user_id)
-        )
-        
-        # Generate therapeutic response
-        therapeutic_response = loop.run_until_complete(
-            therapeutic_service.generate_therapeutic_response(text, user_context, emotion)
-        )
-        
-        ai_message = therapeutic_response.get("response", "I'm here to support you. How are you feeling?")
-        
-        # Store conversation in Cognee
-        conversation_data = {
-            "user_message": text,
-            "ai_response": ai_message,
-            "emotion": emotion,
-            "emotion_intensity": 0.7,  # Could be enhanced
-            "therapeutic_context": therapeutic_response.get("therapeutic_context", {}),
-            "crisis_indicators": therapeutic_response.get("crisis_assessment", {}).get("indicators", []),
-            "session_id": f"session_{uuid.uuid4().hex[:8]}",
-            "timestamp": datetime.now().isoformat()
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ora - Enhanced Admin Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #6dd5ed, #2193b0 );
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
         }
-        
-        loop.run_until_complete(
-            cognee_service.store_conversation(user_id, conversation_data)
-        )
-        
-        # Create new chat session (backward compatibility)
-        chat_id = uuid.uuid4().hex
-        conversations[chat_id] = [
-            {"role": "system", "content": "You are ORA, a compassionate therapeutic AI assistant."},
-            {"role": "assistant", "content": ai_message}
-        ]
-        
-        response_data = {
-            "message": ai_message,
-            "chat_id": chat_id,
-            "user_id": user_id,
-            "therapeutic_context": therapeutic_response.get("therapeutic_context", {}),
-            "recommended_exercises": therapeutic_response.get("therapeutic_context", {}).get("recommended_exercises", []),
-            "follow_up_suggestions": therapeutic_response.get("follow_up_suggestions", [])
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
-        
-        # Add crisis intervention if needed
-        crisis_assessment = therapeutic_response.get("crisis_assessment", {})
-        if crisis_assessment.get("risk_level") == "high":
-            response_data["crisis_intervention"] = {
-                "risk_level": "high",
-                "immediate_actions": crisis_assessment.get("recommended_actions", []),
-                "crisis_resources": {
-                    "national_suicide_prevention_lifeline": "988",
-                    "crisis_text_line": "Text HOME to 741741"
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            border: none;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background: rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            font-weight: bold;
+            color: #fff;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+        textarea {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            resize: vertical;
+        }
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .instructions {
+            font-style: italic;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .emotion-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .emotion-display span {
+            margin-right: 15px;
+        }
+        .emotion-display .intensity {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center mb-4">Ora - Enhanced Admin Dashboard</h2>
+
+        <div class="card">
+            <div class="card-header">Speech Recognition & Emotion Analysis</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="note-textarea">Your Conversation/Note:</label>
+                    <textarea id="note-textarea" class="form-control" rows="6" placeholder="Start speaking or type your note here..."></textarea>
+                </div>
+                <div class="text-center">
+                    <button id="start-record-btn" class="btn btn-primary mr-2"><i class="fas fa-microphone"></i> Start Recording</button>
+                    <button id="pause-record-btn" class="btn btn-danger"><i class="fas fa-pause"></i> Stop Recording</button>
+                    <button id="read-note-btn" class="btn btn-success ml-2"><i class="fas fa-volume-up"></i> Read Note</button>
+                </div>
+                <p id="recording-instructions" class="instructions text-center mt-3">Click "Start Recording" to begin.</p>
+                <div id="emotion-output" class="emotion-display text-center mt-3">
+                    <!-- Emotion analysis will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">AI Insights & Contextual Memory</div>
+            <div class="card-body">
+                <p>This section will display AI-generated insights, contextual memory recall, and family wellness patterns based on the recorded conversations.</p>
+                <div id="ai-insights">
+                    <!-- AI insights will be dynamically loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document ).ready(function() {
+            var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
+            var recognition = new SpeechRecognition();
+
+            // --- IMPORTANT: Suggested Settings ---
+            recognition.continuous = true;   // Keep listening until explicitly stopped
+            recognition.interimResults = true; // Get results as they come (optional, but good for UX)
+            recognition.lang = 'en-US';      // Set the language (e.g., 'en-US', 'en-GB, 'es-ES')
+
+            var noteTextarea = $('#note-textarea');
+            var instructions = $('#recording-instructions');
+            var emotionOutput = $('#emotion-output');
+            var noteContent = '';
+
+            // Function to simulate emotion analysis (replace with actual API call later)
+            function analyzeEmotion(text) {
+                if (!text.trim()) {
+                    emotionOutput.html('');
+                    return;
                 }
+                // Simple dummy analysis for demonstration
+                let emotion = 'Neutral';
+                let intensity = 0;
+                if (text.toLowerCase().includes('happy') || text.toLowerCase().includes('joy')) {
+                    emotion = 'Happy';
+                    intensity = Math.floor(Math.random() * 3) + 7; // 7-9
+                } else if (text.toLowerCase().includes('sad') || text.toLowerCase().includes('depressed')) {
+                    emotion = 'Sad';
+                    intensity = Math.floor(Math.random() * 3) + 7; // 7-9
+                } else if (text.toLowerCase().includes('angry') || text.toLowerCase().includes('frustrated')) {
+                    emotion = 'Angry';
+                    intensity = Math.floor(Math.random() * 3) + 7; // 7-9
+                } else if (text.toLowerCase().includes('stress') || text.toLowerCase().includes('anxious')) {
+                    emotion = 'Anxious';
+                    intensity = Math.floor(Math.random() * 3) + 7; // 7-9
+                } else {
+                    intensity = Math.floor(Math.random() * 5) + 1; // 1-5
+                }
+                emotionOutput.html(`<span>Emotion: ${emotion}</span> <span class="intensity">Intensity: ${intensity}/10</span>`);
             }
-        
-        loop.close()
-        return jsonify(response_data)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    """Enhanced chat with therapeutic context"""
-    data = request.get_json()
-    chat_id = data.get("chat_id")
-    user_msg = data.get("message", "").strip()
-    user_id = data.get("user_id", "anonymous")
-    
-    if not chat_id or chat_id not in conversations:
-        return jsonify({"error": "Invalid chat_id"}), 400
-    
-    try:
-        # Get user context for therapeutic response
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        user_context = loop.run_until_complete(
-            cognee_service.get_user_context(user_id)
-        )
-        
-        # Classify emotion in current message
-        emotion_response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"Classify the primary emotion in this text in one word: \"{user_msg}\""}],
-            temperature=0.0,
-            max_tokens=5
-        )
-        
-        current_emotion = emotion_response.choices[0].message.content.strip().split()[0]
-        
-        # Generate therapeutic response
-        therapeutic_response = loop.run_until_complete(
-            therapeutic_service.generate_therapeutic_response(user_msg, user_context, current_emotion)
-        )
-        
-        assistant_msg = therapeutic_response.get("response")
-        
-        # Update conversation history
-        conversations[chat_id].append({"role": "user", "content": user_msg})
-        conversations[chat_id].append({"role": "assistant", "content": assistant_msg})
-        
-        # Store in Cognee
-        conversation_data = {
-            "user_message": user_msg,
-            "ai_response": assistant_msg,
-            "emotion": current_emotion,
-            "therapeutic_context": therapeutic_response.get("therapeutic_context", {}),
-            "session_id": chat_id,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        loop.run_until_complete(
-            cognee_service.store_conversation(user_id, conversation_data)
-        )
-        
-        loop.close()
-        
-        return jsonify({
-            "reply": assistant_msg,
-            "emotion_detected": current_emotion,
-            "therapeutic_context": therapeutic_response.get("therapeutic_context", {}),
-            "recommended_exercises": therapeutic_response.get("therapeutic_context", {}).get("recommended_exercises", [])
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            /*-----------------------------
+                  Speech Recognition
+            -------------------------------*/
 
-# NEW THERAPEUTIC AI ENDPOINTS
+            recognition.onstart = function() {
+                instructions.text('Voice recognition activated. Speak into the microphone.');
+                emotionOutput.html(''); // Clear previous emotion
+            };
 
-@app.route("/insights/<user_id>", methods=["GET"])
-def get_user_insights(user_id):
-    """Get comprehensive user insights and patterns"""
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        insights = loop.run_until_complete(
-            therapeutic_service.get_user_insights(user_id)
-        )
-        
-        loop.close()
-        return jsonify(insights)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            recognition.onspeechend = function() {
+                // This event fires when speech stops. If continuous is true, recognition might still be active.
+                // You might want to adjust this message or remove it if continuous is true.
+                // instructions.text('You were quiet for a while. Recognition may have paused.');
+                console.log('Speech has ended.');
+            };
 
-@app.route("/progress/<user_id>", methods=["GET"])
-def get_user_progress(user_id):
-    """Get user's therapeutic progress tracking"""
-    try:
-        timeframe_days = request.args.get("days", 30, type=int)
-        
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        progress = loop.run_until_complete(
-            therapeutic_service.analyze_user_progress(user_id, timeframe_days)
-        )
-        
-        loop.close()
-        return jsonify(progress)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event); // Log the full event for debugging
+                if (event.error == 'no-speech') {
+                    instructions.text('No speech was detected. Please try again. Ensure your microphone is working and access is allowed.');
+                } else if (event.error == 'audio-capture') {
+                    instructions.text('No microphone was found. Ensure that a microphone is installed and that microphone access is enabled in your browser and OS settings.');
+                } else if (event.error == 'not-allowed' || event.error == 'service-not-allowed') {
+                    instructions.text('Microphone access was denied. Please allow microphone access in your browser settings and reload the page.');
+                } else {
+                    instructions.text('An error occurred during recognition: ' + event.error);
+                }
+            };
 
-@app.route("/therapeutic_exercise", methods=["POST"])
-def get_therapeutic_exercise():
-    """Get personalized therapeutic exercises"""
-    data = request.get_json()
-    user_id = data.get("user_id")
-    emotion = data.get("emotion", "neutral")
-    exercise_type = data.get("type", "any")  # breathing, mindfulness, cognitive, etc.
-    
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
-    
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        exercises = loop.run_until_complete(
-            cognee_service.get_therapeutic_exercises(user_id, emotion)
-        )
-        
-        # Filter by type if specified
-        if exercise_type != "any":
-            exercises = [ex for ex in exercises if ex.get("type") == exercise_type]
-        
-        loop.close()
-        
-        return jsonify({
-            "exercises": exercises,
-            "user_id": user_id,
-            "emotion": emotion,
-            "generated_at": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            recognition.onresult = function(event) {
+                var current = event.resultIndex;
+                var transcript = '';
+                // Loop through all results to get the full transcript, including interim ones
+                for (var i = current; i < event.results.length; ++i) {
+                    // Only append final results to the noteContent
+                    if (event.results[i].isFinal) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    // You could also display interim results in a separate temporary area for real-time feedback
+                }
 
-@app.route("/proactive_checkin/<user_id>", methods=["GET"])
-def get_proactive_checkin(user_id):
-    """Get personalized proactive check-in message"""
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        checkin = loop.run_until_complete(
-            cognee_service.generate_proactive_checkin(user_id)
-        )
-        
-        loop.close()
-        return jsonify(checkin)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+                if (transcript) {
+                    noteContent += transcript + ' '; // Add a space after each final transcript
+                    noteTextarea.val(noteContent);
+                    analyzeEmotion(noteContent); // Analyze emotion of the current note content
+                }
+            };
 
-@app.route("/crisis_assessment", methods=["POST"])
-def assess_crisis_risk():
-    """Assess crisis risk in user message"""
-    data = request.get_json()
-    message = data.get("message", "")
-    user_id = data.get("user_id")
-    
-    if not message:
-        return jsonify({"error": "message is required"}), 400
-    
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Get user context
-        user_context = loop.run_until_complete(
-            cognee_service.get_user_context(user_id or "anonymous")
-        )
-        
-        # Assess crisis risk
-        crisis_assessment = loop.run_until_complete(
-            cognee_service.detect_crisis_indicators(message, user_context)
-        )
-        
-        loop.close()
-        
-        return jsonify({
-            "crisis_assessment": crisis_assessment,
-            "timestamp": datetime.now().isoformat(),
-            "user_id": user_id
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            /*-----------------------------
+                  App buttons and input
+            -------------------------------*/
 
-@app.route("/schedule_checkin", methods=["POST"])
-def schedule_checkin():
-    """Schedule a proactive check-in for user"""
-    data = request.get_json()
-    user_id = data.get("user_id")
-    checkin_type = data.get("type", "wellness")
-    
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
-    
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        result = loop.run_until_complete(
-            therapeutic_service.schedule_proactive_checkin(user_id, checkin_type)
-        )
-        
-        loop.close()
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            $('#start-record-btn').on('click', function(e) {
+                if (noteTextarea.val()) {
+                    noteContent = noteTextarea.val();
+                    if (noteContent.slice(-1) !== ' ') { // Add space if last char isn't one
+                         noteContent += ' ';
+                    }
+                } else {
+                    noteContent = '';
+                }
+                recognition.start();
+                instructions.text('Voice recognition started. Speak now.');
+            });
 
-# ENHANCED MEMORY API ENDPOINTS
+            $('#pause-record-btn').on('click', function(e) {
+                recognition.stop();
+                instructions.text('Voice recognition paused.');
+            });
 
-@app.route("/memory/context/<user_id>", methods=["GET"])
-def get_memory_context(user_id):
-    """Get user's memory context from Cognee"""
-    try:
-        limit = request.args.get("limit", 10, type=int)
-        
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        context = loop.run_until_complete(
-            cognee_service.get_user_context(user_id, limit)
-        )
-        
-        loop.close()
-        return jsonify(context)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            $('#read-note-btn').on('click', function(e) {
+                var note = noteTextarea.val();
+                if (note) {
+                    var speech = new SpeechSynthesisUtterance();
+                    speech.text = note;
+                    speech.volume = 1;
+                    speech.rate = 1;
+                    speech.pitch = 1;
+                    window.speechSynthesis.speak(speech);
+                }
+            });
 
-@app.route("/memory/store", methods=["POST"])
-def store_memory():
-    """Store conversation in Cognee memory system"""
-    data = request.get_json()
-    user_id = data.get("user_id")
-    conversation_data = data.get("conversation_data", {})
-    
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
-    
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        success = loop.run_until_complete(
-            cognee_service.store_conversation(user_id, conversation_data)
-        )
-        
-        loop.close()
-        
-        return jsonify({
-            "success": success,
-            "user_id": user_id,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Health check endpoint
-@app.route("/health", methods=["GET"])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "service": "Enhanced ORA Therapeutic AI",
-        "version": "2.0.0",
-        "features": [
-            "emotion_classification",
-            "therapeutic_responses",
-            "crisis_detection",
-            "progress_tracking",
-            "semantic_memory",
-            "proactive_checkins"
-        ],
-        "timestamp": datetime.now().isoformat()
-    })
-
-if __name__ == "__main__":
-    print("🚀 Starting Enhanced ORA Therapeutic AI...")
-    print("🧠 Features: Emotion AI + Therapeutic Support + Semantic Memory")
-    print("🔗 Cognee Integration: Enabled")
-    print("🏥 Crisis Detection: Active")
-    print("📊 Progress Tracking: Available")
-    
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+            noteTextarea.on('input', function() {
+                noteContent = $(this).val();
+                analyzeEmotion(noteContent); // Analyze emotion as user types
+            });
+        });
+    </script>
+</body>
+</html>
