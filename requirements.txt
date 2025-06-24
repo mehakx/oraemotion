@@ -1,5 +1,5 @@
-# ORA Emotion System - Clean Requirements (No Cognee)
-# Optimized for Render/Heroku deployment
+# ORA Emotion System - FIXED Requirements (Resolves OpenAI Conflict)
+# Compatible with mem0ai and deployment platforms
 
 # Core Flask and API dependencies
 Flask==3.0.0
@@ -8,13 +8,13 @@ requests==2.31.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 
-# AI and OpenAI
-openai==1.3.0
+# FIXED: OpenAI version compatible with mem0ai
+openai>=1.33.0
 
-# Mem0ai integration (simplified)
+# Mem0ai integration
 mem0ai==0.1.110
 
-# Basic ML and data processing
+# Basic ML and data processing (lightweight versions)
 numpy==1.24.3
 scikit-learn==1.3.0
 
@@ -24,30 +24,15 @@ sqlalchemy==2.0.23
 # Text processing (essential only)
 nltk==3.8.1
 
-# Audio processing (if needed)
+# Audio processing (if needed - lightweight)
 pydub==0.25.1
 
 # Utilities
 schedule==1.2.0
 
-# REMOVED PROBLEMATIC DEPENDENCIES:
-# cognee==0.1.15  # REMOVED - causes deployment issues
-# psycopg2-binary==2.9.9  # REMOVED - not needed for basic deployment
-# redis==5.0.1  # REMOVED - not essential for basic functionality
-# celery==5.3.4  # REMOVED - not essential for basic functionality
-# librosa==0.10.1  # REMOVED - heavy dependency
-# sounddevice==0.4.6  # REMOVED - not needed for web deployment
-# transformers==4.35.0  # REMOVED - very heavy
-# torch==2.1.0  # REMOVED - very heavy
-# spacy==3.7.2  # REMOVED - heavy dependency
-# hume==0.4.0  # REMOVED - not essential
-# pickle-mixin==1.0.2  # REMOVED - not essential
-# textstat==0.7.3  # REMOVED - not essential
-# asyncio==3.4.3  # REMOVED - built into Python 3.7+
-# dataclasses==0.6  # REMOVED - built into Python 3.7+
-
 # Optional: Add back if specifically needed
 # psycopg2-binary==2.9.9  # Uncomment if using PostgreSQL
 # redis==5.0.1  # Uncomment if using Redis
-# celery==5.3.4  # Uncomment if using background tasks
+
+
 
