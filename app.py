@@ -1,11 +1,13 @@
 """
-ORA Emotion App - DEPLOYMENT READY
-Optimized for Render deployment without dependency conflicts
-Includes Manus.ai agentic capabilities integration
+ORA Empathic Agent - Manus.ai Style Implementation
+Automatically executes real-world actions based on emotional context
+Working Make.com integration for proactive agent capabilities
 """
 import os
 import json
 import uuid
+import requests
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -15,7 +17,7 @@ load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
-# Initialize OpenAI client with graceful fallback
+# Initialize OpenAI client
 OPENAI_AVAILABLE = False
 client = None
 try:
@@ -30,228 +32,241 @@ try:
 except Exception as e:
     print(f"⚠️ OpenAI not available: {e}")
 
-# In-memory conversation store (for deployment without external DB)
-conversations = {}
-user_memories = {}  # Simple in-memory memory store
-
-# Basic therapeutic keywords for routing
-THERAPEUTIC_KEYWORDS = [
-    'anxious', 'anxiety', 'depressed', 'depression', 'sad', 'sadness',
-    'angry', 'anger', 'stressed', 'stress', 'worried', 'panic', 'fear',
-    'suicidal', 'suicide', 'self-harm', 'therapy', 'therapist', 'crisis'
-]
-
-# Manus.ai Agent Actions - Define what the agent can do
-AGENT_ACTIONS = {
-    "schedule_reminder": {
-        "description": "Schedule a wellness check reminder",
-        "parameters": ["time", "message"],
-        "endpoint": "/api/agent/schedule"
-    },
-    "crisis_intervention": {
-        "description": "Trigger crisis intervention protocol",
-        "parameters": ["risk_level", "user_id"],
-        "endpoint": "/api/agent/crisis"
-    },
-    "mood_tracking": {
-        "description": "Log mood data for tracking",
-        "parameters": ["mood", "intensity", "triggers"],
-        "endpoint": "/api/agent/mood"
-    },
-    "resource_recommendation": {
-        "description": "Recommend therapeutic resources",
-        "parameters": ["issue_type", "user_preferences"],
-        "endpoint": "/api/agent/resources"
-    },
-    "family_notification": {
-        "description": "Notify family members if needed",
-        "parameters": ["user_id", "alert_type", "message"],
-        "endpoint": "/api/agent/notify"
-    }
+# Make.com webhook URLs (you'll need to set these up)
+MAKE_WEBHOOKS = {
+    "stress_intervention": os.getenv("MAKE_STRESS_WEBHOOK", ""),
+    "anxiety_support": os.getenv("MAKE_ANXIETY_WEBHOOK", ""),
+    "depression_care": os.getenv("MAKE_DEPRESSION_WEBHOOK", ""),
+    "crisis_alert": os.getenv("MAKE_CRISIS_WEBHOOK", ""),
+    "wellness_check": os.getenv("MAKE_WELLNESS_WEBHOOK", ""),
+    "mood_tracking": os.getenv("MAKE_MOOD_WEBHOOK", ""),
+    "proactive_care": os.getenv("MAKE_PROACTIVE_WEBHOOK", "")
 }
 
-def is_therapeutic_content(message):
-    """Simple therapeutic content detection"""
-    message_lower = message.lower()
-    return any(keyword in message_lower for keyword in THERAPEUTIC_KEYWORDS)
+# In-memory stores
+conversations = {}
+user_profiles = {}
+action_history = {}
 
-def get_memory_context(user_id, message, limit=3):
-    """Get memory context from simple in-memory store"""
-    if user_id not in user_memories:
-        return ""
+# Empathic Agent Functions - These trigger real Make.com workflows
+class EmpathicAgent:
     
-    memories = user_memories[user_id][-limit:]  # Get last N memories
-    if not memories:
-        return ""
+    @staticmethod
+    def analyze_emotional_context(text, emotion, user_id):
+        """Analyze context to determine what actions to take - Manus style"""
+        
+        context = {
+            "text": text.lower(),
+            "emotion": emotion.lower(),
+            "user_id": user_id,
+            "timestamp": datetime.now().isoformat(),
+            "urgency": "normal"
+        }
+        
+        # Determine urgency and action type
+        if any(word in context["text"] for word in ["crisis", "suicide", "hurt myself", "end it all"]):
+            context["urgency"] = "critical"
+            context["action_type"] = "crisis_intervention"
+        
+        elif emotion.lower() in ["anxious", "panic", "overwhelmed"]:
+            if any(word in context["text"] for word in ["can't breathe", "panic attack", "overwhelming"]):
+                context["urgency"] = "high"
+            context["action_type"] = "anxiety_support"
+        
+        elif emotion.lower() in ["sad", "depressed", "hopeless"]:
+            if any(word in context["text"] for word in ["alone", "nobody", "isolated"]):
+                context["urgency"] = "high"
+            context["action_type"] = "depression_care"
+        
+        elif emotion.lower() in ["stressed", "frustrated"]:
+            context["action_type"] = "stress_intervention"
+        
+        else:
+            context["action_type"] = "wellness_check"
+        
+        return context
     
-    context_parts = [f"Previous: {mem['message'][:100]}..." for mem in memories]
-    return "Context from previous conversations:\n" + "\n".join(context_parts)
-
-def store_memory(user_id, message, metadata=None):
-    """Store memory in simple in-memory store"""
-    if user_id not in user_memories:
-        user_memories[user_id] = []
+    @staticmethod
+    def execute_proactive_actions(context):
+        """Execute real-world actions through Make.com - like Manus would"""
+        
+        actions_taken = []
+        webhook_url = MAKE_WEBHOOKS.get(context["action_type"])
+        
+        if not webhook_url:
+            print(f"⚠️ No webhook configured for {context['action_type']}")
+            return actions_taken
+        
+        # Prepare action payload for Make.com
+        payload = {
+            "trigger": context["action_type"],
+            "user_id": context["user_id"],
+            "emotion": context["emotion"],
+            "urgency": context["urgency"],
+            "text_snippet": context["text"][:200],
+            "timestamp": context["timestamp"],
+            "actions_requested": EmpathicAgent.get_action_plan(context)
+        }
+        
+        try:
+            # Send to Make.com webhook
+            response = requests.post(webhook_url, json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                actions_taken.append(f"✅ Triggered {context['action_type']} workflow")
+                
+                # Log the action
+                if context["user_id"] not in action_history:
+                    action_history[context["user_id"]] = []
+                
+                action_history[context["user_id"]].append({
+                    "timestamp": context["timestamp"],
+                    "action_type": context["action_type"],
+                    "urgency": context["urgency"],
+                    "status": "executed",
+                    "webhook_response": response.status_code
+                })
+                
+            else:
+                actions_taken.append(f"❌ Failed to trigger {context['action_type']}")
+                
+        except Exception as e:
+            print(f"❌ Webhook error: {e}")
+            actions_taken.append(f"❌ Webhook error: {str(e)}")
+        
+        return actions_taken
     
-    memory_entry = {
-        "message": message,
-        "timestamp": str(uuid.uuid4()),
-        "metadata": metadata or {}
-    }
+    @staticmethod
+    def get_action_plan(context):
+        """Define specific actions for each emotional context - Manus style automation"""
+        
+        action_plans = {
+            "crisis_intervention": [
+                "immediate_emergency_contact",
+                "crisis_hotline_info",
+                "location_sharing_family",
+                "emergency_calendar_clear",
+                "crisis_resource_delivery",
+                "professional_alert"
+            ],
+            
+            "anxiety_support": [
+                "breathing_exercise_start",
+                "calming_music_play",
+                "calendar_clear_next_hour", 
+                "support_person_text",
+                "anxiety_resources_send",
+                "environment_adjust_lights",
+                "meditation_app_open"
+            ],
+            
+            "depression_care": [
+                "gentle_check_in_schedule",
+                "social_connection_facilitate",
+                "mood_boosting_playlist",
+                "therapy_session_suggest",
+                "family_gentle_alert",
+                "self_care_reminders",
+                "positive_content_curate"
+            ],
+            
+            "stress_intervention": [
+                "calendar_optimization",
+                "break_reminders_set",
+                "stress_relief_resources",
+                "workload_analysis",
+                "relaxation_techniques",
+                "environment_optimization"
+            ],
+            
+            "wellness_check": [
+                "mood_tracking_log",
+                "wellness_score_update",
+                "routine_optimization",
+                "health_reminders"
+            ]
+        }
+        
+        return action_plans.get(context["action_type"], ["general_support"])
     
-    user_memories[user_id].append(memory_entry)
-    
-    # Keep only last 50 memories per user
-    if len(user_memories[user_id]) > 50:
-        user_memories[user_id] = user_memories[user_id][-50:]
-    
-    return {"success": True, "memory_id": memory_entry["timestamp"]}
+    @staticmethod
+    def generate_empathic_response(emotion, text, actions_taken):
+        """Generate empathic response that acknowledges actions taken"""
+        
+        # Base empathic responses
+        empathic_responses = {
+            "anxious": [
+                "I can feel the anxiety in your words, and I want you to know you're not alone in this.",
+                "Your nervous system is trying to protect you. Let's work through this together.",
+                "I sense the tension you're carrying. You're safe here with me."
+            ],
+            "sad": [
+                "I hear the pain in your voice, and I want you to know that your feelings are completely valid.",
+                "There's a heaviness in what you're sharing. I'm here to sit with you through this.",
+                "Your sadness matters, and so do you. Let's take this one moment at a time."
+            ],
+            "stressed": [
+                "I can feel the pressure you're under. That sounds incredibly overwhelming.",
+                "The stress you're experiencing is real and valid. Let's find ways to lighten this load.",
+                "I sense how much you're juggling right now. You don't have to carry this alone."
+            ],
+            "angry": [
+                "I can hear the intensity of your feelings. Something important to you has been affected.",
+                "Your anger is telling us something significant. Let's explore what's underneath this.",
+                "I feel the fire in your words. Your emotions are valid and deserve to be heard."
+            ]
+        }
+        
+        import random
+        base_response = random.choice(empathic_responses.get(emotion.lower(), empathic_responses["sad"]))
+        
+        # Add action acknowledgment
+        if actions_taken:
+            action_text = f"\n\nI've also taken some immediate steps to support you: {', '.join(actions_taken)}"
+            return base_response + action_text
+        
+        return base_response
 
 def get_fallback_emotion(text):
-    """Enhanced rule-based emotion detection"""
+    """Enhanced emotion detection"""
     text_lower = text.lower()
     
-    # Positive emotions
-    if any(word in text_lower for word in ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing', 'fantastic', 'love']):
-        return "Happy"
+    # Crisis indicators
+    if any(word in text_lower for word in ["suicide", "kill myself", "end it all", "hurt myself"]):
+        return "Crisis"
     
-    # Negative emotions
-    if any(word in text_lower for word in ['sad', 'depressed', 'down', 'upset', 'crying', 'tears']):
-        return "Sad"
-    
-    if any(word in text_lower for word in ['angry', 'mad', 'furious', 'annoyed', 'frustrated', 'rage']):
-        return "Angry"
-    
-    if any(word in text_lower for word in ['anxious', 'worried', 'nervous', 'stressed', 'panic', 'overwhelmed']):
+    # Anxiety indicators
+    if any(word in text_lower for word in ["anxious", "panic", "overwhelmed", "can't breathe", "racing heart"]):
         return "Anxious"
     
-    if any(word in text_lower for word in ['fear', 'scared', 'afraid', 'terrified', 'frightened']):
-        return "Fear"
+    # Depression indicators  
+    if any(word in text_lower for word in ["depressed", "hopeless", "empty", "worthless", "alone"]):
+        return "Sad"
     
-    if any(word in text_lower for word in ['calm', 'peaceful', 'relaxed', 'content']):
-        return "Calm"
+    # Stress indicators
+    if any(word in text_lower for word in ["stressed", "pressure", "too much", "overwhelmed", "deadline"]):
+        return "Stressed"
+    
+    # Anger indicators
+    if any(word in text_lower for word in ["angry", "furious", "frustrated", "mad", "rage"]):
+        return "Angry"
+    
+    # Positive emotions
+    if any(word in text_lower for word in ["happy", "excited", "great", "wonderful", "amazing"]):
+        return "Happy"
     
     return "Neutral"
 
-def get_empathic_response(emotion, text, user_context=None):
-    """Generate empathic response with Hume.ai-style emotional intelligence"""
-    
-    # Enhanced responses based on emotion and context
-    responses = {
-        "Happy": [
-            "That's wonderful to hear! Your joy is contagious. What's bringing you this happiness?",
-            "I can feel the positivity in your words. It's beautiful to see you in such a good space.",
-            "Your happiness lights up our conversation! Tell me more about what's going well."
-        ],
-        "Sad": [
-            "I can hear the pain in your words, and I want you to know that your feelings are completely valid.",
-            "It takes courage to share when you're feeling down. I'm here with you through this difficult time.",
-            "Your sadness matters, and so do you. Sometimes we need to sit with these feelings before they can heal."
-        ],
-        "Angry": [
-            "I can sense the intensity of your anger. It sounds like something really important to you has been affected.",
-            "Your anger is telling us something significant. Let's explore what's underneath these strong feelings.",
-            "I hear the fire in your words. Anger often protects other vulnerable emotions - what might those be?"
-        ],
-        "Anxious": [
-            "I can feel the tension and worry in your message. Anxiety can be so overwhelming, but you're not alone in this.",
-            "Your nervous system is trying to protect you. Let's breathe through this together and find some calm.",
-            "I understand how consuming anxiety can feel. You're safe here, and we can take this one moment at a time."
-        ],
-        "Fear": [
-            "I can sense your fear, and I want you to know that feeling scared doesn't make you weak - it makes you human.",
-            "Fear can feel so isolating, but you've reached out, and that takes incredible strength.",
-            "Your fear is valid, and you don't have to face it alone. Let's explore what feels safe for you right now."
-        ],
-        "Calm": [
-            "I can feel the peace in your words. It's beautiful when we find these moments of calm.",
-            "Your sense of tranquility is grounding. How can we nurture and protect this peaceful state?",
-            "There's something so healing about the calm energy you're sharing. What's contributing to this serenity?"
-        ],
-        "Neutral": [
-            "I'm here and listening. Sometimes the most profound conversations start from a place of quiet reflection.",
-            "Thank you for being present with me. What's alive for you in this moment?",
-            "I sense you're in a thoughtful space. What would feel most supportive for you right now?"
-        ]
-    }
-    
-    emotion_responses = responses.get(emotion, responses["Neutral"])
-    
-    # Select response based on context or randomly
-    import random
-    return random.choice(emotion_responses)
-
-def determine_agent_actions(emotion, text, user_context=None):
-    """Determine what agentic actions should be taken based on the conversation"""
-    actions = []
-    
-    # Crisis detection and intervention
-    crisis_keywords = ['suicide', 'kill myself', 'end it all', 'hurt myself', 'self-harm']
-    if any(keyword in text.lower() for keyword in crisis_keywords):
-        actions.append({
-            "action": "crisis_intervention",
-            "priority": "immediate",
-            "parameters": {
-                "risk_level": "high",
-                "user_id": user_context.get("user_id") if user_context else "unknown"
-            }
-        })
-    
-    # Mood tracking for therapeutic emotions
-    if emotion in ["Sad", "Anxious", "Angry", "Fear"]:
-        actions.append({
-            "action": "mood_tracking",
-            "priority": "high",
-            "parameters": {
-                "mood": emotion.lower(),
-                "intensity": "moderate",  # Could be enhanced with intensity detection
-                "triggers": "conversation_based"
-            }
-        })
-    
-    # Resource recommendations
-    if is_therapeutic_content(text):
-        actions.append({
-            "action": "resource_recommendation",
-            "priority": "medium",
-            "parameters": {
-                "issue_type": emotion.lower(),
-                "user_preferences": "empathic_support"
-            }
-        })
-    
-    # Schedule follow-up for concerning emotions
-    if emotion in ["Sad", "Anxious"] and any(word in text.lower() for word in ['alone', 'isolated', 'nobody']):
-        actions.append({
-            "action": "schedule_reminder",
-            "priority": "medium",
-            "parameters": {
-                "time": "24_hours",
-                "message": "Checking in on your wellbeing"
-            }
-        })
-    
-    return actions
-
-# Routes for serving interfaces
+# Routes
 @app.route("/")
 def index():
-    """Serve simple interface"""
     try:
         return render_template("index.html")
     except:
-        return jsonify({"message": "ORA Emotion AI - API Ready", "interfaces": ["/admin", "/enhanced"]})
+        return jsonify({"message": "ORA Empathic Agent - Ready", "status": "operational"})
 
 @app.route("/admin")
 def admin():
-    """Serve the enhanced admin dashboard"""
-    try:
-        return send_from_directory('.', 'enhanced_app.py')
-    except:
-        return jsonify({"error": "Enhanced interface not found", "available_endpoints": ["/", "/health", "/classify", "/respond"]})
-
-@app.route("/enhanced")
-def enhanced():
-    """Alternative route for enhanced interface"""
     try:
         return send_from_directory('.', 'enhanced_app.py')
     except:
@@ -259,31 +274,33 @@ def enhanced():
 
 @app.route("/health")
 def health_check():
-    """Health check endpoint"""
+    """Health check with agent status"""
+    webhook_status = {name: bool(url) for name, url in MAKE_WEBHOOKS.items()}
+    
     return jsonify({
         "status": "healthy",
-        "service": "ora_emotion_manus_ready",
+        "service": "ora_empathic_agent",
         "openai_configured": OPENAI_AVAILABLE,
-        "memory_system": "in_memory",
-        "deployment_ready": True,
-        "manus_agent_ready": True,
-        "available_actions": list(AGENT_ACTIONS.keys()),
-        "interfaces": {
-            "simple": "/",
-            "enhanced": "/admin or /enhanced"
-        }
+        "agent_capabilities": "manus_style_proactive",
+        "make_webhooks_configured": webhook_status,
+        "total_actions_taken": sum(len(actions) for actions in action_history.values()),
+        "empathic_mode": "active"
     })
 
 @app.route("/classify", methods=["POST"])
 def classify():
-    """Classify emotion in text with enhanced detection"""
+    """Classify emotion with enhanced detection"""
     data = request.get_json()
     text = data.get("text", "").strip()
     if not text:
         return jsonify({"error": "No text"}), 400
     
     if OPENAI_AVAILABLE and client:
-        prompt = f"Classify the primary emotion in this text in one word (Happy, Sad, Angry, Anxious, Fear, Calm, or Neutral):\n\n\"{text}\""
+        prompt = f"""Classify the primary emotion in this text. Consider crisis indicators, anxiety levels, and emotional intensity.
+
+Text: "{text}"
+
+Respond with one word: Crisis, Anxious, Sad, Stressed, Angry, Happy, or Neutral"""
         
         try:
             response = client.chat.completions.create(
@@ -297,185 +314,99 @@ def classify():
             return jsonify({"emotion": emotion, "method": "openai"})
             
         except Exception as e:
-            print(f"OpenAI classification error: {e}")
             emotion = get_fallback_emotion(text)
-            return jsonify({"emotion": emotion, "method": "fallback", "error": str(e)})
+            return jsonify({"emotion": emotion, "method": "fallback"})
     else:
         emotion = get_fallback_emotion(text)
         return jsonify({"emotion": emotion, "method": "fallback"})
 
 @app.route("/respond", methods=["POST"])
 def respond():
-    """Generate empathic AI response with agentic capabilities"""
+    """Generate empathic response AND execute proactive actions"""
     data = request.get_json()
     emotion = data.get("emotion", "Neutral")
     text = data.get("text", "")
     user_id = data.get("user_id", f"user_{uuid.uuid4().hex[:8]}")
     
-    # Get memory context
-    memory_context = get_memory_context(user_id, text)
+    # Analyze emotional context (Manus-style)
+    context = EmpathicAgent.analyze_emotional_context(text, emotion, user_id)
     
-    # Check if therapeutic content
-    is_therapeutic = is_therapeutic_content(text)
+    # Execute proactive actions through Make.com
+    actions_taken = EmpathicAgent.execute_proactive_actions(context)
     
-    # Generate empathic response
-    user_context = {"user_id": user_id, "is_therapeutic": is_therapeutic}
-    reply = get_empathic_response(emotion, text, user_context)
+    # Generate empathic response that acknowledges actions
+    empathic_response = EmpathicAgent.generate_empathic_response(emotion, text, actions_taken)
     
-    # Determine agent actions (Manus.ai integration)
-    agent_actions = determine_agent_actions(emotion, text, user_context)
-    
-    # Store memory
-    storage_result = store_memory(user_id, text, {
-        "emotion": emotion,
-        "is_therapeutic": is_therapeutic,
-        "agent_actions": len(agent_actions)
-    })
-    
-    # Create chat session
+    # Create conversation session
     chat_id = uuid.uuid4().hex
     conversations[chat_id] = [
-        {"role": "system", "content": "You are ORA, a compassionate AI with empathic and agentic capabilities."},
-        {"role": "assistant", "content": reply}
+        {"role": "system", "content": "You are ORA, an empathic AI agent with proactive capabilities."},
+        {"role": "assistant", "content": empathic_response}
     ]
     
     return jsonify({
-        "message": reply,
+        "message": empathic_response,
         "chat_id": chat_id,
         "user_id": user_id,
-        "memory_enhanced": bool(memory_context),
-        "is_therapeutic": is_therapeutic,
-        "storage_success": storage_result.get("success", False),
-        "method": "empathic_response",
-        "openai_available": OPENAI_AVAILABLE,
-        "agent_actions": agent_actions,  # Manus.ai agentic capabilities
-        "manus_integration": True
+        "emotion": emotion,
+        "urgency": context["urgency"],
+        "actions_taken": actions_taken,
+        "action_type": context["action_type"],
+        "proactive_agent": True,
+        "manus_style": True,
+        "empathic_mode": True,
+        "timestamp": context["timestamp"]
     })
 
-# Manus.ai Agent Action Endpoints
-@app.route("/api/agent/schedule", methods=["POST"])
-def agent_schedule():
-    """Schedule wellness reminders (Manus.ai action)"""
-    data = request.get_json()
-    return jsonify({
-        "action": "schedule_reminder",
-        "status": "scheduled",
-        "parameters": data,
-        "make_com_webhook": "ready",
-        "next_steps": ["trigger_make_scenario", "send_notification"]
-    })
-
-@app.route("/api/agent/crisis", methods=["POST"])
-def agent_crisis():
-    """Handle crisis intervention (Manus.ai action)"""
-    data = request.get_json()
-    return jsonify({
-        "action": "crisis_intervention",
-        "status": "activated",
-        "priority": "immediate",
-        "parameters": data,
-        "make_com_webhook": "ready",
-        "next_steps": ["notify_emergency_contacts", "provide_resources", "schedule_followup"]
-    })
-
-@app.route("/api/agent/mood", methods=["POST"])
-def agent_mood():
-    """Log mood data (Manus.ai action)"""
-    data = request.get_json()
-    return jsonify({
-        "action": "mood_tracking",
-        "status": "logged",
-        "parameters": data,
-        "make_com_webhook": "ready",
-        "next_steps": ["update_dashboard", "analyze_patterns", "generate_insights"]
-    })
-
-@app.route("/api/agent/resources", methods=["POST"])
-def agent_resources():
-    """Recommend resources (Manus.ai action)"""
-    data = request.get_json()
-    issue_type = data.get("issue_type", "general")
+@app.route("/api/agent/status/<user_id>", methods=["GET"])
+def agent_status(user_id):
+    """Get agent action history for user"""
+    user_actions = action_history.get(user_id, [])
     
-    resources = {
-        "anxious": ["Breathing exercises", "Mindfulness apps", "Anxiety support groups"],
-        "sad": ["Depression resources", "Therapy finder", "Support communities"],
-        "angry": ["Anger management techniques", "Conflict resolution", "Stress relief"],
-        "general": ["Mental health resources", "Wellness tips", "Professional help"]
+    return jsonify({
+        "user_id": user_id,
+        "total_actions": len(user_actions),
+        "recent_actions": user_actions[-5:],  # Last 5 actions
+        "agent_active": True
+    })
+
+@app.route("/api/webhooks/test", methods=["POST"])
+def test_webhooks():
+    """Test all Make.com webhooks"""
+    test_results = {}
+    
+    test_payload = {
+        "test": True,
+        "timestamp": datetime.now().isoformat(),
+        "message": "Webhook connectivity test"
     }
     
-    return jsonify({
-        "action": "resource_recommendation",
-        "status": "generated",
-        "resources": resources.get(issue_type, resources["general"]),
-        "parameters": data,
-        "make_com_webhook": "ready"
-    })
-
-@app.route("/api/agent/notify", methods=["POST"])
-def agent_notify():
-    """Notify family/contacts (Manus.ai action)"""
-    data = request.get_json()
-    return jsonify({
-        "action": "family_notification",
-        "status": "prepared",
-        "parameters": data,
-        "make_com_webhook": "ready",
-        "next_steps": ["send_notification", "log_communication", "schedule_followup"]
-    })
-
-# Make.com Integration Endpoints
-@app.route("/api/make/webhook", methods=["POST"])
-def make_webhook():
-    """Main webhook for Make.com integration"""
-    data = request.get_json()
-    
-    # Process the incoming data
-    user_message = data.get("user_message", "")
-    user_id = data.get("user_id", f"user_{uuid.uuid4().hex[:8]}")
-    
-    # Classify emotion
-    emotion = get_fallback_emotion(user_message)
-    
-    # Generate response
-    response = get_empathic_response(emotion, user_message)
-    
-    # Determine actions
-    actions = determine_agent_actions(emotion, user_message, {"user_id": user_id})
-    
-    # Store memory
-    store_memory(user_id, user_message, {"emotion": emotion, "source": "make_com"})
+    for name, url in MAKE_WEBHOOKS.items():
+        if url:
+            try:
+                response = requests.post(url, json=test_payload, timeout=5)
+                test_results[name] = {
+                    "status": "success" if response.status_code == 200 else "failed",
+                    "response_code": response.status_code
+                }
+            except Exception as e:
+                test_results[name] = {"status": "error", "error": str(e)}
+        else:
+            test_results[name] = {"status": "not_configured"}
     
     return jsonify({
-        "success": True,
-        "user_id": user_id,
-        "emotion": emotion,
-        "response": response,
-        "agent_actions": actions,
-        "is_therapeutic": is_therapeutic_content(user_message),
-        "timestamp": str(uuid.uuid4()),
-        "manus_integration": "active"
-    })
-
-@app.route("/api/make/actions", methods=["GET"])
-def make_actions():
-    """Get available agent actions for Make.com"""
-    return jsonify({
-        "available_actions": AGENT_ACTIONS,
-        "webhook_endpoint": "/api/make/webhook",
-        "integration_status": "ready"
+        "webhook_tests": test_results,
+        "overall_status": "ready" if any(r.get("status") == "success" for r in test_results.values()) else "needs_setup"
     })
 
 if __name__ == "__main__":
-    print("🚀 Starting ORA Emotion App (Manus.ai Ready)")
+    print("🚀 Starting ORA Empathic Agent (Manus Style)")
     print(f"🤖 OpenAI: {'Enabled' if OPENAI_AVAILABLE else 'Fallback mode'}")
-    print("🧠 Memory: In-memory store (deployment safe)")
-    print("❤️ Empathy: Hume.ai-style emotional intelligence")
-    print("🎯 Agent: Manus.ai agentic capabilities integrated")
-    print("🔗 Make.com: Webhook endpoints ready")
-    print("🌐 Interfaces:")
-    print("   Simple: http://localhost:5000/")
-    print("   Enhanced: http://localhost:5000/admin")
-    print("📦 Deployment: Optimized for Render")
+    print("❤️ Empathy: Advanced emotional intelligence")
+    print("🎯 Agent: Proactive action execution")
+    print("🔗 Make.com: Webhook integration ready")
+    print("📊 Webhooks configured:", sum(1 for url in MAKE_WEBHOOKS.values() if url))
+    print("🌐 Ready for empathic proactive assistance")
     
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
