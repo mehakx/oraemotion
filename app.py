@@ -1,59 +1,75 @@
 """
-ORA Emotion App - FIXED for Deployment
+ORA Emotion App - COMPLETE VERSION
+Serves both simple and enhanced interfaces
 Compatible with OpenAI >=1.33.0 and mem0ai
-Graceful fallback if mem0ai fails
+Graceful fallback if dependencies fail
 """
 import os
 import json
 import uuid
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
-from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize OpenAI client with new API
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
+# Initialize OpenAI client with graceful fallback
+OPENAI_AVAILABLE = False
+client = None
+try:
+    from openai import OpenAI
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key and api_key != "your_openai_api_key_here":
+        client = OpenAI(api_key=api_key)
+        OPENAI_AVAILABLE = True
+        print("✅ OpenAI initialized successfully")
+    else:
+        print("⚠️ OpenAI API key not configured")
+except Exception as e:
+    print(f"⚠️ OpenAI not available: {e}")
+
 # Try to import mem0ai - graceful fallback if it fails
 MEM0_AVAILABLE = False
+memory = None
 try:
     from mem0 import Memory
     
-    # Initialize mem0ai with simple config
-    config = {
-        "vector_store": {
-            "provider": "qdrant",
-            "config": {
-                "collection_name": "ora_memories",
-                "embedding_model_dims": 1536,
-                "host": "localhost",
-                "port": 6333
-            }
-        },
-        "llm": {
-            "provider": "openai",
-            "config": {
-                "model": "gpt-4o-mini",
-                "temperature": 0.1,
-            }
-        },
-        "embedder": {
-            "provider": "openai",
-            "config": {
-                "model": "text-embedding-3-small",
+    if OPENAI_AVAILABLE:
+        # Initialize mem0ai with simple config
+        config = {
+            "vector_store": {
+                "provider": "qdrant",
+                "config": {
+                    "collection_name": "ora_memories",
+                    "embedding_model_dims": 1536,
+                    "host": "localhost",
+                    "port": 6333
+                }
+            },
+            "llm": {
+                "provider": "openai",
+                "config": {
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.1,
+                }
+            },
+            "embedder": {
+                "provider": "openai",
+                "config": {
+                    "model": "text-embedding-3-small",
+                }
             }
         }
-    }
-    
-    memory = Memory.from_config(config)
-    MEM0_AVAILABLE = True
-    print("✅ Mem0ai initialized successfully")
-    
+        
+        memory = Memory.from_config(config)
+        MEM0_AVAILABLE = True
+        print("✅ Mem0ai initialized successfully")
+    else:
+        print("⚠️ Mem0ai skipped (OpenAI not available)")
+        
 except Exception as e:
     print(f"⚠️ Mem0ai not available, running in basic mode: {e}")
     memory = None
@@ -113,20 +129,74 @@ def store_memory(user_id, message, metadata=None):
         print(f"Memory storage error: {e}")
         return {"success": False, "error": str(e)}
 
+def get_fallback_emotion(text):
+    """Simple rule-based emotion detection fallback"""
+    text_lower = text.lower()
+    
+    # Positive emotions
+    if any(word in text_lower for word in ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing']):
+        return "Happy"
+    
+    # Negative emotions
+    if any(word in text_lower for word in ['sad', 'depressed', 'down', 'upset']):
+        return "Sad"
+    
+    if any(word in text_lower for word in ['angry', 'mad', 'furious', 'annoyed']):
+        return "Angry"
+    
+    if any(word in text_lower for word in ['anxious', 'worried', 'nervous', 'stressed']):
+        return "Anxious"
+    
+    if any(word in text_lower for word in ['fear', 'scared', 'afraid']):
+        return "Fear"
+    
+    return "Neutral"
+
+def get_fallback_response(emotion, text):
+    """Generate fallback response when OpenAI is not available"""
+    responses = {
+        "Happy": "That's wonderful to hear! It sounds like you're in a positive space right now.",
+        "Sad": "I hear that you're going through a difficult time. Your feelings are valid, and it's okay to feel sad.",
+        "Angry": "It sounds like something has really upset you. Anger can be a signal that something important to you has been affected.",
+        "Anxious": "I understand you're feeling anxious. Remember that anxiety is temporary, and you have the strength to get through this.",
+        "Fear": "Fear can be overwhelming, but you're not alone. Take things one step at a time.",
+        "Neutral": "Thank you for sharing with me. How are you feeling about everything right now?"
+    }
+    
+    return responses.get(emotion, "I'm here to listen and support you. Could you tell me more about how you're feeling?")
+
+# Route for simple interface
 @app.route("/")
 def index():
     return render_template("index.html")
+
+# Route for enhanced interface
+@app.route("/admin")
+def admin():
+    """Serve the enhanced admin dashboard"""
+    return send_from_directory('.', 'enhanced_app.html')
+
+# Route for enhanced interface (alternative path)
+@app.route("/enhanced")
+def enhanced():
+    """Alternative route for enhanced interface"""
+    return send_from_directory('.', 'enhanced_app.html')
 
 @app.route("/health")
 def health_check():
     """Health check endpoint"""
     return jsonify({
         "status": "healthy",
-        "service": "ora_emotion_fixed",
-        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "service": "ora_emotion_complete",
+        "openai_configured": OPENAI_AVAILABLE,
         "mem0ai_available": MEM0_AVAILABLE,
         "deployment_ready": True,
-        "openai_version": ">=1.33.0"
+        "openai_version": ">=1.33.0" if OPENAI_AVAILABLE else "not_available",
+        "fallback_mode": not OPENAI_AVAILABLE,
+        "interfaces": {
+            "simple": "/",
+            "enhanced": "/admin or /enhanced"
+        }
     })
 
 @app.route("/classify", methods=["POST"])
@@ -137,21 +207,29 @@ def classify():
     if not text:
         return jsonify({"error": "No text"}), 400
     
-    prompt = f"Classify the primary emotion in this text in one word (e.g. Happy, Sad, Angry, Neutral):\n\n\"{text}\""
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-            max_tokens=5
-        )
+    if OPENAI_AVAILABLE and client:
+        prompt = f"Classify the primary emotion in this text in one word (e.g. Happy, Sad, Angry, Neutral):\n\n\"{text}\""
         
-        emotion = response.choices[0].message.content.strip().split()[0]
-        return jsonify({"emotion": emotion})
-        
-    except Exception as e:
-        return jsonify({"error": str(e), "emotion": "neutral"}), 500
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=5
+            )
+            
+            emotion = response.choices[0].message.content.strip().split()[0]
+            return jsonify({"emotion": emotion, "method": "openai"})
+            
+        except Exception as e:
+            print(f"OpenAI classification error: {e}")
+            # Fall back to rule-based classification
+            emotion = get_fallback_emotion(text)
+            return jsonify({"emotion": emotion, "method": "fallback", "error": str(e)})
+    else:
+        # Use fallback emotion detection
+        emotion = get_fallback_emotion(text)
+        return jsonify({"emotion": emotion, "method": "fallback"})
 
 @app.route("/respond", methods=["POST"])
 def respond():
@@ -167,61 +245,66 @@ def respond():
     # Check if therapeutic content
     is_therapeutic = is_therapeutic_content(text)
     
-    try:
-        # Build prompt with optional memory context
-        base_prompt = (
-            f"You are a compassionate assistant. The user is feeling {emotion}. "
-            f"They said: \"{text}\". Reply in one or two sentences showing empathy."
-        )
-        
-        if memory_context:
-            prompt = f"{memory_context}\n\n{base_prompt}"
-        else:
-            prompt = base_prompt
-        
-        # Add therapeutic guidance if needed
-        if is_therapeutic:
-            prompt += "\n\nNote: This appears to be therapeutic content. Respond with extra care and empathy."
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=60
-        )
-        
-        reply = response.choices[0].message.content.strip()
-        
-        # Store memory if available
-        storage_result = store_memory(user_id, text, {
-            "emotion": emotion,
-            "is_therapeutic": is_therapeutic
-        })
-        
-        # Create chat session
-        chat_id = uuid.uuid4().hex
-        conversations[chat_id] = [
-            {"role": "system", "content": "You are a compassionate assistant."},
-            {"role": "assistant", "content": reply}
-        ]
-        
-        return jsonify({
-            "message": reply,
-            "chat_id": chat_id,
-            "user_id": user_id,
-            "memory_enhanced": bool(memory_context),
-            "is_therapeutic": is_therapeutic,
-            "mem0ai_available": MEM0_AVAILABLE,
-            "storage_success": storage_result.get("success", False)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            "message": "I'm here to support you. Could you tell me more about how you're feeling?",
-            "error": str(e),
-            "chat_id": uuid.uuid4().hex,
-            "user_id": user_id
-        }), 500
+    if OPENAI_AVAILABLE and client:
+        try:
+            # Build prompt with optional memory context
+            base_prompt = (
+                f"You are a compassionate assistant. The user is feeling {emotion}. "
+                f"They said: \"{text}\". Reply in one or two sentences showing empathy."
+            )
+            
+            if memory_context:
+                prompt = f"{memory_context}\n\n{base_prompt}"
+            else:
+                prompt = base_prompt
+            
+            # Add therapeutic guidance if needed
+            if is_therapeutic:
+                prompt += "\n\nNote: This appears to be therapeutic content. Respond with extra care and empathy."
+            
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=60
+            )
+            
+            reply = response.choices[0].message.content.strip()
+            method = "openai"
+            
+        except Exception as e:
+            print(f"OpenAI response error: {e}")
+            reply = get_fallback_response(emotion, text)
+            method = "fallback"
+    else:
+        # Use fallback response
+        reply = get_fallback_response(emotion, text)
+        method = "fallback"
+    
+    # Store memory if available
+    storage_result = store_memory(user_id, text, {
+        "emotion": emotion,
+        "is_therapeutic": is_therapeutic
+    })
+    
+    # Create chat session
+    chat_id = uuid.uuid4().hex
+    conversations[chat_id] = [
+        {"role": "system", "content": "You are a compassionate assistant."},
+        {"role": "assistant", "content": reply}
+    ]
+    
+    return jsonify({
+        "message": reply,
+        "chat_id": chat_id,
+        "user_id": user_id,
+        "memory_enhanced": bool(memory_context),
+        "is_therapeutic": is_therapeutic,
+        "mem0ai_available": MEM0_AVAILABLE,
+        "storage_success": storage_result.get("success", False),
+        "method": method,
+        "openai_available": OPENAI_AVAILABLE
+    })
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -237,43 +320,49 @@ def chat():
     # Get memory context if available
     memory_context = get_memory_context(user_id, user_msg)
     
-    try:
-        # Build conversation with optional memory context
-        conversation_messages = conversations[chat_id].copy()
-        
-        if memory_context:
-            conversation_messages.insert(0, {
-                "role": "system",
-                "content": f"Previous context: {memory_context}"
-            })
-        
-        conversation_messages.append({"role": "user", "content": user_msg})
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=conversation_messages,
-            temperature=0.7,
-            max_tokens=60
-        )
-        
-        assistant_msg = response.choices[0].message.content.strip()
-        conversations[chat_id].append({"role": "user", "content": user_msg})
-        conversations[chat_id].append({"role": "assistant", "content": assistant_msg})
-        
-        # Store conversation if mem0ai available
-        storage_result = store_memory(user_id, user_msg, {"chat_id": chat_id})
-        
-        return jsonify({
-            "reply": assistant_msg,
-            "memory_enhanced": bool(memory_context),
-            "storage_success": storage_result.get("success", False)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            "reply": "I'm here to help. Could you rephrase that?",
-            "error": str(e)
-        }), 500
+    if OPENAI_AVAILABLE and client:
+        try:
+            # Build conversation with optional memory context
+            conversation_messages = conversations[chat_id].copy()
+            
+            if memory_context:
+                conversation_messages.insert(0, {
+                    "role": "system",
+                    "content": f"Previous context: {memory_context}"
+                })
+            
+            conversation_messages.append({"role": "user", "content": user_msg})
+            
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=conversation_messages,
+                temperature=0.7,
+                max_tokens=60
+            )
+            
+            assistant_msg = response.choices[0].message.content.strip()
+            method = "openai"
+            
+        except Exception as e:
+            print(f"OpenAI chat error: {e}")
+            assistant_msg = "I'm here to help. Could you rephrase that?"
+            method = "fallback"
+    else:
+        assistant_msg = "I'm here to help. Could you rephrase that?"
+        method = "fallback"
+    
+    conversations[chat_id].append({"role": "user", "content": user_msg})
+    conversations[chat_id].append({"role": "assistant", "content": assistant_msg})
+    
+    # Store conversation if mem0ai available
+    storage_result = store_memory(user_id, user_msg, {"chat_id": chat_id})
+    
+    return jsonify({
+        "reply": assistant_msg,
+        "memory_enhanced": bool(memory_context),
+        "storage_success": storage_result.get("success", False),
+        "method": method
+    })
 
 # Make.com compatible endpoint
 @app.route("/api/make/memory-enhanced", methods=["POST"])
@@ -296,6 +385,7 @@ def make_memory_enhanced():
         "has_memories": bool(context),
         "storage_result": storage_result,
         "mem0ai_available": MEM0_AVAILABLE,
+        "openai_available": OPENAI_AVAILABLE,
         "is_therapeutic": is_therapeutic_content(user_message)
     })
 
@@ -305,14 +395,18 @@ def memory_status():
     """Check memory system status"""
     return jsonify({
         "mem0ai_available": MEM0_AVAILABLE,
-        "service": "ora_emotion_fixed",
-        "openai_version": ">=1.33.0"
+        "openai_available": OPENAI_AVAILABLE,
+        "service": "ora_emotion_complete",
+        "openai_version": ">=1.33.0" if OPENAI_AVAILABLE else "not_available"
     })
 
 if __name__ == "__main__":
-    print("🚀 Starting ORA Emotion App (Fixed Version)")
+    print("🚀 Starting ORA Emotion App (Complete Version)")
     print(f"🧠 Memory: {'Mem0ai enabled' if MEM0_AVAILABLE else 'Basic mode (no mem0ai)'}")
-    print("✅ OpenAI: Compatible version (>=1.33.0)")
+    print(f"🤖 OpenAI: {'Enabled' if OPENAI_AVAILABLE else 'Fallback mode (no API key)'}")
+    print("🌐 Interfaces:")
+    print("   Simple: http://localhost:5000/")
+    print("   Enhanced: http://localhost:5000/admin")
     print("📦 Deployment: Ready for Render/Heroku")
     
     port = int(os.environ.get('PORT', 5000))
