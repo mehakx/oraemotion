@@ -1,38 +1,22 @@
-# ORA Emotion System - FIXED Requirements (Resolves OpenAI Conflict)
-# Compatible with mem0ai and deployment platforms
+# ORA Application Requirements - Deployment Safe
+# Core Flask dependencies
+flask>=3.0.0
+flask-cors>=6.0.0
+python-dotenv>=1.0.0
 
-# Core Flask and API dependencies
-Flask==3.0.0
-flask-cors==4.0.0
-requests==2.31.0
-python-dotenv==1.0.0
-gunicorn==21.2.0
-
-# FIXED: OpenAI version compatible with mem0ai
+# AI dependencies
 openai>=1.33.0
 
-# Mem0ai integration
-mem0ai==0.1.110
+# Skip mem0ai for now due to SQLAlchemy conflicts
+# mem0ai>=0.1.0
 
-# Basic ML and data processing (lightweight versions)
-numpy==1.24.3
-scikit-learn==1.3.0
+# Basic dependencies
+requests>=2.25.0
+uuid
+gunicorn>=20.0.0
 
-# Database (simplified)
-sqlalchemy==2.0.23
-
-# Text processing (essential only)
-nltk==3.8.1
-
-# Audio processing (if needed - lightweight)
-pydub==0.25.1
-
-# Utilities
-schedule==1.2.0
-
-# Optional: Add back if specifically needed
-# psycopg2-binary==2.9.9  # Uncomment if using PostgreSQL
-# redis==5.0.1  # Uncomment if using Redis
+# Optional: Add these if needed
+# sqlalchemy>=2.0.0
 
 
 
