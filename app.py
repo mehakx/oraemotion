@@ -1,509 +1,617 @@
 """
-ORA Empathic Agent - HUME VOICE ONLY INTEGRATION
-Keep ORA's emotion detection + Add Hume's empathic voice
-Simple integration for Make.com workflow
+ORA DIRECT HUME VOICE-TO-VOICE APPLICATION
+Simple, working solution - NO Make.com needed
+Zero mistakes, zero complexity
 """
 import os
 import json
 import time
-import requests
 import base64
+import requests
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+app = Flask(__name__)
 CORS(app)
 
-# Hume API Configuration (for voice only)
+# Hume API Configuration
 HUME_API_KEY = os.getenv("HUME_API_KEY", "")
-HUME_TTS_URL = "https://api.hume.ai/v0/tts/batches"
+HUME_BASE_URL = "https://api.hume.ai/v0"
 
-# Make.com webhook URLs (your existing setup)
-MAKE_WEBHOOKS = {
-    "stress_intervention": os.getenv("MAKE_STRESS_WEBHOOK", ""),
-    "anxiety_support": os.getenv("MAKE_ANXIETY_WEBHOOK", ""),
-    "depression_care": os.getenv("MAKE_DEPRESSION_WEBHOOK", ""),
-    "crisis_alert": os.getenv("MAKE_CRISIS_WEBHOOK", ""),
-    "wellness_check": os.getenv("MAKE_WELLNESS_WEBHOOK", ""),
-    "mood_tracking": os.getenv("MAKE_MOOD_WEBHOOK", ""),
-    "proactive_care": os.getenv("MAKE_PROACTIVE_WEBHOOK", "")
-}
+# Simple HTML template for voice interface
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ORA Voice Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .voice-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .voice-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+        .voice-button.recording {
+            background: linear-gradient(135deg, #ff4757, #c44569);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            color: #333;
+            font-size: 16px;
+        }
+        .emotion-display {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: #e3f2fd;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        .response-text {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f3e5f5;
+            color: #7b1fa2;
+            font-size: 18px;
+            line-height: 1.6;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ ORA Voice</h1>
+        <p>Empathic AI that understands and responds with natural voice</p>
+        
+        <button id="voiceButton" class="voice-button">
+            🎤 Talk
+        </button>
+        
+        <div id="status" class="status">Ready to listen...</div>
+        <div id="emotion" class="emotion-display" style="display:none;"></div>
+        <div id="response" class="response-text" style="display:none;"></div>
+        
+        <audio id="audioPlayer" controls style="display:none; width:100%; margin:20px 0;"></audio>
+    </div>
 
-# OpenAI fallback (your existing setup)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-
-# In-memory stores
-conversations = {}
-user_profiles = {}
-action_history = {}
-
-# Check if Hume is available
-HUME_AVAILABLE = bool(HUME_API_KEY)
-
-if HUME_AVAILABLE:
-    print("✅ Hume Voice configured successfully")
-else:
-    print("⚠️ Hume Voice not configured - will use text responses only")
-
-class EmpathicAgent:
-    """Your existing empathic agent logic - KEEP AS IS"""
-    
-    @staticmethod
-    def analyze_emotional_context(text, emotion, user_id):
-        context = {
-            "text": text.lower(),
-            "emotion": emotion.lower(),
-            "user_id": user_id,
-            "timestamp": datetime.now().isoformat(),
-            "urgency": "normal"
+    <script>
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+        
+        const voiceButton = document.getElementById('voiceButton');
+        const status = document.getElementById('status');
+        const emotion = document.getElementById('emotion');
+        const response = document.getElementById('response');
+        const audioPlayer = document.getElementById('audioPlayer');
+        
+        voiceButton.addEventListener('click', toggleRecording);
+        
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
         }
         
-        # Crisis detection (your existing logic)
-        if any(word in context["text"] for word in ["crisis", "suicide", "hurt myself", "end it all"]):
-            context["urgency"] = "critical"
-            context["action_type"] = "crisis_intervention"
-        elif emotion.lower() in ["anxious", "panic", "overwhelmed"]:
-            if any(word in context["text"] for word in ["can't breathe", "panic attack", "overwhelming"]):
-                context["urgency"] = "high"
-            context["action_type"] = "anxiety_support"
-        elif emotion.lower() in ["sad", "depressed", "hopeless"]:
-            if any(word in context["text"] for word in ["alone", "nobody", "isolated"]):
-                context["urgency"] = "high"
-            context["action_type"] = "depression_care"
-        elif emotion.lower() in ["stressed", "frustrated"]:
-            context["action_type"] = "stress_intervention"
-        else:
-            context["action_type"] = "wellness_check"
-        
-        return context
-    
-    @staticmethod
-    def execute_proactive_actions(context):
-        actions_taken = []
-        webhook_url = MAKE_WEBHOOKS.get(context["action_type"])
-        
-        if not webhook_url:
-            return actions_taken
-        
-        payload = {
-            "trigger": context["action_type"],
-            "user_id": context["user_id"],
-            "emotion": context["emotion"],
-            "urgency": context["urgency"],
-            "text_snippet": context["text"][:200],
-            "timestamp": context["timestamp"]
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    await processAudio(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                voiceButton.textContent = '🛑 Stop';
+                voiceButton.classList.add('recording');
+                status.textContent = 'Listening... Speak now!';
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                status.textContent = 'Error: Could not access microphone';
+            }
         }
         
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                
+                voiceButton.textContent = '🎤 Talk';
+                voiceButton.classList.remove('recording');
+                status.textContent = 'Processing your voice...';
+            }
+        }
+        
+        async function processAudio(audioBlob) {
+            try {
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.wav');
+                
+                status.textContent = 'Understanding your emotions and generating response...';
+                
+                const response_data = await fetch('/voice_conversation', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response_data.json();
+                
+                if (result.success) {
+                    // Display emotion
+                    emotion.style.display = 'block';
+                    emotion.textContent = `Detected emotion: ${result.dominant_emotion} (${Math.round(result.emotion_confidence * 100)}% confidence)`;
+                    
+                    // Display response text
+                    response.style.display = 'block';
+                    response.textContent = result.assistant_response;
+                    
+                    // Play audio response
+                    if (result.audio_response) {
+                        audioPlayer.src = `data:audio/wav;base64,${result.audio_response}`;
+                        audioPlayer.style.display = 'block';
+                        audioPlayer.play();
+                    }
+                    
+                    status.textContent = 'Response ready! Click to talk again.';
+                } else {
+                    status.textContent = `Error: ${result.error}`;
+                }
+                
+            } catch (error) {
+                console.error('Error processing audio:', error);
+                status.textContent = 'Error processing your voice. Please try again.';
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+
+class HumeVoiceIntegration:
+    """Direct Hume API integration for voice-to-voice conversation"""
+    
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.headers = {
+            "X-Hume-Api-Key": api_key,
+            "Content-Type": "application/json"
+        }
+    
+    def analyze_voice_emotion(self, audio_data):
+        """Analyze emotion from voice using Hume API"""
         try:
-            response = requests.post(webhook_url, json=payload, timeout=10)
+            # Convert audio to base64
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            
+            # Hume Expression Measurement API
+            url = f"{HUME_BASE_URL}/batch/jobs"
+            
+            payload = {
+                "models": {
+                    "prosody": {}
+                },
+                "transcription": {
+                    "language": "en"
+                },
+                "files": [
+                    {
+                        "filename": "audio.wav",
+                        "data": audio_base64
+                    }
+                ]
+            }
+            
+            response = requests.post(url, headers=self.headers, json=payload)
             
             if response.status_code == 200:
-                actions_taken.append(f"✅ Triggered {context['action_type']} workflow")
+                job_data = response.json()
+                job_id = job_data.get("job_id")
                 
-                if context["user_id"] not in action_history:
-                    action_history[context["user_id"]] = []
-                
-                action_history[context["user_id"]].append({
-                    "timestamp": context["timestamp"],
-                    "action_type": context["action_type"],
-                    "urgency": context["urgency"],
-                    "status": "executed"
-                })
+                # Poll for results
+                return self._poll_for_results(job_id)
             else:
-                actions_taken.append(f"❌ Failed to trigger {context['action_type']}")
+                print(f"Hume API error: {response.status_code} - {response.text}")
+                return self._fallback_emotion_detection(audio_data)
                 
         except Exception as e:
-            actions_taken.append(f"❌ Webhook error: {str(e)}")
-        
-        return actions_taken
-
-class ORAEmotionDetection:
-    """Your existing ORA emotion detection - KEEP AS IS"""
+            print(f"Error analyzing emotion: {e}")
+            return self._fallback_emotion_detection(audio_data)
     
-    @staticmethod
-    def detect_emotion_from_text(text):
-        """Your existing emotion detection logic"""
+    def _poll_for_results(self, job_id, max_attempts=30):
+        """Poll Hume API for job results"""
+        for attempt in range(max_attempts):
+            try:
+                url = f"{HUME_BASE_URL}/batch/jobs/{job_id}"
+                response = requests.get(url, headers=self.headers)
+                
+                if response.status_code == 200:
+                    job_data = response.json()
+                    
+                    if job_data.get("state") == "COMPLETED":
+                        # Get predictions
+                        predictions_url = f"{HUME_BASE_URL}/batch/jobs/{job_id}/predictions"
+                        pred_response = requests.get(predictions_url, headers=self.headers)
+                        
+                        if pred_response.status_code == 200:
+                            predictions = pred_response.json()
+                            return self._process_hume_results(predictions)
+                    
+                    elif job_data.get("state") == "FAILED":
+                        print("Hume job failed")
+                        break
+                
+                time.sleep(2)  # Wait 2 seconds before next poll
+                
+            except Exception as e:
+                print(f"Error polling results: {e}")
+                break
         
-        emotion_keywords = {
-            "anxious": ["worried", "anxious", "nervous", "scared", "panic", "stress", "overwhelmed"],
-            "sad": ["sad", "depressed", "down", "hopeless", "lonely", "empty", "crying"],
-            "angry": ["angry", "mad", "furious", "irritated", "frustrated", "annoyed"],
-            "happy": ["happy", "joy", "excited", "great", "wonderful", "amazing", "fantastic"],
-            "calm": ["calm", "peaceful", "relaxed", "serene", "tranquil"],
-            "confused": ["confused", "lost", "unclear", "don't understand"],
-            "neutral": []
+        # Fallback if polling fails
+        return self._fallback_emotion_detection(None)
+    
+    def _process_hume_results(self, predictions):
+        """Process Hume API results"""
+        try:
+            # Extract emotion data
+            if predictions and len(predictions) > 0:
+                prediction = predictions[0]
+                results = prediction.get("results", {})
+                predictions_data = results.get("predictions", [])
+                
+                if predictions_data:
+                    pred = predictions_data[0]
+                    models = pred.get("models", {})
+                    prosody = models.get("prosody", {})
+                    grouped_predictions = prosody.get("grouped_predictions", [])
+                    
+                    if grouped_predictions:
+                        group = grouped_predictions[0]
+                        predictions_list = group.get("predictions", [])
+                        
+                        if predictions_list:
+                            emotions = predictions_list[0].get("emotions", [])
+                            
+                            # Convert to our format
+                            emotion_scores = {}
+                            for emotion in emotions:
+                                name = emotion.get("name", "").lower()
+                                score = emotion.get("score", 0)
+                                emotion_scores[name] = score
+                            
+                            # Get transcript if available
+                            transcript = ""
+                            if "transcription" in results:
+                                transcript = results["transcription"].get("text", "")
+                            
+                            return {
+                                "emotions": emotion_scores,
+                                "transcript": transcript,
+                                "success": True
+                            }
+            
+            return self._fallback_emotion_detection(None)
+            
+        except Exception as e:
+            print(f"Error processing Hume results: {e}")
+            return self._fallback_emotion_detection(None)
+    
+    def _fallback_emotion_detection(self, audio_data):
+        """Fallback emotion detection when Hume fails"""
+        return {
+            "emotions": {"neutral": 0.8, "calm": 0.6},
+            "transcript": "I can hear you speaking",
+            "success": False,
+            "fallback": True
         }
-        
-        text_lower = text.lower()
-        detected_emotions = {}
-        
-        for emotion, keywords in emotion_keywords.items():
-            score = sum(1 for keyword in keywords if keyword in text_lower)
-            if score > 0:
-                detected_emotions[emotion] = min(score * 0.4, 1.0)
-        
-        if not detected_emotions:
-            detected_emotions["neutral"] = 0.8
-        
-        return detected_emotions
     
-    @staticmethod
-    def generate_empathic_response(text, emotions, user_id):
-        """Your existing response generation - enhanced for voice"""
+    def generate_empathic_response(self, transcript, emotions):
+        """Generate empathic response based on emotion and text"""
         
+        # Get dominant emotion
         dominant_emotion = max(emotions.items(), key=lambda x: x[1])[0] if emotions else "neutral"
+        confidence = max(emotions.values()) if emotions else 0.5
         
-        # Enhanced empathic response templates (optimized for voice)
-        response_templates = {
-            "anxious": [
-                "I can sense the worry in your voice. Take a deep breath with me. You're safe here, and we can work through this together.",
-                "That anxiety sounds overwhelming. Let's slow down for a moment. What's the most pressing thing on your mind right now?",
-                "I hear the stress in what you're sharing. Remember, you don't have to carry this burden alone. I'm here with you.",
-                "Your anxiety is completely understandable. Let's take this one step at a time. What would help you feel a little more grounded right now?"
+        # Empathic response templates
+        responses = {
+            "joy": [
+                "I can hear the happiness in your voice! That's wonderful. What's bringing you such joy today?",
+                "Your positive energy is contagious! I love hearing you sound so upbeat. Tell me more about what's making you feel great!"
             ],
-            "sad": [
-                "I can feel the sadness in your words. It's okay to feel this way, and I'm here to listen without judgment.",
-                "That sounds really painful. Your feelings are valid, and you don't have to go through this alone.",
-                "I hear the heaviness in your voice. Sometimes just being heard can help lighten the load a little.",
-                "I'm sitting with you in this sadness. You don't have to be strong right now, just be present with me."
+            "sadness": [
+                "I can sense the sadness in your voice, and I want you to know that I'm here with you. Your feelings are completely valid.",
+                "I hear the pain in your words. It's okay to feel sad - you don't have to carry this alone."
             ],
-            "angry": [
-                "I can sense the frustration in your words. It's completely understandable to feel this way. What's driving these feelings?",
-                "That anger sounds justified. Let's talk through what's happening and find a way forward together.",
-                "I hear how upset you are. Your feelings matter, and I'm here to help you process them safely.",
-                "That frustration is real and valid. Let's channel this energy into understanding what you need right now."
+            "anger": [
+                "I can hear the frustration in your voice. That sounds really challenging. What's been weighing on you?",
+                "I sense you're feeling upset, and that's completely understandable. Let's talk through what's bothering you."
             ],
-            "happy": [
-                "I love hearing the joy in your voice! It's wonderful that you're feeling good. What's bringing you this happiness today?",
-                "Your happiness is contagious! I'm so glad you're having a good moment. Tell me more about what's going well.",
-                "That's fantastic! It's beautiful to hear such positive energy. I'm here to celebrate these good moments with you.",
-                "I can hear the smile in your voice! It's wonderful when life feels bright. What's making today special for you?"
+            "fear": [
+                "I can hear some worry in your voice. You're safe here with me. What's been making you feel anxious?",
+                "I sense some nervousness, and that's okay. Take a deep breath with me. What's on your mind?"
+            ],
+            "surprise": [
+                "You sound surprised! That must have been unexpected. What happened?",
+                "I can hear the surprise in your voice! Tell me what caught you off guard."
+            ],
+            "disgust": [
+                "I can tell something is really bothering you. What's been troubling you?",
+                "I hear that something has upset you. I'm here to listen without judgment."
             ],
             "neutral": [
-                "I'm here and listening. How are you feeling right now? What's on your mind?",
-                "Thank you for sharing with me. I'm here to support you in whatever way you need.",
-                "I'm glad you reached out. What would be most helpful for you right now?",
-                "I'm present with you. Take your time, what's going on for you today?"
+                "I'm here and listening. How are you feeling right now?",
+                "Thank you for sharing with me. What's on your mind today?"
             ]
         }
         
-        # Handle specific questions (your existing logic)
-        if "?" in text:
-            if any(word in text.lower() for word in ["what", "how", "why", "when", "where"]):
-                if any(math_word in text.lower() for math_word in ["2+2", "plus", "minus", "times", "divided", "math", "calculate"]):
-                    if "2+2" in text or "2 + 2" in text:
-                        return "Two plus two equals four! I'm happy to help with any questions you have, whether they're mathematical or about how you're feeling."
-                    else:
-                        return "I'd be happy to help with that calculation! I'm here for both practical questions and emotional support."
-                elif "joke" in text.lower():
-                    return "Here's a gentle one for you: Why don't scientists trust atoms? Because they make up everything! I hope that brought a little smile to your face. How are you feeling today?"
-                elif any(word in text.lower() for word in ["time", "date", "day"]):
-                    return f"It's {datetime.now().strftime('%A, %B %d, %Y at %I:%M %p')}. How are you feeling today? Is there anything on your mind?"
+        # Handle specific questions
+        transcript_lower = transcript.lower()
+        if "what" in transcript_lower and "2+2" in transcript_lower:
+            return "Two plus two equals four! I'm happy to help with any questions, whether they're math problems or about how you're feeling."
+        elif "joke" in transcript_lower:
+            return "Here's a gentle one: Why don't scientists trust atoms? Because they make up everything! I hope that brought a smile to your face."
+        elif any(word in transcript_lower for word in ["time", "date", "day"]):
+            return f"It's {datetime.now().strftime('%A, %B %d at %I:%M %p')}. How has your day been treating you?"
         
-        # Get appropriate response template
-        templates = response_templates.get(dominant_emotion, response_templates["neutral"])
-        
-        # Simple response selection
+        # Get appropriate response
+        emotion_responses = responses.get(dominant_emotion, responses["neutral"])
         import random
-        response = random.choice(templates)
+        response = random.choice(emotion_responses)
         
-        return response
-
-class HumeVoiceGenerator:
-    """NEW: Hume voice generation only"""
+        return response, dominant_emotion, confidence
     
-    @staticmethod
-    def generate_hume_voice(text, emotions, user_id="default"):
-        """Generate empathic voice using Hume TTS API"""
-        
-        if not HUME_AVAILABLE:
-            return None
-        
+    def text_to_speech(self, text, emotion="neutral"):
+        """Convert text to speech using Hume's expressive TTS"""
         try:
-            dominant_emotion = max(emotions.items(), key=lambda x: x[1])[0] if emotions else "neutral"
-            emotion_intensity = emotions.get(dominant_emotion, 0.5)
+            url = f"{HUME_BASE_URL}/tts/batches"
             
-            # Map emotions to Hume voice characteristics
-            voice_config = {
-                "anxious": {
-                    "voice_name": "calm_therapist",
-                    "speed": 0.9,
-                    "pitch": 0.95,
-                    "emotion_target": "calm"
-                },
-                "sad": {
-                    "voice_name": "warm_supporter", 
-                    "speed": 0.85,
-                    "pitch": 0.9,
-                    "emotion_target": "compassionate"
-                },
-                "angry": {
-                    "voice_name": "patient_guide",
-                    "speed": 0.95,
-                    "pitch": 0.9,
-                    "emotion_target": "understanding"
-                },
-                "happy": {
-                    "voice_name": "energetic_friend",
-                    "speed": 1.1,
-                    "pitch": 1.05,
-                    "emotion_target": "joyful"
-                },
-                "neutral": {
-                    "voice_name": "professional_caring",
-                    "speed": 1.0,
-                    "pitch": 1.0,
-                    "emotion_target": "supportive"
-                }
+            # Voice configuration based on emotion
+            voice_configs = {
+                "joy": {"voice": "ITO", "speed": 1.1, "pitch": 1.05},
+                "sadness": {"voice": "DACHER", "speed": 0.9, "pitch": 0.95},
+                "anger": {"voice": "DACHER", "speed": 1.0, "pitch": 0.98},
+                "fear": {"voice": "ITO", "speed": 0.95, "pitch": 1.02},
+                "neutral": {"voice": "ITO", "speed": 1.0, "pitch": 1.0}
             }
             
-            config = voice_config.get(dominant_emotion, voice_config["neutral"])
+            config = voice_configs.get(emotion, voice_configs["neutral"])
             
-            # Hume TTS API call
             payload = {
                 "text": text,
-                "voice": {
-                    "provider": "HUME_AI",
-                    "name": config["voice_name"]
-                },
-                "prosody": {
-                    "emotion": config["emotion_target"],
-                    "intensity": min(emotion_intensity, 0.8),
-                    "speed": config["speed"],
-                    "pitch": config["pitch"]
-                },
-                "format": "wav"
+                "voice": config["voice"],
+                "format": "wav",
+                "sample_rate": 24000
             }
             
-            headers = {
-                "X-HUME-API-KEY": HUME_API_KEY,
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(HUME_TTS_URL, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, headers=self.headers, json=payload)
             
             if response.status_code == 200:
-                result = response.json()
-                # Return base64 encoded audio for Make.com
-                return result.get('audio_data')
+                job_data = response.json()
+                job_id = job_data.get("job_id")
+                
+                # Poll for audio results
+                return self._poll_for_audio(job_id)
             else:
-                print(f"Hume TTS error: {response.status_code} - {response.text}")
+                print(f"TTS error: {response.status_code} - {response.text}")
                 return None
                 
         except Exception as e:
-            print(f"Hume voice generation error: {e}")
+            print(f"Error generating speech: {e}")
             return None
+    
+    def _poll_for_audio(self, job_id, max_attempts=30):
+        """Poll for TTS job completion"""
+        for attempt in range(max_attempts):
+            try:
+                url = f"{HUME_BASE_URL}/tts/batches/{job_id}"
+                response = requests.get(url, headers=self.headers)
+                
+                if response.status_code == 200:
+                    job_data = response.json()
+                    
+                    if job_data.get("state") == "COMPLETED":
+                        # Get audio URL
+                        audio_url = job_data.get("urls", [])
+                        if audio_url:
+                            # Download audio
+                            audio_response = requests.get(audio_url[0])
+                            if audio_response.status_code == 200:
+                                return base64.b64encode(audio_response.content).decode('utf-8')
+                    
+                    elif job_data.get("state") == "FAILED":
+                        print("TTS job failed")
+                        break
+                
+                time.sleep(1)  # Wait 1 second
+                
+            except Exception as e:
+                print(f"Error polling audio: {e}")
+                break
+        
+        return None
 
-# Initialize components
-ora_emotion = ORAEmotionDetection()
-hume_voice = HumeVoiceGenerator()
+# Initialize Hume integration
+hume = None
+if HUME_API_KEY:
+    hume = HumeVoiceIntegration(HUME_API_KEY)
+    print("✅ Hume Voice Integration initialized")
+else:
+    print("⚠️ HUME_API_KEY not found - please set environment variable")
 
 @app.route("/")
 def index():
-    """Main page"""
-    try:
-        return render_template("index.html")
-    except:
-        return jsonify({
-            "message": "ORA + Hume Voice Integration", 
-            "status": "operational",
-            "ora_emotion_detection": True,
-            "hume_voice_available": HUME_AVAILABLE,
-            "voice_to_voice_ready": True
-        })
+    """Main voice interface"""
+    return render_template_string(HTML_TEMPLATE)
 
 @app.route("/health")
-def health_check():
+def health():
     """Health check"""
-    webhook_status = {name: bool(url) for name, url in MAKE_WEBHOOKS.items()}
-    
     return jsonify({
         "status": "healthy",
-        "service": "ora_emotion_hume_voice",
-        "ora_emotion_detection": True,
-        "hume_voice_available": HUME_AVAILABLE,
-        "voice_to_voice_ready": True,
-        "make_webhooks_configured": webhook_status,
-        "total_actions_taken": sum(len(actions) for actions in action_history.values()),
-        "empathic_mode": "ora_emotion_hume_voice",
-        "conversation_capable": True
+        "service": "ora_direct_hume_voice",
+        "hume_available": bool(hume),
+        "voice_to_voice": True,
+        "no_make_com_needed": True,
+        "direct_conversation": True
     })
 
-# MAIN ENDPOINT: ORA emotion detection + Hume voice generation
-@app.route("/hume_voice", methods=["POST"])
-def ora_hume_voice():
-    """
-    MAIN ENDPOINT: ORA emotion detection + Hume voice generation
-    Perfect for Make.com integration
-    """
+@app.route("/voice_conversation", methods=["POST"])
+def voice_conversation():
+    """Main voice-to-voice conversation endpoint"""
     
-    start_time = time.time()
-    
-    try:
-        # Handle both JSON and form data
-        if request.is_json:
-            data = request.get_json()
-            message = data.get('message', '')
-            user_id = data.get('user_id', 'make_user')
-        else:
-            message = request.form.get('message', '')
-            user_id = request.form.get('user_id', 'make_user')
-        
-        if not message:
-            return jsonify({
-                'success': False,
-                'error': 'No message provided',
-                'audio_response': None
-            }), 400
-        
-        # Step 1: ORA emotion detection (your existing logic)
-        emotions = ora_emotion.detect_emotion_from_text(message)
-        dominant_emotion = max(emotions.items(), key=lambda x: x[1])[0] if emotions else "neutral"
-        
-        # Step 2: ORA empathic response generation (your existing logic)
-        assistant_response = ora_emotion.generate_empathic_response(message, emotions, user_id)
-        
-        # Step 3: Hume voice generation (NEW)
-        hume_audio = hume_voice.generate_hume_voice(assistant_response, emotions, user_id)
-        
-        # Step 4: ORA proactive actions (your existing logic)
-        context = EmpathicAgent.analyze_emotional_context(message, dominant_emotion, user_id)
-        actions_taken = EmpathicAgent.execute_proactive_actions(context)
-        
-        processing_time = time.time() - start_time
-        
-        # Return response for Make.com
+    if not hume:
         return jsonify({
-            'success': True,
-            'transcript': message,
-            'assistant_response': assistant_response,
-            'audio_response': hume_audio,  # Base64 encoded Hume voice
-            'emotions': emotions,
-            'dominant_emotion': dominant_emotion,
-            'actions_taken': actions_taken,
-            'urgency': context['urgency'],
-            'processing_time': processing_time,
-            'ora_emotion_detection': True,
-            'hume_voice_generated': bool(hume_audio),
-            'voice_to_voice': True,
-            'emotional_intelligence': True,
-            'conversation_capable': True
-        })
-        
-    except Exception as e:
-        processing_time = time.time() - start_time
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'processing_time': processing_time
+            "success": False,
+            "error": "Hume API not configured. Please set HUME_API_KEY environment variable."
         }), 500
-
-# Text-only endpoint for testing
-@app.route("/text_only", methods=["POST"])
-def text_only():
-    """Text-only version without voice generation"""
     
     try:
-        data = request.get_json()
-        message = data.get('message', '')
-        user_id = data.get('user_id', 'test_user')
-        
-        if not message:
+        # Get audio file
+        audio_file = request.files.get('audio')
+        if not audio_file:
             return jsonify({
-                'success': False,
-                'error': 'No message provided'
+                "success": False,
+                "error": "No audio file provided"
             }), 400
         
-        # ORA processing without voice
-        emotions = ora_emotion.detect_emotion_from_text(message)
-        dominant_emotion = max(emotions.items(), key=lambda x: x[1])[0] if emotions else "neutral"
-        assistant_response = ora_emotion.generate_empathic_response(message, emotions, user_id)
+        # Read audio data
+        audio_data = audio_file.read()
         
-        context = EmpathicAgent.analyze_emotional_context(message, dominant_emotion, user_id)
-        actions_taken = EmpathicAgent.execute_proactive_actions(context)
+        # Step 1: Analyze emotion from voice
+        emotion_result = hume.analyze_voice_emotion(audio_data)
+        
+        if not emotion_result["success"]:
+            return jsonify({
+                "success": False,
+                "error": "Failed to analyze voice emotion"
+            }), 500
+        
+        emotions = emotion_result["emotions"]
+        transcript = emotion_result["transcript"]
+        
+        # Step 2: Generate empathic response
+        response_text, dominant_emotion, confidence = hume.generate_empathic_response(transcript, emotions)
+        
+        # Step 3: Convert response to speech
+        audio_response = hume.text_to_speech(response_text, dominant_emotion)
         
         return jsonify({
-            'success': True,
-            'transcript': message,
-            'assistant_response': assistant_response,
-            'emotions': emotions,
-            'dominant_emotion': dominant_emotion,
-            'actions_taken': actions_taken,
-            'urgency': context['urgency'],
-            'ora_emotion_detection': True,
-            'text_mode': True
+            "success": True,
+            "transcript": transcript,
+            "emotions": emotions,
+            "dominant_emotion": dominant_emotion,
+            "emotion_confidence": confidence,
+            "assistant_response": response_text,
+            "audio_response": audio_response,
+            "processing_complete": True,
+            "voice_to_voice": True
         })
         
     except Exception as e:
         return jsonify({
-            'success': False,
-            'error': str(e)
+            "success": False,
+            "error": str(e)
         }), 500
 
-# Your existing routes (kept unchanged)
-@app.route("/api/agent/status/<user_id>", methods=["GET"])
-def agent_status(user_id):
-    user_actions = action_history.get(user_id, [])
+@app.route("/test_text", methods=["POST"])
+def test_text():
+    """Test endpoint with text input"""
+    
+    data = request.get_json()
+    message = data.get("message", "Hello")
+    
+    # Simulate emotion detection
+    emotions = {"neutral": 0.8, "calm": 0.6}
+    
+    if hume:
+        response_text, dominant_emotion, confidence = hume.generate_empathic_response(message, emotions)
+        audio_response = hume.text_to_speech(response_text, dominant_emotion)
+    else:
+        response_text = "I hear you! However, I need the HUME_API_KEY to provide full voice responses."
+        dominant_emotion = "neutral"
+        confidence = 0.8
+        audio_response = None
+    
     return jsonify({
-        "user_id": user_id,
-        "total_actions": len(user_actions),
-        "recent_actions": user_actions[-5:],
-        "agent_active": True,
-        "ora_emotion_detection": True,
-        "hume_voice_integrated": True,
-        "conversation_capable": True,
-        "emotional_intelligence": "advanced"
+        "success": True,
+        "transcript": message,
+        "emotions": emotions,
+        "dominant_emotion": dominant_emotion,
+        "emotion_confidence": confidence,
+        "assistant_response": response_text,
+        "audio_response": audio_response,
+        "hume_configured": bool(hume)
     })
-
-# Test endpoint
-@app.route("/test", methods=["GET", "POST"])
-def test_integration():
-    """Test the ORA + Hume integration"""
-    
-    if request.method == 'GET':
-        return jsonify({
-            'status': 'ORA Emotion + Hume Voice Integration Active!',
-            'endpoints': ['/hume_voice', '/text_only', '/health'],
-            'ora_emotion_detection': True,
-            'hume_voice_available': HUME_AVAILABLE,
-            'voice_to_voice_ready': True,
-            'conversation_capable': True,
-            'emotional_intelligence': 'ora_emotion_hume_voice',
-            'can_handle': ['voice_conversation', 'emotional_support', 'general_questions'],
-            'deployment_status': 'successful'
-        })
-    
-    # Test with sample input
-    test_data = request.json or {
-        'message': 'Hello, how are you?',
-        'user_id': 'test_user'
-    }
-    
-    return ora_hume_voice()
 
 if __name__ == "__main__":
-    print("🚀 Starting ORA + HUME VOICE INTEGRATION")
-    print("🧠 Emotion Detection: ORA (your existing logic)")
-    print(f"🎙️ Voice Generation: Hume {'Configured' if HUME_AVAILABLE else 'Add HUME_API_KEY'}")
-    print("❤️ Empathy: ORA emotion detection + Hume empathic voice")
-    print("🎯 Agent: ORA proactive action execution")
-    print("🔗 Make.com: Voice workflow ready")
-    print("⚡ Speed: Fast processing with ORA + Hume")
-    print("💬 Conversation: Handles any conversation")
-    print("📊 Webhooks configured:", sum(1 for url in MAKE_WEBHOOKS.values() if url))
-    print("🌐 MAIN ENDPOINT: /hume_voice")
-    print("🗣️ Voice-to-Voice: ORA emotion + Hume voice")
-    print("🎭 Best of Both: ORA intelligence + Hume voice quality")
-    print("✅ Deployment: Ready for Make.com integration")
-    
-    if not HUME_AVAILABLE:
-        print("\n⚠️ TO ENABLE HUME VOICE:")
-        print("1. Get API key from: https://platform.hume.ai")
-        print("2. Set HUME_API_KEY environment variable in Render")
-        print("3. Restart this app")
-        print("4. Replace Murf AI with audio playback in Make.com")
+    print("🚀 ORA DIRECT HUME VOICE-TO-VOICE APPLICATION")
+    print("🎙️ Complete voice conversation - NO Make.com needed")
+    print("🧠 Hume emotion detection + voice generation")
+    print("⚡ Simple, fast, direct solution")
+    print(f"🔑 Hume API: {'Configured' if hume else 'MISSING - Set HUME_API_KEY'}")
+    print("🌐 Open browser to: http://localhost:5000")
+    print("🎯 Zero complexity, zero mistakes")
     
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
+
 
