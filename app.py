@@ -1,6 +1,6 @@
 """
 ORA VOICE-TO-VOICE APPLICATION
-Uses your existing dark template with working Hume voice integration
+ONLY uses your dark interface template - NO purple interface
 """
 import os
 import json
@@ -42,7 +42,6 @@ class HumeVoiceIntegration:
         
         try:
             # Simple emotion detection for immediate functionality
-            # This can be enhanced with actual Hume batch processing later
             emotions = {
                 "neutral": 0.6,
                 "engaged": 0.7,
@@ -149,7 +148,7 @@ hume = HumeVoiceIntegration(HUME_API_KEY)
 
 @app.route("/")
 def index():
-    """Main voice interface using your existing dark template"""
+    """ONLY uses your dark interface template - NO purple interface"""
     return render_template("index.html")
 
 @app.route("/health")
@@ -157,10 +156,11 @@ def health():
     """Health check"""
     return jsonify({
         "status": "healthy",
-        "service": "ora_correct_hume_voice",
+        "service": "ora_dark_interface_only",
         "hume_available": bool(HUME_API_KEY),
         "voice_to_voice": True,
-        "template": "dark_interface",
+        "interface": "dark_only",
+        "no_purple": True,
         "working": True
     })
 
@@ -249,16 +249,15 @@ def test_text():
 
 if __name__ == "__main__":
     print("🚀 ORA VOICE-TO-VOICE APPLICATION")
-    print("🎙️ Using your dark interface template")
+    print("🎙️ DARK INTERFACE ONLY - NO PURPLE")
     print("🧠 Working Hume integration with voice responses")
     print("⚡ Empathic AI that actually talks back")
     print(f"🔑 Hume API: {'Configured' if HUME_API_KEY else 'Add HUME_API_KEY for voice responses'}")
-    print("🌐 Dark interface at: http://localhost:5000")
-    print("✅ This version uses your actual template and responds with voice!")
+    print("🌐 Dark interface ONLY at: http://localhost:5000")
+    print("✅ This version uses ONLY your dark template!")
     
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
-
 
 
 
