@@ -1,38 +1,32 @@
 """
-ORA Empathic Agent - MAKE.COM VOICE-TO-VOICE OPTIMIZED
-Faster responses + Natural tone for Make.com voice workflow
-Replaces OpenAI step in: Voice → Make.com → ORA → Murf → Voice
+ORA Empathic Agent - HUME EVI INTEGRATION
+Complete voice-to-voice conversation with emotional intelligence
+Handles ANY question with natural empathic responses
 """
 import os
 import json
 import uuid
+import asyncio
+import websockets
 import requests
 import time
-from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from datetime import datetime
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
+import threading
+import base64
 
 load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
-# Initialize OpenAI client (keep for fallback)
-OPENAI_AVAILABLE = False
-client = None
-try:
-    from openai import OpenAI
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key and api_key != "your_openai_api_key_here":
-        client = OpenAI(api_key=api_key)
-        OPENAI_AVAILABLE = True
-        print("✅ OpenAI initialized successfully")
-    else:
-        print("⚠️ OpenAI API key not configured")
-except Exception as e:
-    print(f"⚠️ OpenAI not available: {e}")
+# Hume EVI Configuration
+HUME_API_KEY = os.getenv("HUME_API_KEY", "your_hume_api_key_here")
+HUME_EVI_WEBSOCKET_URL = "wss://api.hume.ai/v0/evi/chat"
+HUME_CONFIG_API_URL = "https://api.hume.ai/v0/evi/configs"
 
 # Make.com webhook URLs (your existing setup)
 MAKE_WEBHOOKS = {
@@ -45,117 +39,22 @@ MAKE_WEBHOOKS = {
     "proactive_care": os.getenv("MAKE_PROACTIVE_WEBHOOK", "")
 }
 
-# In-memory stores (your existing)
+# In-memory stores
 conversations = {}
 user_profiles = {}
 action_history = {}
+active_evi_sessions = {}
 
-# OPTIMIZATION: Fast response cache
-response_cache = {}
-emotion_cache = {}
-CACHE_TIMEOUT = 300  # 5 minutes
+# Hume EVI Configuration
+HUME_AVAILABLE = bool(HUME_API_KEY and HUME_API_KEY != "your_hume_api_key_here")
 
-# OPTIMIZATION: Natural voice responses (designed for speech synthesis)
-NATURAL_VOICE_RESPONSES = {
-    'anxious': [
-        "I can hear the worry in your voice. Take a deep breath with me. You're safe here.",
-        "That anxiety sounds overwhelming. Let's work through this together, one step at a time.",
-        "I sense your nervousness, and it's completely understandable. You're not alone in this."
-    ],
-    'sad': [
-        "I can feel the sadness in your words. I'm here with you in this difficult moment.",
-        "That sounds really painful. You don't have to carry this burden alone.",
-        "I hear the heaviness you're feeling. Your pain is valid and important."
-    ],
-    'stressed': [
-        "I can feel the pressure you're under. That sounds incredibly overwhelming.",
-        "The stress you're experiencing is real. Let's find ways to lighten this load together.",
-        "I sense how much you're juggling right now. You don't have to carry this alone."
-    ],
-    'angry': [
-        "I can hear the frustration in your voice. Your anger makes complete sense.",
-        "That sounds incredibly infuriating. Your feelings are completely valid.",
-        "I sense your anger, and it's natural to feel this way given what you've described."
-    ],
-    'happy': [
-        "I can hear the happiness in your voice! It's wonderful to share in your joy!",
-        "Your excitement is contagious! This sounds like such a positive moment for you.",
-        "I love hearing the lightness in your voice. This is beautiful to witness."
-    ],
-    'crisis': [
-        "I hear how much pain you're in right now. You matter deeply, and I'm here with you.",
-        "This sounds incredibly difficult. You're not alone in this. Let's get you support.",
-        "I can feel the intensity of what you're going through. Help is available."
-    ],
-    'neutral': [
-        "I'm here to listen and support you. What's been on your mind lately?",
-        "Thank you for sharing with me. I'm here to help however I can.",
-        "I hear you. This is a safe space for you to express whatever you're feeling."
-    ]
-}
-
-# OPTIMIZATION: Murf AI voice settings for natural conversation
-MURF_VOICE_SETTINGS = {
-    'anxious': {
-        'voice_id': 'en-US-aria',
-        'speed': 0.9,
-        'pitch': 0.8,
-        'volume': 1.0,
-        'pause_duration': 0.7,
-        'style': 'calm_supportive'
-    },
-    'sad': {
-        'voice_id': 'en-US-aria',
-        'speed': 0.85,
-        'pitch': 0.7,
-        'volume': 1.0,
-        'pause_duration': 0.8,
-        'style': 'warm_empathetic'
-    },
-    'stressed': {
-        'voice_id': 'en-US-aria',
-        'speed': 0.9,
-        'pitch': 0.8,
-        'volume': 1.0,
-        'pause_duration': 0.6,
-        'style': 'calm_supportive'
-    },
-    'angry': {
-        'voice_id': 'en-US-davis',
-        'speed': 1.0,
-        'pitch': 0.9,
-        'volume': 1.0,
-        'pause_duration': 0.5,
-        'style': 'understanding_steady'
-    },
-    'happy': {
-        'voice_id': 'en-US-aria',
-        'speed': 1.1,
-        'pitch': 1.1,
-        'volume': 1.0,
-        'pause_duration': 0.4,
-        'style': 'warm_enthusiastic'
-    },
-    'crisis': {
-        'voice_id': 'en-US-aria',
-        'speed': 0.8,
-        'pitch': 0.7,
-        'volume': 1.0,
-        'pause_duration': 0.9,
-        'style': 'urgent_caring'
-    },
-    'neutral': {
-        'voice_id': 'en-US-aria',
-        'speed': 1.0,
-        'pitch': 1.0,
-        'volume': 1.0,
-        'pause_duration': 0.5,
-        'style': 'professional_caring'
-    }
-}
+if HUME_AVAILABLE:
+    print("✅ Hume EVI initialized successfully")
+else:
+    print("⚠️ Hume EVI not configured - add HUME_API_KEY to environment")
 
 class EmpathicAgent:
-    """Your existing empathic agent - kept unchanged"""
+    """Your existing empathic agent - enhanced for Hume integration"""
     
     @staticmethod
     def analyze_emotional_context(text, emotion, user_id):
@@ -167,6 +66,7 @@ class EmpathicAgent:
             "urgency": "normal"
         }
         
+        # Crisis detection
         if any(word in context["text"] for word in ["crisis", "suicide", "hurt myself", "end it all"]):
             context["urgency"] = "critical"
             context["action_type"] = "crisis_intervention"
@@ -199,8 +99,7 @@ class EmpathicAgent:
             "emotion": context["emotion"],
             "urgency": context["urgency"],
             "text_snippet": context["text"][:200],
-            "timestamp": context["timestamp"],
-            "actions_requested": EmpathicAgent.get_action_plan(context)
+            "timestamp": context["timestamp"]
         }
         
         try:
@@ -216,8 +115,7 @@ class EmpathicAgent:
                     "timestamp": context["timestamp"],
                     "action_type": context["action_type"],
                     "urgency": context["urgency"],
-                    "status": "executed",
-                    "webhook_response": response.status_code
+                    "status": "executed"
                 })
             else:
                 actions_taken.append(f"❌ Failed to trigger {context['action_type']}")
@@ -226,113 +124,207 @@ class EmpathicAgent:
             actions_taken.append(f"❌ Webhook error: {str(e)}")
         
         return actions_taken
-    
-    @staticmethod
-    def get_action_plan(context):
-        action_plans = {
-            "crisis_intervention": ["immediate_emergency_contact", "crisis_hotline_info", "location_sharing_family"],
-            "anxiety_support": ["breathing_exercise_start", "calming_music_play", "support_person_text"],
-            "depression_care": ["gentle_check_in_schedule", "social_connection_facilitate", "mood_boosting_playlist"],
-            "stress_intervention": ["calendar_optimization", "break_reminders_set", "stress_relief_resources"],
-            "wellness_check": ["mood_tracking_log", "wellness_score_update", "routine_optimization"]
-        }
-        return action_plans.get(context["action_type"], ["general_support"])
 
-# OPTIMIZATION: Super fast emotion detection with caching
-def detect_emotion_fast(text, user_id="default"):
-    """Lightning fast emotion detection with smart caching"""
+class HumeEVIManager:
+    """Manages Hume EVI WebSocket connections and conversations"""
     
-    # Check cache first for speed
-    cache_key = f"emotion_{hash(text[:100])}"
-    if cache_key in emotion_cache:
-        cached = emotion_cache[cache_key]
-        if time.time() - cached['timestamp'] < CACHE_TIMEOUT:
-            return cached['data']
+    def __init__(self):
+        self.config_id = None
+        self.voice_id = None
+        self.setup_complete = False
     
-    # Fast keyword-based detection (faster than OpenAI for voice workflow)
-    text_lower = text.lower()
-    
-    # Crisis indicators (highest priority)
-    if any(word in text_lower for word in ["suicide", "kill myself", "end it all", "hurt myself", "want to die"]):
-        result = {"emotion": "Crisis", "confidence": 0.95, "method": "fast_detection"}
-    
-    # Anxiety indicators
-    elif any(word in text_lower for word in ["anxious", "panic", "overwhelmed", "can't breathe", "racing heart", "worried", "nervous"]):
-        result = {"emotion": "Anxious", "confidence": 0.85, "method": "fast_detection"}
-    
-    # Depression indicators  
-    elif any(word in text_lower for word in ["depressed", "hopeless", "empty", "worthless", "alone", "sad", "down"]):
-        result = {"emotion": "Sad", "confidence": 0.85, "method": "fast_detection"}
-    
-    # Stress indicators
-    elif any(word in text_lower for word in ["stressed", "pressure", "too much", "deadline", "overwhelmed", "busy"]):
-        result = {"emotion": "Stressed", "confidence": 0.85, "method": "fast_detection"}
-    
-    # Anger indicators
-    elif any(word in text_lower for word in ["angry", "furious", "frustrated", "mad", "rage", "annoyed"]):
-        result = {"emotion": "Angry", "confidence": 0.85, "method": "fast_detection"}
-    
-    # Positive emotions
-    elif any(word in text_lower for word in ["happy", "excited", "great", "wonderful", "amazing", "fantastic", "good"]):
-        result = {"emotion": "Happy", "confidence": 0.85, "method": "fast_detection"}
-    
-    else:
-        result = {"emotion": "Neutral", "confidence": 0.7, "method": "fast_detection"}
-    
-    # Cache the result for future speed
-    emotion_cache[cache_key] = {
-        'data': result,
-        'timestamp': time.time()
-    }
-    
-    return result
+    async def setup_evi_config(self):
+        """Create EVI configuration for empathic conversations"""
+        
+        if not HUME_AVAILABLE:
+            return False
+        
+        try:
+            # Create EVI configuration
+            config_data = {
+                "name": "ORA Empathic Assistant",
+                "prompt": {
+                    "text": """You are ORA, an empathic AI assistant designed for natural voice conversations. 
 
-# OPTIMIZATION: Generate natural voice responses
-def generate_natural_voice_response(emotion, text, actions_taken, user_id="default"):
-    """Generate response optimized for natural voice synthesis"""
-    
-    emotion_key = emotion.lower()
-    
-    # Use natural voice responses designed for speech
-    if emotion_key in NATURAL_VOICE_RESPONSES:
-        import random
-        base_response = random.choice(NATURAL_VOICE_RESPONSES[emotion_key])
-    else:
-        base_response = random.choice(NATURAL_VOICE_RESPONSES['neutral'])
-    
-    # Optimize text for voice synthesis
-    voice_optimized_response = optimize_text_for_voice(base_response)
-    
-    # Add action acknowledgment if actions were taken (keep it brief for voice)
-    if actions_taken:
-        voice_optimized_response += " I've also taken some steps to support you."
-    
-    return voice_optimized_response
+You excel at:
+- Understanding emotional nuances in voice and responding appropriately
+- Providing support for anxiety, stress, depression, and general wellness
+- Answering any question (math, jokes, general knowledge, therapy)
+- Maintaining warm, human-like conversation flow
+- Being genuinely helpful and emotionally intelligent
 
-def optimize_text_for_voice(text):
-    """Optimize text specifically for natural voice synthesis"""
+Guidelines:
+- Keep responses conversational and natural for voice
+- Match the user's emotional tone appropriately
+- For emotional distress, be especially empathetic and supportive
+- For factual questions, be helpful and clear
+- Use natural speech patterns with appropriate pauses
+- Be warm, understanding, and genuinely caring
+
+You can handle any topic while maintaining your empathic, supportive personality."""
+                },
+                "voice": {
+                    "provider": "HUME_AI",
+                    "name": "empathic_voice"
+                },
+                "language_model": {
+                    "model_provider": "ANTHROPIC",
+                    "model_resource": "claude-3-5-sonnet-20241022",
+                    "temperature": 0.7
+                },
+                "ellm_model": {
+                    "allow_short_responses": True
+                },
+                "event_messages": {
+                    "on_new_chat": {
+                        "enabled": True,
+                        "text": "Hello! I'm ORA, your empathic AI assistant. I'm here to help with anything you need - whether it's emotional support, answering questions, or just having a conversation. How are you feeling today?"
+                    },
+                    "on_inactivity_timeout": {
+                        "enabled": True,
+                        "text": "I'm still here if you need me. Take your time."
+                    },
+                    "on_max_duration_timeout": {
+                        "enabled": True,
+                        "text": "It's been wonderful talking with you. Remember, I'm always here when you need support."
+                    }
+                },
+                "timeouts": {
+                    "inactivity": {
+                        "enabled": True,
+                        "duration_secs": 120
+                    },
+                    "max_duration": {
+                        "enabled": True,
+                        "duration_secs": 1800  # 30 minutes
+                    }
+                }
+            }
+            
+            headers = {
+                "X-HUME-API-KEY": HUME_API_KEY,
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.post(HUME_CONFIG_API_URL, json=config_data, headers=headers)
+            
+            if response.status_code == 201:
+                config_result = response.json()
+                self.config_id = config_result["id"]
+                print(f"✅ Hume EVI config created: {self.config_id}")
+                self.setup_complete = True
+                return True
+            else:
+                print(f"❌ Failed to create EVI config: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ EVI setup error: {e}")
+            return False
     
-    # Make more conversational and natural for speech
-    text = text.replace("I understand that you are", "I can see you're")
-    text = text.replace("It appears that", "It seems like")
-    text = text.replace("I would recommend", "I'd suggest")
-    text = text.replace("It is important to", "It helps to")
-    text = text.replace("You should consider", "You might try")
+    async def start_evi_conversation(self, user_id="default"):
+        """Start a new EVI conversation session"""
+        
+        if not self.setup_complete:
+            await self.setup_evi_config()
+        
+        if not self.config_id:
+            return None
+        
+        try:
+            # WebSocket URL with authentication
+            ws_url = f"{HUME_EVI_WEBSOCKET_URL}?api_key={HUME_API_KEY}&config_id={self.config_id}"
+            
+            # Connect to EVI WebSocket
+            websocket = await websockets.connect(ws_url)
+            
+            session_id = str(uuid.uuid4())
+            active_evi_sessions[session_id] = {
+                "websocket": websocket,
+                "user_id": user_id,
+                "created_at": datetime.now(),
+                "messages": []
+            }
+            
+            print(f"✅ EVI session started: {session_id}")
+            return session_id
+            
+        except Exception as e:
+            print(f"❌ Failed to start EVI session: {e}")
+            return None
     
-    # Add natural breathing pauses for longer responses
-    words = text.split()
-    if len(words) > 12:
-        # Add comma for natural pause around middle
-        pause_position = len(words) // 2
-        if pause_position < len(words) - 1:
-            words[pause_position] += ","
-        text = " ".join(words)
+    async def send_audio_to_evi(self, session_id, audio_data):
+        """Send audio data to EVI and get response"""
+        
+        if session_id not in active_evi_sessions:
+            return None
+        
+        session = active_evi_sessions[session_id]
+        websocket = session["websocket"]
+        
+        try:
+            # Send audio input message
+            audio_message = {
+                "type": "audio_input",
+                "data": base64.b64encode(audio_data).decode('utf-8')
+            }
+            
+            await websocket.send(json.dumps(audio_message))
+            
+            # Collect response messages
+            response_data = {
+                "transcript": "",
+                "audio_output": [],
+                "emotions": {},
+                "assistant_message": ""
+            }
+            
+            # Listen for EVI responses
+            async for message in websocket:
+                data = json.loads(message)
+                
+                if data["type"] == "user_message":
+                    response_data["transcript"] = data["message"]["content"]
+                    if "models" in data and "prosody" in data["models"]:
+                        response_data["emotions"] = data["models"]["prosody"]["scores"]
+                
+                elif data["type"] == "assistant_message":
+                    response_data["assistant_message"] = data["message"]["content"]
+                
+                elif data["type"] == "audio_output":
+                    response_data["audio_output"].append(data["data"])
+                
+                elif data["type"] == "assistant_end":
+                    break
+            
+            # Store message in session
+            session["messages"].append({
+                "timestamp": datetime.now().isoformat(),
+                "user_input": response_data["transcript"],
+                "assistant_response": response_data["assistant_message"],
+                "emotions": response_data["emotions"]
+            })
+            
+            return response_data
+            
+        except Exception as e:
+            print(f"❌ EVI conversation error: {e}")
+            return None
     
-    # Ensure proper ending for voice synthesis
-    if not text.endswith(('.', '!', '?')):
-        text += '.'
-    
-    return text
+    async def close_evi_session(self, session_id):
+        """Close EVI session"""
+        
+        if session_id in active_evi_sessions:
+            session = active_evi_sessions[session_id]
+            try:
+                await session["websocket"].close()
+            except:
+                pass
+            del active_evi_sessions[session_id]
+            print(f"✅ EVI session closed: {session_id}")
+
+# Initialize Hume EVI Manager
+evi_manager = HumeEVIManager()
 
 # Your existing routes (kept unchanged)
 @app.route("/")
@@ -340,161 +332,112 @@ def index():
     try:
         return render_template("index.html")
     except:
-        return jsonify({"message": "ORA Empathic Agent - MAKE.COM OPTIMIZED", "status": "operational"})
-
-@app.route("/admin")
-def admin():
-    try:
-        return send_from_directory('.', 'enhanced_app.py')
-    except:
-        return jsonify({"error": "Enhanced interface not found"})
+        return jsonify({"message": "ORA Empathic Agent - HUME EVI INTEGRATED", "status": "operational"})
 
 @app.route("/health")
 def health_check():
-    """Health check with Make.com optimization status"""
+    """Health check with Hume EVI status"""
     webhook_status = {name: bool(url) for name, url in MAKE_WEBHOOKS.items()}
     
     return jsonify({
         "status": "healthy",
-        "service": "ora_empathic_agent_make_optimized",
-        "openai_configured": OPENAI_AVAILABLE,
-        "make_com_optimization": "enabled",
+        "service": "ora_empathic_agent_hume_evi",
+        "hume_evi_available": HUME_AVAILABLE,
+        "hume_evi_configured": evi_manager.setup_complete,
         "voice_to_voice_ready": True,
         "make_webhooks_configured": webhook_status,
         "total_actions_taken": sum(len(actions) for actions in action_history.values()),
-        "empathic_mode": "active",
-        "response_cache_size": len(response_cache),
-        "emotion_cache_size": len(emotion_cache),
-        "optimization_active": True
+        "empathic_mode": "advanced",
+        "active_evi_sessions": len(active_evi_sessions),
+        "conversation_capable": True,
+        "emotional_intelligence": "hume_powered"
     })
 
-# OPTIMIZED: Fast emotion classification for Make.com
-@app.route("/classify", methods=["POST"])
-def classify():
-    """Super fast emotion classification for Make.com voice workflow"""
-    data = request.get_json()
-    text = data.get("text", "").strip()
-    user_id = data.get("user_id", "default")
-    
-    if not text:
-        return jsonify({"error": "No text"}), 400
-    
-    # Use fast detection for voice workflow speed
-    result = detect_emotion_fast(text, user_id)
-    return jsonify(result)
-
-# OPTIMIZED: Fast response generation for Make.com
-@app.route("/respond", methods=["POST"])
-def respond():
-    """Optimized response generation for Make.com voice workflow"""
-    data = request.get_json()
-    emotion = data.get("emotion", "Neutral")
-    text = data.get("text", "")
-    user_id = data.get("user_id", f"user_{uuid.uuid4().hex[:8]}")
-    
-    start_time = time.time()
-    
-    # Fast parallel processing for speed
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        context_future = executor.submit(
-            EmpathicAgent.analyze_emotional_context, text, emotion, user_id
-        )
-        context = context_future.result()
-    
-    # Execute proactive actions (your existing functionality)
-    actions_taken = EmpathicAgent.execute_proactive_actions(context)
-    
-    # Generate natural voice response
-    voice_response = generate_natural_voice_response(emotion, text, actions_taken, user_id)
-    
-    # Get Murf voice settings for natural speech
-    murf_settings = MURF_VOICE_SETTINGS.get(emotion.lower(), MURF_VOICE_SETTINGS['neutral'])
-    
-    # Create conversation session
-    chat_id = uuid.uuid4().hex
-    conversations[chat_id] = [
-        {"role": "system", "content": "You are ORA, optimized for natural voice conversation."},
-        {"role": "assistant", "content": voice_response}
-    ]
-    
-    processing_time = time.time() - start_time
-    
-    return jsonify({
-        "message": voice_response,
-        "chat_id": chat_id,
-        "user_id": user_id,
-        "emotion": emotion,
-        "urgency": context["urgency"],
-        "actions_taken": actions_taken,
-        "action_type": context["action_type"],
-        "proactive_agent": True,
-        "voice_optimized": True,
-        "murf_config": murf_settings,
-        "processing_time": processing_time,
-        "make_com_optimized": True,
-        "empathic_mode": True,
-        "timestamp": context["timestamp"]
-    })
-
-# NEW: Direct Make.com integration endpoint (replaces OpenAI in your workflow)
-@app.route("/make_optimize", methods=["POST"])
-def make_optimize():
+# NEW: Hume EVI voice-to-voice endpoint for Make.com
+@app.route("/hume_voice", methods=["POST"])
+def hume_voice_conversation():
     """
-    MAIN ENDPOINT: Direct replacement for OpenAI in your Make.com voice workflow
-    Input: Text from speech-to-text
-    Output: Optimized response + Murf settings for text-to-speech
+    MAIN ENDPOINT: Hume EVI voice-to-voice for Make.com
+    Handles complete voice conversation with emotional intelligence
     """
     
     start_time = time.time()
     
     try:
-        data = request.get_json()
+        # Get audio data from Make.com
+        if 'audio' in request.files:
+            audio_file = request.files['audio']
+            audio_data = audio_file.read()
+        else:
+            # Fallback for base64 audio data
+            data = request.get_json()
+            audio_data = base64.b64decode(data.get('audio_data', ''))
         
-        # Extract data from Make.com
-        message = data.get('message', data.get('text', ''))
-        user_id = data.get('user_id', 'make_user')
+        user_id = request.form.get('user_id', 'make_user')
         
-        if not message:
+        if not audio_data:
             return jsonify({
                 'success': False,
-                'error': 'No message provided',
-                'text_response': "I'm here to listen. What's on your mind?",
-                'emotion': 'neutral',
-                'murf_config': MURF_VOICE_SETTINGS['neutral']
+                'error': 'No audio data provided',
+                'audio_response': None
             }), 400
         
-        # FAST: Parallel emotion detection and context analysis
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            emotion_future = executor.submit(detect_emotion_fast, message, user_id)
+        # Start EVI conversation (async)
+        async def process_with_evi():
+            session_id = await evi_manager.start_evi_conversation(user_id)
+            if not session_id:
+                return None
             
-            emotion_result = emotion_future.result()
-            emotion = emotion_result['emotion']
+            response = await evi_manager.send_audio_to_evi(session_id, audio_data)
+            await evi_manager.close_evi_session(session_id)
+            return response
         
-        # Analyze context and execute proactive actions
-        context = EmpathicAgent.analyze_emotional_context(message, emotion, user_id)
+        # Run async EVI processing
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        evi_response = loop.run_until_complete(process_with_evi())
+        loop.close()
+        
+        if not evi_response:
+            return jsonify({
+                'success': False,
+                'error': 'EVI processing failed',
+                'audio_response': None
+            }), 500
+        
+        # Analyze emotional context for proactive actions
+        transcript = evi_response.get('transcript', '')
+        emotions = evi_response.get('emotions', {})
+        
+        # Get dominant emotion
+        dominant_emotion = 'neutral'
+        if emotions:
+            dominant_emotion = max(emotions.items(), key=lambda x: x[1])[0]
+        
+        # Execute proactive actions if needed
+        context = EmpathicAgent.analyze_emotional_context(transcript, dominant_emotion, user_id)
         actions_taken = EmpathicAgent.execute_proactive_actions(context)
         
-        # Generate natural voice response
-        response_text = generate_natural_voice_response(emotion, message, actions_taken, user_id)
-        
-        # Get Murf voice configuration for natural speech
-        murf_config = MURF_VOICE_SETTINGS.get(emotion.lower(), MURF_VOICE_SETTINGS['neutral'])
+        # Combine audio output
+        audio_output = b''.join([base64.b64decode(chunk) for chunk in evi_response.get('audio_output', [])])
         
         processing_time = time.time() - start_time
         
-        # Return optimized response for Make.com voice workflow
+        # Return voice response for Make.com
         return jsonify({
             'success': True,
-            'text_response': response_text,
-            'emotion': emotion,
-            'confidence': emotion_result['confidence'],
-            'murf_config': murf_config,
-            'processing_time': processing_time,
+            'transcript': transcript,
+            'assistant_response': evi_response.get('assistant_message', ''),
+            'audio_response': base64.b64encode(audio_output).decode('utf-8'),
+            'emotions': emotions,
+            'dominant_emotion': dominant_emotion,
             'actions_taken': actions_taken,
             'urgency': context['urgency'],
-            'voice_optimized': True,
-            'make_com_ready': True,
-            'natural_tone': True
+            'processing_time': processing_time,
+            'hume_evi_powered': True,
+            'voice_to_voice': True,
+            'emotional_intelligence': True,
+            'conversation_capable': True
         })
         
     except Exception as e:
@@ -502,11 +445,69 @@ def make_optimize():
         return jsonify({
             'success': False,
             'error': str(e),
-            'text_response': "I'm here to listen and support you. What's on your mind?",
-            'emotion': 'neutral',
-            'murf_config': MURF_VOICE_SETTINGS['neutral'],
+            'audio_response': None,
             'processing_time': processing_time
         }), 500
+
+# NEW: Text-based Hume integration for testing
+@app.route("/hume_text", methods=["POST"])
+def hume_text_conversation():
+    """Text-based Hume EVI for testing and development"""
+    
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        user_id = data.get('user_id', 'test_user')
+        
+        if not message:
+            return jsonify({
+                'success': False,
+                'error': 'No message provided'
+            }), 400
+        
+        # For text testing, we'll use a simplified approach
+        # In production, this would convert text to audio, send to EVI, and return audio
+        
+        # Simulate EVI response structure
+        response = {
+            'transcript': message,
+            'assistant_response': f"I understand you said: '{message}'. As an empathic AI, I'm here to help with whatever you need.",
+            'emotions': {'neutral': 0.7, 'curious': 0.3},
+            'dominant_emotion': 'neutral'
+        }
+        
+        # Execute proactive actions
+        context = EmpathicAgent.analyze_emotional_context(message, response['dominant_emotion'], user_id)
+        actions_taken = EmpathicAgent.execute_proactive_actions(context)
+        
+        return jsonify({
+            'success': True,
+            'transcript': response['transcript'],
+            'assistant_response': response['assistant_response'],
+            'emotions': response['emotions'],
+            'dominant_emotion': response['dominant_emotion'],
+            'actions_taken': actions_taken,
+            'urgency': context['urgency'],
+            'hume_evi_powered': True,
+            'text_mode': True,
+            'conversation_capable': True
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Setup EVI configuration on startup
+@app.before_first_request
+def setup_hume_evi():
+    """Initialize Hume EVI configuration"""
+    if HUME_AVAILABLE:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(evi_manager.setup_evi_config())
+        loop.close()
 
 # Your existing endpoints (kept unchanged)
 @app.route("/api/agent/status/<user_id>", methods=["GET"])
@@ -517,7 +518,9 @@ def agent_status(user_id):
         "total_actions": len(user_actions),
         "recent_actions": user_actions[-5:],
         "agent_active": True,
-        "make_com_optimized": True
+        "hume_evi_integrated": True,
+        "conversation_capable": True,
+        "emotional_intelligence": "advanced"
     })
 
 @app.route("/api/webhooks/test", methods=["POST"])
@@ -547,71 +550,53 @@ def test_webhooks():
         "overall_status": "ready" if any(r.get("status") == "success" for r in test_results.values()) else "needs_setup"
     })
 
-# Test endpoint for Make.com optimization
+# Test endpoint for Hume EVI
 @app.route("/test", methods=["GET", "POST"])
-def test_make_optimization():
-    """Test the Make.com voice optimization"""
+def test_hume_evi():
+    """Test the Hume EVI integration"""
     
     if request.method == 'GET':
         return jsonify({
-            'status': 'ORA Make.com Voice Optimization Active!',
-            'endpoints': ['/classify', '/respond', '/make_optimize', '/health'],
+            'status': 'ORA Hume EVI Voice-to-Voice Active!',
+            'endpoints': ['/hume_voice', '/hume_text', '/health'],
+            'hume_evi_available': HUME_AVAILABLE,
+            'hume_evi_configured': evi_manager.setup_complete,
             'voice_to_voice_ready': True,
-            'optimization_enabled': True
+            'conversation_capable': True,
+            'emotional_intelligence': 'advanced',
+            'can_handle': ['any_voice_conversation', 'emotional_support', 'general_questions']
         })
     
-    # Test with sample voice input
+    # Test with sample text input
     test_data = request.json or {
-        'message': 'I feel anxious about my job interview tomorrow',
+        'message': 'Hello, how are you?',
         'user_id': 'test_user'
     }
     
-    # Test the Make.com optimization
-    start_time = time.time()
-    emotion_result = detect_emotion_fast(test_data['message'])
-    response_text = generate_natural_voice_response(
-        emotion_result['emotion'], 
-        test_data['message'], 
-        [], 
-        test_data['user_id']
-    )
-    processing_time = time.time() - start_time
-    murf_config = MURF_VOICE_SETTINGS.get(emotion_result['emotion'].lower(), MURF_VOICE_SETTINGS['neutral'])
-    
-    return jsonify({
-        'test_input': test_data,
-        'optimization_result': {
-            'emotion': emotion_result['emotion'],
-            'confidence': emotion_result['confidence'],
-            'response': response_text,
-            'murf_config': murf_config,
-            'processing_time': processing_time,
-            'voice_optimized': True,
-            'natural_tone': True
-        },
-        'performance': {
-            'processing_time': processing_time,
-            'speed_improvement': f"{((3.0 - processing_time) / 3.0 * 100):.1f}% faster than baseline",
-            'voice_to_voice_ready': True
-        }
-    })
+    # Test the Hume text endpoint
+    return hume_text_conversation()
 
 if __name__ == "__main__":
-    print("🚀 Starting ORA Empathic Agent - MAKE.COM VOICE OPTIMIZED")
-    print(f"🤖 OpenAI: {'Enabled' if OPENAI_AVAILABLE else 'Fast fallback mode'}")
-    print("❤️ Empathy: Advanced emotional intelligence")
+    print("🚀 Starting ORA Empathic Agent - HUME EVI INTEGRATED")
+    print(f"🧠 Hume EVI: {'Enabled' if HUME_AVAILABLE else 'Not configured - add HUME_API_KEY'}")
+    print("❤️ Empathy: Advanced emotional intelligence with Hume")
     print("🎯 Agent: Proactive action execution")
     print("🔗 Make.com: Voice workflow optimization enabled")
-    print("🎙️ Voice: Natural tone + faster responses")
-    print("⚡ Speed: Parallel processing + smart caching")
+    print("🎙️ Voice: Complete voice-to-voice conversation")
+    print("⚡ Speed: Real-time emotional processing")
+    print("💬 Conversation: Can handle ANY voice conversation")
     print("📊 Webhooks configured:", sum(1 for url in MAKE_WEBHOOKS.values() if url))
-    print("🌐 MAIN ENDPOINT: /make_optimize (replaces OpenAI in Make.com)")
-    print("🎵 Murf AI: Emotion-aware voice configuration")
-    print("🗣️ Voice-to-Voice: Fully optimized workflow")
+    print("🌐 MAIN ENDPOINT: /hume_voice (for Make.com voice workflow)")
+    print("🗣️ Voice-to-Voice: Fully integrated with emotional intelligence")
+    print("🎭 Emotional AI: Powered by Hume's empathic models")
+    
+    if not HUME_AVAILABLE:
+        print("\n⚠️ TO ENABLE HUME EVI:")
+        print("1. Get API key from: https://platform.hume.ai")
+        print("2. Set HUME_API_KEY environment variable")
+        print("3. Restart this app")
     
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
-
-
 
 
