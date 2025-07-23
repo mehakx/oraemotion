@@ -24,7 +24,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
 # Hume EVI Configuration
-HUME_API_KEY = os.getenv("HUME_API_KEY", "your_hume_api_key_here")
+HUME_API_KEY = os.getenv("HUME_API_KEY", "g8SjaCAGqEcSlpU2SLEC60Nox7Ikos4ItPMW3PVlwxK817Bh")
 HUME_EVI_WEBSOCKET_URL = "wss://api.hume.ai/v0/evi/chat"
 HUME_CONFIG_API_URL = "https://api.hume.ai/v0/evi/configs"
 
