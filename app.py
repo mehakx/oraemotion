@@ -5,6 +5,7 @@ FIXED: Handles both JSON and FormData requests
 ADDED: OpenAI integration for proper conversational responses
 ENHANCED: Hume EVI emotion detection for accurate emotional understanding
 CONTINUOUS: Conversation history support for natural dialogue flow
+UPDATED: OpenAI v1.0.0 compatible syntax
 """
 
 import os
@@ -15,7 +16,7 @@ import requests
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)
@@ -24,9 +25,10 @@ CORS(app)
 HUME_API_KEY = os.getenv("HUME_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-# Initialize OpenAI client
+# Initialize OpenAI client (v1.0.0 syntax)
+openai_client = None
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 class HumeVoiceIntegration:
     """Direct Hume API integration for voice-to-voice conversation with accurate emotion detection"""
@@ -142,7 +144,7 @@ class HumeVoiceIntegration:
     def enhanced_emotion_analysis_with_openai(self, user_input):
         """Enhanced emotion analysis using OpenAI when Hume is not available"""
         
-        if OPENAI_API_KEY:
+        if openai_client:
             try:
                 emotion_prompt = f"""You are a empathic friendly companion who's main aim is to talk and understand the user
             Analyze the emotional content of this user message with high accuracy and nuance, and respond very empathically- maintain 
@@ -173,7 +175,7 @@ Possible emotions: joy, sadness, anger, fear, anxiety, excitement, calmness, lov
 
 Be highly accurate - "feeling weird" = uncomfortable/confused, "not good" = sadness/disappointment, etc."""
 
-                response = openai.ChatCompletion.create(
+                response = openai_client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a empathic friendly companion who's main aim is to talk and understand the user. Analyze the emotional content of this user message with high accuracy and nuance, and respond very empathically- maintain a friendly conversation and understand what underlying behaviour is causing the user to feel this way. Return only valid JSON."},
@@ -295,7 +297,7 @@ RESPONSE GUIDELINES:
 - Your main aim is to identify what behaviour of theirs is causing this action."""
 
         try:
-            if OPENAI_API_KEY:
+            if openai_client:
                 # Build conversation messages for OpenAI
                 messages = [{"role": "system", "content": system_prompt}]
                 
@@ -314,8 +316,8 @@ RESPONSE GUIDELINES:
                 print(f"💬 Conversation context: {len(messages)} messages")
                 print(f"🎭 Responding to emotion: {emotion_name} ({emotion_confidence:.1f})")
                 
-                # Use OpenAI for empathic response
-                response = openai.ChatCompletion.create(
+                # Use OpenAI for empathic response (v1.0.0 syntax)
+                response = openai_client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=messages,
                     max_tokens=120,
@@ -438,7 +440,8 @@ def health():
         "conversational_ai": "openai_gpt35",
         "emotion_detection": "hume_evi_enhanced",
         "conversation_memory": True,
-        "empathic_responses": True
+        "empathic_responses": True,
+        "openai_version": "v1.0.0_compatible"
     })
 
 @app.route("/voice_conversation", methods=["POST"])
@@ -536,6 +539,7 @@ if __name__ == "__main__":
     print(f"✅ Emotion Detection: Hume EVI Enhanced")
     print(f"✅ Conversation Memory: Enabled")
     print(f"✅ Empathic Responses: Highly Enhanced")
+    print(f"✅ OpenAI Version: v1.0.0 Compatible")
     app.run(host="0.0.0.0", port=10000, debug=False)
 
 
