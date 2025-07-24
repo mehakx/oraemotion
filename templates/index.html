@@ -944,15 +944,15 @@
             console.log('📤 Sending to ORA backend:', userInput);
             
             try {
-                // Create FormData for voice conversation
-                const formData = new FormData();
-                const audioBlob = new Blob(['dummy'], { type: 'audio/wav' });
-                formData.append('audio', audioBlob, 'recording.wav');
-                
-                // Call ORA backend
+                // Call ORA backend with JSON payload
                 const response = await fetch('/voice_conversation', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: userInput
+                    })
                 });
                 
                 console.log('📥 Response status:', response.status);
@@ -964,12 +964,7 @@
                 const responseData = await response.json();
                 console.log('📥 ORA response:', responseData);
                 
-                if (responseData.success) {
-                    handleOraResponse(responseData);
-                } else {
-                    console.error('❌ ORA API error:', responseData.error);
-                    resetToReady();
-                }
+                handleOraResponse(responseData);
                 
             } catch (error) {
                 console.error('❌ Error calling ORA backend:', error);
@@ -992,6 +987,7 @@
                           responseData.Audio_File || 
                           responseData.audio_file ||
                           "";
+                }
             }
             
             console.log('🎵 Found audio URL:', audioUrl);
@@ -1104,7 +1100,7 @@
             setSunState('idle');
             
             // Tap anywhere to speak
-            document.body.addEventListener('click', function(e) {
+            document.addEventListener('click', function(e) {
                 if (e.target.id !== 'endCallHint') {
                     startListening();
                 }
@@ -1121,13 +1117,9 @@
             
             console.log('✅ Apple-style ORA Interface Ready');
         });
-    }
     </script>
 </body>
 </html>
-
-
-
 
 
 
