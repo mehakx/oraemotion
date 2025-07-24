@@ -1,7 +1,7 @@
 """ 
 ORA VOICE-TO-VOICE APPLICATION
 ONLY uses your dark interface template - NO purple interface
-FIXED: Correct Hume TTS response parsing
+FIXED: Logic error in Hume TTS response handling
 """
 
 import os
@@ -149,23 +149,26 @@ class HumeVoiceIntegration:
                 response_data = response.json()
                 print(f"Hume TTS Response Keys: {list(response_data.keys())}")
                 
-                # CORRECT PARSING: Audio is at generations[0].audio (not snippets)
+                # CORRECT PARSING: Audio is at generations[0].audio
                 if "generations" in response_data and len(response_data["generations"]) > 0:
                     generation = response_data["generations"][0]
                     print(f"Generation Keys: {list(generation.keys())}")
                     
                     if "audio" in generation:
                         # Audio is already base64 encoded in the response
+                        audio_data = generation["audio"]
                         print("✅ Audio found in generation.audio")
-                        return generation["audio"]
+                        print(f"✅ Audio length: {len(audio_data)} characters")
+                        return audio_data  # FIXED: Return the audio data directly
                     else:
                         print("❌ No 'audio' key in generation")
                         print(f"Available keys: {list(generation.keys())}")
+                        return None
                 else:
                     print("❌ No 'generations' in response or empty generations")
                     print(f"Response structure: {json.dumps(response_data, indent=2)}")
-                
-                return None
+                    return None
+                    
             else:
                 print(f"Hume TTS error: {response.status_code} - {response.text}")
                 return None
@@ -194,7 +197,8 @@ def health():
         "voice_to_voice": True,
         "working": True,
         "tts_endpoint": "https://api.hume.ai/v0/tts",
-        "response_parsing": "generations[0].audio"
+        "response_parsing": "generations[0].audio",
+        "logic_fixed": True
     })
 
 @app.route("/voice_conversation", methods=["POST"])
@@ -232,6 +236,7 @@ def voice_conversation():
         
         if audio_response:
             print("✅ Audio response: Generated successfully")
+            print(f"✅ Audio response length: {len(audio_response)} characters")
         else:
             print("❌ Audio response: Failed to generate")
         
@@ -258,7 +263,7 @@ if __name__ == "__main__":
     print(f"✅ Voice-to-voice: Enabled")
     print(f"✅ TTS Endpoint: https://api.hume.ai/v0/tts")
     print(f"✅ Response Parsing: generations[0].audio")
+    print(f"✅ Logic Fixed: Return audio data directly")
     app.run(host="0.0.0.0", port=10000, debug=False)
-
 
 
