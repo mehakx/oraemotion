@@ -939,84 +939,42 @@
             }, 100);
         }
 
-        // Analyze personality with Humantic AI then send to ORA
+        // Send user input to ORA backend
         async function analyzePersonalityAndSend(userInput) {
-            console.log('🧠 Analyzing personality for:', userInput);
+            console.log('📤 Sending to ORA backend:', userInput);
             
             try {
-                const personalityData = await callHumanticAI(userInput);
-                console.log('✅ Personality analysis complete:', personalityData);
+                // Create FormData for voice conversation
+                const formData = new FormData();
+                const audioBlob = new Blob(['dummy'], { type: 'audio/wav' });
+                formData.append('audio', audioBlob, 'recording.wav');
                 
-                sendToOraAPI(userInput, personalityData);
+                // Call ORA backend
+                const response = await fetch('/voice_conversation', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-            } catch (error) {
-                console.error('❌ Personality analysis failed:', error);
-                sendToOraAPI(userInput, null);
-            }
-        }
-
-        // Call Humantic AI API for personality analysis
-        async function callHumanticAI(text) {
-            const response = await fetch('https://api.humantic.ai/v1/user-persona/create', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer chrexec_4d5937347df442dcb0e309deb9d94eae',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    apikey: 'chrexec_4d5937347df442dcb0e309deb9d94eae',
-                    id: 'user_' + Date.now(),
-                    text: text
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Humantic AI API error: ${response.status}`);
-            }
-
-            return await response.json();
-        }
-
-        // Send user input to ORA API (Make.com webhook)
-        function sendToOraAPI(userInput, personalityData = null) {
-            console.log('📤 Sending to ORA API:', userInput);
-            
-            const webhookURL = 'https://hook.eu2.make.com/t3fintf1gaxjumlyj7v357rleon0idnh';
-            
-            const payload = {
-                message: userInput,
-                timestamp: new Date().toISOString(),
-                user_id: 'user_' + Date.now(),
-                personality: personalityData
-            };
-            
-            fetch(webhookURL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(response => {
                 console.log('📥 Response status:', response.status);
-                return response.text();
-            })
-            .then(textData => {
-                console.log('📥 Raw response text:', textData);
                 
-                const audioUrlMatch = textData.match(/https:\/\/murf\.ai[^\s"]+/);
-                if (audioUrlMatch) {
-                    console.log('🎵 Found audio URL:', audioUrlMatch[0]);
-                    handleOraResponse({ audio_url: audioUrlMatch[0] });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const responseData = await response.json();
+                console.log('📥 ORA response:', responseData);
+                
+                if (responseData.success) {
+                    handleOraResponse(responseData);
                 } else {
-                    console.log('❌ No audio URL found in response');
+                    console.error('❌ ORA API error:', responseData.error);
                     resetToReady();
                 }
-            })
-            .catch(error => {
-                console.error('❌ Error calling ORA API:', error);
+                
+            } catch (error) {
+                console.error('❌ Error calling ORA backend:', error);
                 resetToReady();
-            });
+            }
         }
 
         // Handle ORA's response
@@ -1025,7 +983,11 @@
             
             let audioUrl = "";
             if (responseData) {
-                audioUrl = responseData.audio_url || 
+                // Handle base64 audio response from Hume
+                if (responseData.audio_response) {
+                    audioUrl = `data:audio/wav;base64,${responseData.audio_response}`;
+                } else {
+                    audioUrl = responseData.audio_url || 
                           responseData.audioUrl || 
                           responseData.Audio_File || 
                           responseData.audio_file ||
@@ -1159,6 +1121,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
