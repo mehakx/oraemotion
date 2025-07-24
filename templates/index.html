@@ -988,10 +988,11 @@
                     audioUrl = `data:audio/wav;base64,${responseData.audio_response}`;
                 } else {
                     audioUrl = responseData.audio_url || 
-                          responseData.audioUrl || 
-                          responseData.Audio_File || 
-                          responseData.audio_file ||
-                          "";
+                              responseData.audioUrl || 
+                              responseData.Audio_File || 
+                              responseData.audio_file ||
+                              "";
+                }
             }
             
             console.log('🎵 Found audio URL:', audioUrl);
@@ -1121,6 +1122,10 @@
     </script>
 </body>
 </html>
+
+
+
+
 
 
 
