@@ -17,7 +17,6 @@ CORS(app)
 
 # Hume API Configuration
 HUME_API_KEY = os.getenv("HUME_API_KEY", "")
-HUME_BASE_URL = "https://api.hume.ai/v0"
 
 class HumeVoiceIntegration:
     """Direct Hume API integration for voice-to-voice conversation"""
@@ -110,21 +109,30 @@ class HumeVoiceIntegration:
         return response, dominant_emotion, confidence
     
     def text_to_speech_hume(self, text, emotion="neutral"):
-        """Convert text to speech using Hume's empathic TTS"""
+        """Convert text to speech using Hume's TTS API"""
         
         if not self.api_key:
+            print("No Hume API key provided")
             return None
         
         try:
-            # Correct Hume TTS API endpoint
-            tts_url = f"{HUME_BASE_URL}/evi/text-to-speech"
+            # Correct Hume TTS API endpoint from official documentation
+            tts_url = "https://api.hume.ai/v0/tts"
             
             payload = {
-                "text": text,
-                "voice": "ITO",  # Hume's empathic voice
-                "format": "wav",
-                "sample_rate": 22050
+                "utterances": [
+                    {
+                        "text": text
+                    }
+                ],
+                "format": {
+                    "type": "mp3",
+                    "sample_rate": 22050
+                }
             }
+            
+            print(f"Calling Hume TTS API: {tts_url}")
+            print(f"Payload: {json.dumps(payload, indent=2)}")
             
             response = requests.post(
                 tts_url,
@@ -133,10 +141,24 @@ class HumeVoiceIntegration:
                 timeout=30
             )
             
+            print(f"Hume TTS Response Status: {response.status_code}")
+            
             if response.status_code == 200:
-                # Return base64 encoded audio
-                audio_data = response.content
-                return base64.b64encode(audio_data).decode('utf-8')
+                # Parse JSON response
+                response_data = response.json()
+                print(f"Hume TTS Response: {json.dumps(response_data, indent=2)}")
+                
+                # Extract audio from response
+                if "generations" in response_data and len(response_data["generations"]) > 0:
+                    generation = response_data["generations"][0]
+                    if "snippets" in generation and len(generation["snippets"]) > 0:
+                        snippet = generation["snippets"][0]
+                        if "audio" in snippet:
+                            # Audio is already base64 encoded in the response
+                            return snippet["audio"]
+                
+                print("No audio found in Hume response")
+                return None
             else:
                 print(f"Hume TTS error: {response.status_code} - {response.text}")
                 return None
@@ -163,7 +185,8 @@ def health():
         "interface": "dark_only",
         "no_purple": True,
         "voice_to_voice": True,
-        "working": True
+        "working": True,
+        "tts_endpoint": "https://api.hume.ai/v0/tts"
     })
 
 @app.route("/voice_conversation", methods=["POST"])
@@ -225,6 +248,7 @@ if __name__ == "__main__":
     print(f"✅ Hume API Key: {'✓ Set' if HUME_API_KEY else '✗ Missing'}")
     print(f"✅ Interface: Dark only (no purple)")
     print(f"✅ Voice-to-voice: Enabled")
+    print(f"✅ TTS Endpoint: https://api.hume.ai/v0/tts")
     app.run(host="0.0.0.0", port=10000, debug=False)
 
 
