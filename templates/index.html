@@ -1,285 +1,1126 @@
-"""
-ORA VOICE-TO-VOICE APPLICATION
-ONLY uses your dark interface template - NO purple interface
-FIXED: Handles both JSON and FormData requests
-"""
-
-import os
-import json
-import time
-import base64
-import requests
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
-
-# Hume API Configuration
-HUME_API_KEY = os.getenv("HUME_API_KEY", "")
-
-class HumeVoiceIntegration:
-    """Direct Hume API integration for voice-to-voice conversation"""
-    
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.headers = {
-            "X-Hume-Api-Key": api_key,
-            "Content-Type": "application/json"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORA - Voice Wellness Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    
-    def analyze_voice_emotion(self, user_input):
-        """Analyze emotion from text input using simple keyword detection"""
-        
-        # Simple emotion detection based on keywords
-        emotions = {"neutral": 0.6}
-        
-        user_input_lower = user_input.lower()
-        
-        if any(word in user_input_lower for word in ["happy", "great", "awesome", "good", "excited"]):
-            emotions = {"joy": 0.8, "excitement": 0.7}
-        elif any(word in user_input_lower for word in ["sad", "down", "upset", "bad", "terrible"]):
-            emotions = {"sadness": 0.7, "disappointment": 0.6}
-        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "annoyed"]):
-            emotions = {"anger": 0.7, "frustration": 0.6}
-        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared"]):
-            emotions = {"anxiety": 0.7, "fear": 0.5}
-        elif any(word in user_input_lower for word in ["calm", "peaceful", "relaxed", "chill"]):
-            emotions = {"calmness": 0.8, "peace": 0.7}
-        elif any(word in user_input_lower for word in ["love", "care", "appreciate", "thank"]):
-            emotions = {"love": 0.8, "gratitude": 0.7}
-        else:
-            emotions = {"engaged": 0.7, "neutral": 0.5}
-        
-        return {
-            "emotions": emotions,
-            "transcript": user_input,
-            "success": True,
-            "method": "keyword_analysis"
+
+        body, html {
+            height: 100vh;
+            width: 100vw;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
         }
-    
-    def generate_empathic_response(self, transcript, emotions):
-        """Generate contextual empathic response based on detected emotions"""
-        
-        # Get dominant emotion
-        dominant_emotion = max(emotions.items(), key=lambda x: x[1])
-        emotion_name = dominant_emotion[0]
-        emotion_confidence = dominant_emotion[1]
-        
-        # Generate empathic responses based on emotion
-        if emotion_name in ["joy", "excitement", "happiness"]:
-            responses = [
-                "I can hear the joy in your voice! That's wonderful. Tell me more about what's making you so happy.",
-                "Your excitement is contagious! I love hearing about positive experiences. What's got you feeling so great?",
-                "It sounds like you're in a really good place right now. I'm here to celebrate with you!"
-            ]
-        elif emotion_name in ["sadness", "disappointment", "melancholy"]:
-            responses = [
-                "I can sense some sadness in what you're sharing. I'm here to listen and support you through this.",
-                "It sounds like you're going through a difficult time. Would you like to talk about what's weighing on your heart?",
-                "I hear the heaviness in your voice. Remember that it's okay to feel sad, and I'm here with you."
-            ]
-        elif emotion_name in ["anger", "frustration", "irritation"]:
-            responses = [
-                "I can hear the frustration in your voice. That sounds really challenging. What's been bothering you?",
-                "It sounds like something has really gotten under your skin. I'm here to listen without judgment.",
-                "I sense some anger there. Sometimes it helps to talk through what's making us feel this way."
-            ]
-        elif emotion_name in ["anxiety", "fear", "worry"]:
-            responses = [
-                "I can hear some worry in your voice. Anxiety can be really overwhelming. What's been on your mind?",
-                "It sounds like you might be feeling anxious about something. I'm here to help you work through those feelings.",
-                "I sense some nervousness there. Remember that you're not alone in whatever you're facing."
-            ]
-        elif emotion_name in ["calmness", "peace", "serenity"]:
-            responses = [
-                "You sound wonderfully calm and centered. That's beautiful. How are you feeling in this moment?",
-                "I can hear a sense of peace in your voice. It's lovely when we find those moments of tranquility.",
-                "You seem very grounded right now. I'd love to hear more about what's bringing you this sense of calm."
-            ]
-        elif emotion_name in ["love", "gratitude", "appreciation"]:
-            responses = [
-                "I can hear so much warmth and love in what you're sharing. That's really beautiful.",
-                "There's such genuine appreciation in your voice. It's wonderful to hear about the things that matter to you.",
-                "I can feel the gratitude in your words. It's amazing how love can transform our perspective."
-            ]
-        else:
-            # Default engaged responses
-            responses = [
-                "I can hear the interest and energy in your voice. What's capturing your attention?",
-                "You sound engaged and focused. Tell me more about what's on your mind.",
-                "I'm listening and I can sense your thoughtfulness. What would you like to explore together?"
-            ]
-        
-        import random
-        response_text = random.choice(responses)
-        
-        return response_text, emotion_name, emotion_confidence
-    
-    def text_to_speech_hume(self, text, emotion_context="neutral"):
-        """Convert text to speech using Hume TTS API"""
-        
-        if not self.api_key:
-            print("No Hume API key - using fallback")
-            return None
-        
-        try:
-            print("Calling Hume TTS API")
-            
-            # Hume TTS API endpoint
-            tts_url = "https://api.hume.ai/v0/tts"
-            
-            # Request payload
-            payload = {
-                "utterances": [
-                    {
-                        "text": text
-                    }
-                ]
+
+        /* Subtle ambient glow */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: ambientBreath 8s ease-in-out infinite;
+        }
+
+        @keyframes ambientBreath {
+            0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Main Container */
+        .voice-interface {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Elegant status indicator */
+        .status-indicator {
+            position: absolute;
+            top: 4rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+            transition: all 0.4s ease;
+            text-align: center;
+        }
+
+        .status-indicator.listening {
+            color: rgba(0, 122, 255, 0.8);
+        }
+
+        .status-indicator.thinking {
+            color: rgba(255, 149, 0, 0.8);
+        }
+
+        .status-indicator.speaking {
+            color: rgba(255, 69, 58, 0.8);
+        }
+
+        /* Premium sun container */
+        .sun-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .abstract-sun {
+            width: 200px;
+            height: 200px;
+            position: relative;
+        }
+
+        /* Warm understanding aura */
+        .sun-aura {
+            width: 400%;
+            height: 400%;
+            background: radial-gradient(circle, 
+                rgba(255, 204, 102, 0.15) 0%,
+                rgba(255, 179, 71, 0.12) 30%,
+                rgba(255, 149, 0, 0.08) 60%,
+                transparent 80%);
+            position: absolute;
+            top: -150%;
+            left: -150%;
+            animation: warmGlow 10s ease-in-out infinite;
+            filter: blur(40px);
+        }
+
+        @keyframes warmGlow {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1.2) rotate(180deg);
+                opacity: 1;
+            }
+        }
+
+        /* Abstract sun core */
+        .sun-core {
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, 
+                rgba(255, 255, 255, 0.5) 0%,
+                rgba(255, 204, 102, 0.4) 30%,
+                rgba(255, 179, 71, 0.3) 70%,
+                rgba(255, 149, 0, 0.15) 100%);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: gentlePulse 6s ease-in-out infinite, colorCycle 15s ease-in-out infinite;
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 204, 102, 0.5);
+            box-shadow: 
+                0 0 40px rgba(255, 204, 102, 0.6),
+                0 0 80px rgba(255, 179, 71, 0.4),
+                inset 0 0 30px rgba(255, 255, 255, 0.25);
+        }
+
+        /* Beautiful color cycling for idle state */
+        @keyframes colorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 204, 102, 0.4) 30%,
+                    rgba(255, 179, 71, 0.3) 70%,
+                    rgba(255, 149, 0, 0.15) 100%);
+                border-color: rgba(255, 204, 102, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 204, 102, 0.6),
+                    0 0 80px rgba(255, 179, 71, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 193, 7, 0.4) 30%,
+                    rgba(255, 167, 38, 0.3) 70%,
+                    rgba(255, 138, 101, 0.15) 100%);
+                border-color: rgba(255, 193, 7, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 193, 7, 0.6),
+                    0 0 80px rgba(255, 167, 38, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 183, 77, 0.4) 30%,
+                    rgba(255, 154, 158, 0.3) 70%,
+                    rgba(255, 138, 128, 0.15) 100%);
+                border-color: rgba(255, 183, 77, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 183, 77, 0.6),
+                    0 0 80px rgba(255, 154, 158, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 171, 145, 0.4) 30%,
+                    rgba(255, 138, 101, 0.3) 70%,
+                    rgba(255, 160, 122, 0.15) 100%);
+                border-color: rgba(255, 171, 145, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 171, 145, 0.6),
+                    0 0 80px rgba(255, 138, 101, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 204, 102, 0.4) 30%,
+                    rgba(255, 179, 71, 0.3) 70%,
+                    rgba(255, 149, 0, 0.15) 100%);
+                border-color: rgba(255, 204, 102, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 204, 102, 0.6),
+                    0 0 80px rgba(255, 179, 71, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+        }
+
+        /* Abstract sun rays */
+        .sun-ray {
+            position: absolute;
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 204, 102, 0.7) 50%,
+                transparent 100%);
+            border-radius: 50px;
+            transform-origin: center;
+            animation: gentleRotate 20s linear infinite, rayColorCycle 15s ease-in-out infinite;
+        }
+
+        /* Ray color cycling */
+        @keyframes rayColorCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 0.7) 50%,
+                    transparent 100%);
+            }
+            25% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 193, 7, 0.7) 50%,
+                    transparent 100%);
+            }
+            50% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 183, 77, 0.7) 50%,
+                    transparent 100%);
+            }
+            75% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 171, 145, 0.7) 50%,
+                    transparent 100%);
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 0.7) 50%,
+                    transparent 100%);
+            }
+        }
+
+        .sun-ray:nth-child(1) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        .sun-ray:nth-child(2) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .sun-ray:nth-child(3) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        .sun-ray:nth-child(4) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(135deg);
+        }
+
+        .sun-ray:nth-child(5) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+
+        .sun-ray:nth-child(6) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(225deg);
+        }
+
+        .sun-ray:nth-child(7) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(270deg);
+        }
+
+        .sun-ray:nth-child(8) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(315deg);
+        }
+
+        @keyframes gentlePulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                opacity: 0.8; 
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.1); 
+                opacity: 1; 
+            }
+        }
+
+        @keyframes gentleRotate {
+            0% { transform: translate(-50%, -50%) rotate(var(--rotation, 0deg)); }
+            100% { transform: translate(-50%, -50%) rotate(calc(var(--rotation, 0deg) + 360deg)); }
+        }
+
+        /* Sun states with Apple colors - each with beautiful color cycling */
+        .abstract-sun.listening .sun-core {
+            background: radial-gradient(circle, 
+                rgba(0, 122, 255, 0.5) 0%,
+                rgba(0, 122, 255, 0.35) 50%,
+                rgba(0, 122, 255, 0.2) 100%) !important;
+            border-color: rgba(0, 122, 255, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(0, 122, 255, 0.7),
+                0 0 100px rgba(0, 122, 255, 0.4),
+                inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            animation: gentlePulse 4s ease-in-out infinite, listeningGlow 2s ease-in-out infinite, coolColorCycle 12s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.listening .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(0, 122, 255, 0.8) 50%,
+                transparent 100%) !important;
+            animation: gentleRotate 15s linear infinite, coolRayCycle 12s ease-in-out infinite !important;
+        }
+
+        /* Cool color cycling for listening state */
+        @keyframes coolColorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(0, 122, 255, 0.5) 0%,
+                    rgba(0, 122, 255, 0.35) 50%,
+                    rgba(0, 122, 255, 0.2) 100%) !important;
+                border-color: rgba(0, 122, 255, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(0, 122, 255, 0.7),
+                    0 0 100px rgba(0, 122, 255, 0.4),
+                    inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(30, 144, 255, 0.5) 0%,
+                    rgba(30, 144, 255, 0.35) 50%,
+                    rgba(30, 144, 255, 0.2) 100%) !important;
+                border-color: rgba(30, 144, 255, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(30, 144, 255, 0.7),
+                    0 0 100px rgba(30, 144, 255, 0.4),
+                    inset 0 0 30px rgba(30, 144, 255, 0.25) !important;
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(64, 224, 208, 0.5) 0%,
+                    rgba(64, 224, 208, 0.35) 50%,
+                    rgba(64, 224, 208, 0.2) 100%) !important;
+                border-color: rgba(64, 224, 208, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(64, 224, 208, 0.7),
+                    0 0 100px rgba(64, 224, 208, 0.4),
+                    inset 0 0 30px rgba(64, 224, 208, 0.25) !important;
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(138, 43, 226, 0.5) 0%,
+                    rgba(138, 43, 226, 0.35) 50%,
+                    rgba(138, 43, 226, 0.2) 100%) !important;
+                border-color: rgba(138, 43, 226, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(138, 43, 226, 0.7),
+                    0 0 100px rgba(138, 43, 226, 0.4),
+                    inset 0 0 30px rgba(138, 43, 226, 0.25) !important;
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(0, 122, 255, 0.5) 0%,
+                    rgba(0, 122, 255, 0.35) 50%,
+                    rgba(0, 122, 255, 0.2) 100%) !important;
+                border-color: rgba(0, 122, 255, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(0, 122, 255, 0.7),
+                    0 0 100px rgba(0, 122, 255, 0.4),
+                    inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            }
+        }
+
+        @keyframes coolRayCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(0, 122, 255, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            25% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(30, 144, 255, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            50% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(64, 224, 208, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            75% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(138, 43, 226, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(0, 122, 255, 0.8) 50%,
+                    transparent 100%) !important;
+            }
+        }
+
+        .abstract-sun.thinking .sun-core {
+            background: radial-gradient(circle, 
+                rgba(255, 149, 0, 0.5) 0%,
+                rgba(255, 149, 0, 0.35) 50%,
+                rgba(255, 149, 0, 0.2) 100%) !important;
+            border-color: rgba(255, 149, 0, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(255, 149, 0, 0.7),
+                0 0 100px rgba(255, 149, 0, 0.4),
+                inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            animation: gentlePulse 3s ease-in-out infinite, thinkingShimmer 1.5s ease-in-out infinite, warmColorCycle 10s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.thinking .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 149, 0, 0.9) 50%,
+                transparent 100%) !important;
+            animation: gentleRotate 10s linear infinite, warmRayCycle 10s ease-in-out infinite !important;
+        }
+
+        /* Warm color cycling for thinking state */
+        @keyframes warmColorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 149, 0, 0.5) 0%,
+                    rgba(255, 149, 0, 0.35) 50%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 149, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 149, 0, 0.7),
+                    0 0 100px rgba(255, 149, 0, 0.4),
+                    inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            }
+            33% {
+                background: radial-gradient(circle, 
+                    rgba(255, 69, 0, 0.5) 0%,
+                    rgba(255, 69, 0, 0.35) 50%,
+                    rgba(255, 69, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 69, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 69, 0, 0.7),
+                    0 0 100px rgba(255, 69, 0, 0.4),
+                    inset 0 0 30px rgba(255, 69, 0, 0.25) !important;
+            }
+            66% {
+                background: radial-gradient(circle, 
+                    rgba(255, 140, 0, 0.5) 0%,
+                    rgba(255, 140, 0, 0.35) 50%,
+                    rgba(255, 140, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 140, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 140, 0, 0.7),
+                    0 0 100px rgba(255, 140, 0, 0.4),
+                    inset 0 0 30px rgba(255, 140, 0, 0.25) !important;
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 149, 0, 0.5) 0%,
+                    rgba(255, 149, 0, 0.35) 50%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 149, 0, 0.6) !important;
+                box-shadow: 
+                    0 0 50px rgba(255, 149, 0, 0.7),
+                    0 0 100px rgba(255, 149, 0, 0.4),
+                    inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            }
+        }
+
+        @keyframes warmRayCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 149, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+            33% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 69, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+            66% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 140, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 149, 0, 0.9) 50%,
+                    transparent 100%) !important;
+            }
+        }
+
+        .abstract-sun.speaking .sun-core {
+            background: radial-gradient(circle, 
+                rgba(255, 204, 102, 0.6) 0%,
+                rgba(255, 179, 71, 0.45) 30%,
+                rgba(255, 149, 0, 0.35) 70%,
+                rgba(255, 149, 0, 0.2) 100%) !important;
+            border-color: rgba(255, 204, 102, 0.7) !important;
+            box-shadow: 
+                0 0 60px rgba(255, 204, 102, 0.8),
+                0 0 120px rgba(255, 179, 71, 0.5),
+                inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            animation: gentlePulse 2s ease-in-out infinite, speakingRadiance 1s ease-in-out infinite, radiantColorCycle 8s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.speaking .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 204, 102, 1) 50%,
+                transparent 100%) !important;
+            animation: gentleRotate 8s linear infinite, radiantRayCycle 8s ease-in-out infinite !important;
+        }
+
+        /* Radiant color cycling for speaking state */
+        @keyframes radiantColorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 204, 102, 0.6) 0%,
+                    rgba(255, 179, 71, 0.45) 30%,
+                    rgba(255, 149, 0, 0.35) 70%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 204, 102, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 204, 102, 0.8),
+                    0 0 120px rgba(255, 179, 71, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(255, 215, 0, 0.6) 0%,
+                    rgba(255, 193, 7, 0.45) 30%,
+                    rgba(255, 171, 64, 0.35) 70%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 215, 0, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 215, 0, 0.8),
+                    0 0 120px rgba(255, 193, 7, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 224, 0.6) 0%,
+                    rgba(255, 228, 181, 0.45) 30%,
+                    rgba(255, 218, 185, 0.35) 70%,
+                    rgba(255, 192, 203, 0.2) 100%) !important;
+                border-color: rgba(255, 255, 224, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 255, 224, 0.8),
+                    0 0 120px rgba(255, 228, 181, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(255, 248, 220, 0.6) 0%,
+                    rgba(255, 239, 213, 0.45) 30%,
+                    rgba(255, 228, 196, 0.35) 70%,
+                    rgba(255, 218, 185, 0.2) 100%) !important;
+                border-color: rgba(255, 248, 220, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 248, 220, 0.8),
+                    0 0 120px rgba(255, 239, 213, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 204, 102, 0.6) 0%,
+                    rgba(255, 179, 71, 0.45) 30%,
+                    rgba(255, 149, 0, 0.35) 70%,
+                    rgba(255, 149, 0, 0.2) 100%) !important;
+                border-color: rgba(255, 204, 102, 0.7) !important;
+                box-shadow: 
+                    0 0 60px rgba(255, 204, 102, 0.8),
+                    0 0 120px rgba(255, 179, 71, 0.5),
+                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
+            }
+        }
+
+        @keyframes radiantRayCycle {
+            0% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 1) 50%,
+                    transparent 100%) !important;
+            }
+            25% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 215, 0, 1) 50%,
+                    transparent 100%) !important;
+            }
+            50% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 255, 224, 1) 50%,
+                    transparent 100%) !important;
+            }
+            75% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 248, 220, 1) 50%,
+                    transparent 100%) !important;
+            }
+            100% {
+                background: linear-gradient(90deg, 
+                    transparent 0%,
+                    rgba(255, 204, 102, 1) 50%,
+                    transparent 100%) !important;
+            }
+        }
+
+        @keyframes listeningGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        @keyframes thinkingShimmer {
+            0%, 100% { filter: brightness(1) saturate(1); }
+            50% { filter: brightness(1.3) saturate(1.2); }
+        }
+
+        @keyframes speakingRadiance {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                filter: brightness(1);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.15); 
+                filter: brightness(1.4);
+            }
+        }
+
+        /* Elegant interaction hint */
+        .interaction-hint {
+            position: absolute;
+            bottom: 6rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.85rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.3px;
+            text-align: center;
+            transition: all 0.4s ease;
+            opacity: 1;
+        }
+
+        .interaction-hint.hidden {
+            opacity: 0;
+        }
+
+        /* Subtle end call indicator */
+        .end-call-hint {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            animation: fadeInDelay 2s ease-out 3s forwards;
+        }
+
+        @keyframes fadeInDelay {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .end-call-hint:hover {
+            background: rgba(255, 69, 58, 0.1);
+            border-color: rgba(255, 69, 58, 0.3);
+            color: rgba(255, 69, 58, 0.8);
+            transform: scale(1.1);
+        }
+
+        /* Credibility elements */
+        .credibility-badge {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.3);
+            font-weight: 300;
+            letter-spacing: 0.2px;
+        }
+
+        .security-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(52, 199, 89, 0.8);
+            animation: securityPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes securityPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sun-container {
+                width: 280px;
+                height: 280px;
             }
             
-            print(f"TTS Payload: {json.dumps(payload, indent=2)}")
+            .abstract-sun {
+                width: 160px;
+                height: 160px;
+            }
             
-            # Make request
-            response = requests.post(tts_url, headers=self.headers, json=payload)
+            .status-indicator {
+                top: 3rem;
+                font-size: 0.8rem;
+            }
             
-            print(f"Hume TTS Response Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                print(f"Hume TTS Response Keys: {list(response_data.keys())}")
+            .interaction-hint {
+                bottom: 5rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Haptic feedback simulation */
+        .haptic-feedback {
+            animation: hapticPulse 0.1s ease-out;
+        }
+
+        @keyframes hapticPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="voice-interface">
+        <!-- Status Indicator -->
+        <div class="status-indicator" id="statusIndicator">Ready to listen</div>
+
+        <!-- End Call Hint -->
+        <div class="end-call-hint" id="endCallHint">✕</div>
+
+        <!-- Premium Abstract Sun -->
+        <div class="sun-container">
+            <div class="abstract-sun" id="abstractSun">
+                <div class="sun-aura"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-core"></div>
+            </div>
+        </div>
+
+        <!-- Interaction Hint -->
+        <div class="interaction-hint" id="interactionHint">Tap anywhere to speak</div>
+
+        <!-- Credibility Badge -->
+        <div class="credibility-badge">
+            <div class="security-dot"></div>
+            <span>Private & Secure</span>
+        </div>
+    </div>
+
+    <script>
+        // Apple-style ORA Voice Interface
+        let isListening = false;
+        let recognition = null;
+        let currentAudio = null;
+        let interactionStarted = false;
+
+        // Initialize speech recognition
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
                 
-                # CORRECT PARSING: Audio is at generations[0].audio
-                if "generations" in response_data and len(response_data["generations"]) > 0:
-                    generation = response_data["generations"][0]
-                    print(f"Generation Keys: {list(generation.keys())}")
-                    
-                    if "audio" in generation:
-                        # Audio is already base64 encoded in the response
-                        audio_data = generation["audio"]
-                        print("✅ Audio found in generation.audio")
-                        print(f"✅ Audio length: {len(audio_data)} characters")
-                        return audio_data  # FIXED: Return the audio data directly
-                    else:
-                        print("❌ No 'audio' key in generation")
-                        print(f"Available keys: {list(generation.keys())}")
-                        return None
-                else:
-                    print("❌ No 'generations' in response or empty generations")
-                    print(f"Response structure: {json.dumps(response_data, indent=2)}")
-                    return None
-                    
-            else:
-                print(f"Hume TTS error: {response.status_code} - {response.text}")
-                return None
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
                 
-        except Exception as e:
-            print(f"Hume TTS error: {e}")
-            return None
+                recognition.onstart = function() {
+                    console.log('🎤 Speech recognition started');
+                    isListening = true;
+                    setSunState('listening');
+                    updateStatus('Listening...');
+                    hideInteractionHint();
+                };
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    console.log('🗣️ User said:', transcript);
+                    
+                    setSunState('thinking');
+                    updateStatus('Understanding...');
+                    analyzePersonalityAndSend(transcript);
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('❌ Speech recognition error:', event.error);
+                    resetToReady();
+                };
+                
+                recognition.onend = function() {
+                    console.log('🎤 Speech recognition ended');
+                    isListening = false;
+                };
+                
+                console.log('✅ Speech recognition initialized');
+            } else {
+                console.error('❌ Speech recognition not supported');
+                updateStatus('Voice not supported');
+            }
+        }
 
-# Initialize Hume integration
-hume = HumeVoiceIntegration(HUME_API_KEY)
-
-@app.route("/")
-def index():
-    """ONLY uses your dark interface template - NO purple interface"""
-    return render_template("index.html")
-
-@app.route("/health")
-def health():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "service": "ora_dark_interface_only",
-        "hume_available": bool(HUME_API_KEY),
-        "interface": "dark_only",
-        "no_purple": True,
-        "voice_to_voice": True,
-        "working": True,
-        "tts_endpoint": "https://api.hume.ai/v0/tts",
-        "response_parsing": "generations[0].audio",
-        "logic_fixed": True,
-        "handles_json": True
-    })
-
-@app.route("/voice_conversation", methods=["POST"])
-def voice_conversation():
-    """Handle voice-to-voice conversation with Hume integration - supports both JSON and FormData"""
-    
-    try:
-        user_input = None
-        
-        # Handle JSON request (from updated frontend)
-        if request.is_json:
-            data = request.get_json()
-            user_input = data.get("message", "")
-            print(f"📥 Received JSON message: {user_input}")
+        // Set sun visual state
+        function setSunState(state) {
+            const sun = document.getElementById('abstractSun');
+            const statusIndicator = document.getElementById('statusIndicator');
             
-        # Handle FormData request (from old frontend)  
-        elif 'audio' in request.files:
-            audio_file = request.files['audio']
-            audio_data = audio_file.read()
-            user_input = "hello can you hear me"  # Simulated transcript
-            print(f"📥 Received audio data: {len(audio_data)} bytes (using simulated transcript)")
-            
-        else:
-            return jsonify({
-                "success": False,
-                "error": "No message or audio provided"
-            }), 400
-        
-        if not user_input:
-            return jsonify({
-                "success": False,
-                "error": "Empty message"
-            }), 400
-        
-        # Analyze emotion
-        emotion_result = hume.analyze_voice_emotion(user_input)
-        emotions = emotion_result.get("emotions", {"engaged": 0.7})
-        
-        # Generate empathic response
-        response_text, detected_emotion, emotion_confidence = hume.generate_empathic_response(user_input, emotions)
-        
-        print(f"Generated response: {response_text}")
-        print(f"Dominant emotion: {detected_emotion} ({emotion_confidence})")
-        
-        # Generate voice response
-        audio_response = hume.text_to_speech_hume(response_text, detected_emotion)
-        
-        if audio_response:
-            print("✅ Audio response: Generated successfully")
-            print(f"✅ Audio response length: {len(audio_response)} characters")
-        else:
-            print("❌ Audio response: Failed to generate")
-        
-        return jsonify({
-            "success": True,
-            "assistant_response": response_text,
-            "audio_response": audio_response,  # Base64 encoded audio
-            "dominant_emotion": detected_emotion,
-            "emotion_confidence": emotion_confidence,
-            "emotions": emotions
-        })
-        
-    except Exception as e:
-        print(f"Voice conversation error: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+            sun.className = 'abstract-sun ' + state;
+            statusIndicator.className = 'status-indicator ' + state;
+        }
 
-if __name__ == "__main__":
-    print("🚀 Starting ORA Voice-to-Voice Application...")
-    print(f"✅ Hume API Key: {'✓ Set' if HUME_API_KEY else '✗ Missing'}")
-    print(f"✅ Interface: Dark only (no purple)")
-    print(f"✅ Voice-to-voice: Enabled")
-    print(f"✅ TTS Endpoint: https://api.hume.ai/v0/tts")
-    print(f"✅ Response Parsing: generations[0].audio")
-    print(f"✅ Logic Fixed: Return audio data directly")
-    print(f"✅ Handles JSON: Yes")
-    app.run(host="0.0.0.0", port=10000, debug=False)
+        // Update status text
+        function updateStatus(message) {
+            const statusElement = document.getElementById('statusIndicator');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+        }
+
+        // Hide interaction hint
+        function hideInteractionHint() {
+            const hint = document.getElementById('interactionHint');
+            hint.classList.add('hidden');
+            interactionStarted = true;
+        }
+
+        // Show interaction hint
+        function showInteractionHint() {
+            if (!interactionStarted) {
+                const hint = document.getElementById('interactionHint');
+                hint.classList.remove('hidden');
+            }
+        }
+
+        // Reset to ready state
+        function resetToReady() {
+            isListening = false;
+            setSunState('idle');
+            updateStatus('Ready to listen');
+            if (interactionStarted) {
+                setTimeout(showInteractionHint, 2000);
+            }
+        }
+
+        // Haptic feedback simulation
+        function simulateHaptic() {
+            const sun = document.getElementById('abstractSun');
+            sun.classList.add('haptic-feedback');
+            setTimeout(() => {
+                sun.classList.remove('haptic-feedback');
+            }, 100);
+        }
+
+        // Send user input to ORA backend
+        async function analyzePersonalityAndSend(userInput) {
+            console.log('📤 Sending to ORA backend:', userInput);
+            
+            try {
+                // Call ORA backend with JSON payload
+                const response = await fetch('/voice_conversation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: userInput
+                    })
+                });
+                
+                console.log('📥 Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const responseData = await response.json();
+                console.log('📥 ORA response:', responseData);
+                
+                handleOraResponse(responseData);
+                
+            } catch (error) {
+                console.error('❌ Error calling ORA backend:', error);
+                resetToReady();
+            }
+        }
+
+        // Handle ORA's response
+        function handleOraResponse(responseData) {
+            console.log("📥 Raw response received:", responseData);
+            
+            let audioUrl = "";
+            if (responseData) {
+                // Handle base64 audio response from Hume
+                if (responseData.audio_response) {
+                    audioUrl = `data:audio/wav;base64,${responseData.audio_response}`;
+                } else {
+                    audioUrl = responseData.audio_url || 
+                          responseData.audioUrl || 
+                          responseData.Audio_File || 
+                          responseData.audio_file ||
+                          "";
+                }
+            }
+            
+            console.log('🎵 Found audio URL:', audioUrl);
+            
+            if (audioUrl) {
+                console.log("🔊 Playing audio:", audioUrl);
+                
+                setSunState('speaking');
+                updateStatus('Speaking...');
+                
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                
+                currentAudio = new Audio(audioUrl);
+                
+                currentAudio.play().then(() => {
+                    console.log("✅ Audio playing successfully");
+                }).catch(error => {
+                    console.error("❌ Audio autoplay blocked:", error);
+                    updateStatus('Tap to hear response');
+                    
+                    const playOverlay = document.createElement('div');
+                    playOverlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-size: 1.2rem;
+                        font-weight: 300;
+                        cursor: pointer;
+                        z-index: 1000;
+                        backdrop-filter: blur(20px);
+                    `;
+                    playOverlay.innerHTML = 'Tap to hear ORA';
+                    
+                    playOverlay.onclick = () => {
+                        currentAudio.play();
+                        document.body.removeChild(playOverlay);
+                    };
+                    
+                    document.body.appendChild(playOverlay);
+                });
+                
+                currentAudio.onended = () => {
+                    console.log("✅ Audio finished playing");
+                    // Continue conversation - start listening again automatically
+                    setTimeout(() => {
+                        startListening();
+                    }, 500);
+                };
+                
+                currentAudio.onerror = (error) => {
+                    console.error("❌ Audio playback error:", error);
+                    resetToReady();
+                };
+                
+            } else {
+                console.log("❌ No audio URL found in response");
+                resetToReady();
+            }
+        }
+
+        // Start listening
+        function startListening() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                setSunState('idle');
+            }
+            
+            if (recognition && !isListening) {
+                simulateHaptic();
+                recognition.start();
+            }
+        }
+
+        // End call
+        function endCall() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            
+            updateStatus('Session ended');
+            setSunState('idle');
+            setTimeout(() => {
+                updateStatus('Ready to listen');
+                showInteractionHint();
+                interactionStarted = false;
+            }, 2000);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Apple-style ORA Interface Loading...');
+            
+            initializeSpeechRecognition();
+            setSunState('idle');
+            
+            // Tap anywhere to speak
+            document.addEventListener('click', function(e) {
+                if (e.target.id !== 'endCallHint') {
+                    startListening();
+                }
+            });
+            
+            // End call button
+            const endCallHint = document.getElementById('endCallHint');
+            if (endCallHint) {
+                endCallHint.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    endCall();
+                });
+            }
+            
+            console.log('✅ Apple-style ORA Interface Ready');
+        });
+    </script>
+</body>
+</html>
+
 
 
 
