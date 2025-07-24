@@ -146,7 +146,7 @@ class HumeVoiceIntegration:
             try:
                 emotion_prompt = f"""You are a empathic friendly companion who's main aim is to talk and understand the user
             Analyze the emotional content of this user message with high accuracy and nuance, and respond very empathically- maintain 
-            a friendly conversation and understand what underlying behaviour is causing the user to feel this way."""
+            a friendly conversation and understand what underlying behaviour is causing the user to feel this way.
 
 User message: "{user_input}"
 
@@ -176,9 +176,7 @@ Be highly accurate - "feeling weird" = uncomfortable/confused, "not good" = sadn
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a empathic friendly companion who's main aim is to talk and understand the user
-            Analyze the emotional content of this user message with high accuracy and nuance, and respond very empathically- maintain 
-            a friendly conversation and understand what underlying behaviour is causing the user to feel this way.". Return only valid JSON."},
+                        {"role": "system", "content": "You are a empathic friendly companion who's main aim is to talk and understand the user. Analyze the emotional content of this user message with high accuracy and nuance, and respond very empathically- maintain a friendly conversation and understand what underlying behaviour is causing the user to feel this way. Return only valid JSON."},
                         {"role": "user", "content": emotion_prompt}
                     ],
                     max_tokens=300,
@@ -266,8 +264,10 @@ Be highly accurate - "feeling weird" = uncomfortable/confused, "not good" = sadn
         # Get secondary emotions
         secondary_emotions = [f"{k} ({v:.1f})" for k, v in sorted(emotions.items(), key=lambda x: x[1], reverse=True)[1:3]]
         
-        # Create highly empathic system prompt
-        system_prompt = f"""You are ORA, a deeply empathetic AI voice companion with exceptional emotional intelligence. You have a warm, understanding, and genuinely caring personality.
+        # Create highly empathic system prompt - YOUR ORIGINAL PROMPTING PRESERVED
+        system_prompt = f"""You are a empathic friendly companion who's main aim is to talk and understand the user
+            Analyze the emotional content of this user message with high accuracy and nuance, and respond very empathically- maintain 
+            a friendly conversation and understand what underlying behaviour is causing the user to feel this way.
 
 EMOTIONAL ANALYSIS:
 - Primary emotion: {emotion_name} (confidence: {emotion_confidence:.1f})
@@ -290,9 +290,9 @@ RESPONSE GUIDELINES:
 - Lead with emotional acknowledgment
 - Show genuine curiosity about their experience
 - Offer support without being pushy or overly therapeutic
-- Be present and engaged with their feelings"""
+- Be present and engaged with their feelings
 - Be their friend and companion and understand them deeply
-- Your main aim is to identify what behaviour of theirs is causing this action. 
+- Your main aim is to identify what behaviour of theirs is causing this action."""
 
         try:
             if OPENAI_API_KEY:
@@ -344,39 +344,11 @@ RESPONSE GUIDELINES:
         transcript_lower = transcript.lower()
         is_continuation = conversation_history and len(conversation_history) > 0
         
-        # # Emotion-specific empathic responses
-        # if emotion_name in ["sadness", "disappointment"]:
-        #     if "not good" in transcript_lower or "not great" in transcript_lower:
-        #         return "I can hear that you're not feeling well right now. I'm really sorry you're going through this. What's been weighing on you?"
-        #     else:
-        #         return "I can sense the sadness in what you're sharing. That sounds really difficult. I'm here to listen - would you like to talk about what's happening?"
-        
-        # elif emotion_name in ["confusion", "uncomfortable"]:
-        #     return "It sounds like you're feeling unsettled about something, and that makes complete sense. Those 'weird' feelings can be really hard to pin down. What's been feeling off for you?"
-        
-        # elif emotion_name in ["anxiety", "fear", "worried"]:
-        #     return "I can hear the worry in your voice, and I want you to know that's completely understandable. Anxiety can feel so overwhelming. What's been on your mind that's causing you stress?"
-        
-        # elif emotion_name in ["anger", "frustration"]:
-        #     return "I can tell you're feeling really frustrated right now. That anger makes sense - something's clearly bothering you. What's been getting under your skin?"
-        
-        # elif emotion_name in ["loneliness"]:
-        #     return "It sounds like you're feeling pretty alone right now. That's such a hard feeling to sit with. I'm here with you - you don't have to go through this by yourself."
-        
-        # elif emotion_name in ["fatigue", "tired"]:
-        #     return "You sound exhausted, and I can really hear that weariness. Being that tired can make everything feel so much harder. What's been draining your energy?"
-        
-        # elif emotion_name in ["joy", "excitement"]:
-        #     return "I can hear the happiness in your voice! That's wonderful - it sounds like something really good is happening for you. Tell me more about what's bringing you joy!"
-        
-        # elif emotion_name in ["gratitude"]:
-        #     return "It's so beautiful to hear that gratitude in your voice. Thank you for sharing that with me - it means a lot. What's been filling your heart with appreciation?"
-        
-        # # General empathic responses
-        # elif is_continuation:
-        #     return "I can really hear what you're feeling right now. That sounds like a lot to carry. Tell me more about what's going on for you."
-        # else:
-        #     return "I can sense there's something important you want to share. I'm here and I'm listening - what's on your heart today?"
+        # General empathic responses (as you requested - no hardcoded emotion-specific responses)
+        if is_continuation:
+            return "I can really hear what you're feeling right now. That sounds like a lot to carry. Tell me more about what's going on for you."
+        else:
+            return "I can sense there's something important you want to share. I'm here and I'm listening - what's on your heart today?"
     
     def text_to_speech_hume(self, text, emotion_context="neutral"):
         """Convert text to speech using Hume TTS API"""
@@ -565,6 +537,5 @@ if __name__ == "__main__":
     print(f"✅ Conversation Memory: Enabled")
     print(f"✅ Empathic Responses: Highly Enhanced")
     app.run(host="0.0.0.0", port=10000, debug=False)
-
 
 
