@@ -1,7 +1,7 @@
-""" 
+"""
 ORA VOICE-TO-VOICE APPLICATION
 ONLY uses your dark interface template - NO purple interface
-FIXED: Logic error in Hume TTS response handling
+FIXED: Handles both JSON and FormData requests
 """
 
 import os
@@ -29,123 +29,124 @@ class HumeVoiceIntegration:
             "Content-Type": "application/json"
         }
     
-    def analyze_voice_emotion(self, audio_data):
-        """Analyze emotion from voice using Hume API"""
+    def analyze_voice_emotion(self, user_input):
+        """Analyze emotion from text input using simple keyword detection"""
         
-        if not self.api_key:
-            # Fallback emotion analysis
-            return {
-                "emotions": {"neutral": 0.7, "calm": 0.5},
-                "transcript": "I can hear you speaking",
-                "success": True,
-                "method": "fallback"
-            }
+        # Simple emotion detection based on keywords
+        emotions = {"neutral": 0.6}
         
-        try:
-            # Simple emotion detection for immediate functionality
-            emotions = {
-                "neutral": 0.6,
-                "engaged": 0.7,
-                "calm": 0.5
-            }
-            
-            return {
-                "emotions": emotions,
-                "transcript": "Voice input received and processed",
-                "success": True,
-                "method": "hume_simple"
-            }
-            
-        except Exception as e:
-            print(f"Hume emotion analysis error: {e}")
-            return {
-                "emotions": {"neutral": 0.7},
-                "transcript": "Voice input processed",
-                "success": False,
-                "error": str(e)
-            }
+        user_input_lower = user_input.lower()
+        
+        if any(word in user_input_lower for word in ["happy", "great", "awesome", "good", "excited"]):
+            emotions = {"joy": 0.8, "excitement": 0.7}
+        elif any(word in user_input_lower for word in ["sad", "down", "upset", "bad", "terrible"]):
+            emotions = {"sadness": 0.7, "disappointment": 0.6}
+        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "annoyed"]):
+            emotions = {"anger": 0.7, "frustration": 0.6}
+        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared"]):
+            emotions = {"anxiety": 0.7, "fear": 0.5}
+        elif any(word in user_input_lower for word in ["calm", "peaceful", "relaxed", "chill"]):
+            emotions = {"calmness": 0.8, "peace": 0.7}
+        elif any(word in user_input_lower for word in ["love", "care", "appreciate", "thank"]):
+            emotions = {"love": 0.8, "gratitude": 0.7}
+        else:
+            emotions = {"engaged": 0.7, "neutral": 0.5}
+        
+        return {
+            "emotions": emotions,
+            "transcript": user_input,
+            "success": True,
+            "method": "keyword_analysis"
+        }
     
     def generate_empathic_response(self, transcript, emotions):
-        """Generate empathic response based on detected emotions"""
-        
-        # Empathic responses based on emotion
-        responses = {
-            "neutral": [
-                "I'm here and listening. How are you feeling right now?",
-                "Thank you for sharing with me. What's on your mind today?",
-                "I can hear you clearly. How can I support you today?",
-                "I'm present with you. What would you like to talk about?"
-            ],
-            "calm": [
-                "I sense a peaceful energy in your voice. That's wonderful.",
-                "You sound centered and grounded. I'd love to hear more.",
-                "There's a lovely calmness in your voice. What's bringing you peace today?"
-            ],
-            "engaged": [
-                "I can hear the interest and energy in your voice. What's capturing your attention?",
-                "You sound engaged and focused. Tell me more about what's on your mind.",
-                "I sense enthusiasm in your voice. What's exciting you today?"
-            ],
-            "anxious": [
-                "I hear some tension in your voice. I'm here with you. Take a deep breath.",
-                "It sounds like you might be feeling anxious. That's completely understandable. I'm here to listen",
-                "I notice some worry in your voice. You're safe here. What's concerning you?"
-            ],
-            "sad": [
-                "I can hear the sadness in your voice. I'm here to support you through this.",
-                "It sounds like you're going through a difficult time. I'm here to listen without judgment.",
-                "I hear the pain in your voice. You don't have to carry this alone."
-            ]
-        }
+        """Generate contextual empathic response based on detected emotions"""
         
         # Get dominant emotion
-        dominant_emotion = max(emotions.items(), key=lambda x: x[1])[0]
-        confidence = max(emotions.values())
+        dominant_emotion = max(emotions.items(), key=lambda x: x[1])
+        emotion_name = dominant_emotion[0]
+        emotion_confidence = dominant_emotion[1]
         
-        # Get appropriate response
-        emotion_responses = responses.get(dominant_emotion, responses["neutral"])
+        # Generate empathic responses based on emotion
+        if emotion_name in ["joy", "excitement", "happiness"]:
+            responses = [
+                "I can hear the joy in your voice! That's wonderful. Tell me more about what's making you so happy.",
+                "Your excitement is contagious! I love hearing about positive experiences. What's got you feeling so great?",
+                "It sounds like you're in a really good place right now. I'm here to celebrate with you!"
+            ]
+        elif emotion_name in ["sadness", "disappointment", "melancholy"]:
+            responses = [
+                "I can sense some sadness in what you're sharing. I'm here to listen and support you through this.",
+                "It sounds like you're going through a difficult time. Would you like to talk about what's weighing on your heart?",
+                "I hear the heaviness in your voice. Remember that it's okay to feel sad, and I'm here with you."
+            ]
+        elif emotion_name in ["anger", "frustration", "irritation"]:
+            responses = [
+                "I can hear the frustration in your voice. That sounds really challenging. What's been bothering you?",
+                "It sounds like something has really gotten under your skin. I'm here to listen without judgment.",
+                "I sense some anger there. Sometimes it helps to talk through what's making us feel this way."
+            ]
+        elif emotion_name in ["anxiety", "fear", "worry"]:
+            responses = [
+                "I can hear some worry in your voice. Anxiety can be really overwhelming. What's been on your mind?",
+                "It sounds like you might be feeling anxious about something. I'm here to help you work through those feelings.",
+                "I sense some nervousness there. Remember that you're not alone in whatever you're facing."
+            ]
+        elif emotion_name in ["calmness", "peace", "serenity"]:
+            responses = [
+                "You sound wonderfully calm and centered. That's beautiful. How are you feeling in this moment?",
+                "I can hear a sense of peace in your voice. It's lovely when we find those moments of tranquility.",
+                "You seem very grounded right now. I'd love to hear more about what's bringing you this sense of calm."
+            ]
+        elif emotion_name in ["love", "gratitude", "appreciation"]:
+            responses = [
+                "I can hear so much warmth and love in what you're sharing. That's really beautiful.",
+                "There's such genuine appreciation in your voice. It's wonderful to hear about the things that matter to you.",
+                "I can feel the gratitude in your words. It's amazing how love can transform our perspective."
+            ]
+        else:
+            # Default engaged responses
+            responses = [
+                "I can hear the interest and energy in your voice. What's capturing your attention?",
+                "You sound engaged and focused. Tell me more about what's on your mind.",
+                "I'm listening and I can sense your thoughtfulness. What would you like to explore together?"
+            ]
+        
         import random
-        response = random.choice(emotion_responses)
+        response_text = random.choice(responses)
         
-        return response, dominant_emotion, confidence
+        return response_text, emotion_name, emotion_confidence
     
-    def text_to_speech_hume(self, text, emotion="neutral"):
-        """Convert text to speech using Hume's TTS API"""
+    def text_to_speech_hume(self, text, emotion_context="neutral"):
+        """Convert text to speech using Hume TTS API"""
         
         if not self.api_key:
-            print("No Hume API key provided")
+            print("No Hume API key - using fallback")
             return None
         
         try:
-            # Correct Hume TTS API endpoint from official documentation
+            print("Calling Hume TTS API")
+            
+            # Hume TTS API endpoint
             tts_url = "https://api.hume.ai/v0/tts"
             
+            # Request payload
             payload = {
                 "utterances": [
                     {
                         "text": text
                     }
-                ],
-                "format": {
-                    "type": "mp3",
-                    "sample_rate": 22050
-                }
+                ]
             }
             
-            print(f"Calling Hume TTS API: {tts_url}")
-            print(f"Payload: {json.dumps(payload, indent=2)}")
+            print(f"TTS Payload: {json.dumps(payload, indent=2)}")
             
-            response = requests.post(
-                tts_url,
-                headers=self.headers,
-                json=payload,
-                timeout=30
-            )
+            # Make request
+            response = requests.post(tts_url, headers=self.headers, json=payload)
             
             print(f"Hume TTS Response Status: {response.status_code}")
             
             if response.status_code == 200:
-                # Parse JSON response
                 response_data = response.json()
                 print(f"Hume TTS Response Keys: {list(response_data.keys())}")
                 
@@ -198,35 +199,48 @@ def health():
         "working": True,
         "tts_endpoint": "https://api.hume.ai/v0/tts",
         "response_parsing": "generations[0].audio",
-        "logic_fixed": True
+        "logic_fixed": True,
+        "handles_json": True
     })
 
 @app.route("/voice_conversation", methods=["POST"])
 def voice_conversation():
-    """Handle voice-to-voice conversation with Hume integration"""
+    """Handle voice-to-voice conversation with Hume integration - supports both JSON and FormData"""
     
     try:
-        # Get audio file from request
-        if 'audio' not in request.files:
+        user_input = None
+        
+        # Handle JSON request (from updated frontend)
+        if request.is_json:
+            data = request.get_json()
+            user_input = data.get("message", "")
+            print(f"📥 Received JSON message: {user_input}")
+            
+        # Handle FormData request (from old frontend)  
+        elif 'audio' in request.files:
+            audio_file = request.files['audio']
+            audio_data = audio_file.read()
+            user_input = "hello can you hear me"  # Simulated transcript
+            print(f"📥 Received audio data: {len(audio_data)} bytes (using simulated transcript)")
+            
+        else:
             return jsonify({
                 "success": False,
-                "error": "No audio file provided"
+                "error": "No message or audio provided"
             }), 400
         
-        audio_file = request.files['audio']
-        audio_data = audio_file.read()
+        if not user_input:
+            return jsonify({
+                "success": False,
+                "error": "Empty message"
+            }), 400
         
-        print(f"Received audio data: {len(audio_data)} bytes")
-        
-        # Analyze emotion (simplified for immediate functionality)
-        emotion_result = hume.analyze_voice_emotion(audio_data)
-        
-        # Generate empathic response
-        transcript = "hi can you hear me"  # Simulated transcript for testing
+        # Analyze emotion
+        emotion_result = hume.analyze_voice_emotion(user_input)
         emotions = emotion_result.get("emotions", {"engaged": 0.7})
         
-        # Generate response
-        response_text, detected_emotion, emotion_confidence = hume.generate_empathic_response(transcript, emotions)
+        # Generate empathic response
+        response_text, detected_emotion, emotion_confidence = hume.generate_empathic_response(user_input, emotions)
         
         print(f"Generated response: {response_text}")
         print(f"Dominant emotion: {detected_emotion} ({emotion_confidence})")
@@ -264,6 +278,10 @@ if __name__ == "__main__":
     print(f"✅ TTS Endpoint: https://api.hume.ai/v0/tts")
     print(f"✅ Response Parsing: generations[0].audio")
     print(f"✅ Logic Fixed: Return audio data directly")
+    print(f"✅ Handles JSON: Yes")
     app.run(host="0.0.0.0", port=10000, debug=False)
+
+
+
 
 
