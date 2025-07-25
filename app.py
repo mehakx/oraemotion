@@ -3,12 +3,8 @@ from flask_cors import CORS
 import requests
 import json
 import os
-import base64
 import time
-import asyncio
-import aiohttp
 from concurrent.futures import ThreadPoolExecutor
-import threading
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -94,7 +90,7 @@ def voice_conversation():
 def analyze_voice_emotion_fast(user_input):
     """OPTIMIZED: Fast emotion analysis with caching and fallbacks"""
     try:
-        # OPTIMIZATION: Use OpenAI for faster emotion analysis (no external API call to Hume)
+        # OPTIMIZATION: Use OpenAI for faster emotion analysis
         if openai_client:
             response = openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",  # Faster than gpt-4
