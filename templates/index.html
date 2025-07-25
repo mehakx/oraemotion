@@ -838,12 +838,13 @@
     </div>
 
     <script>
-        // Apple-style ORA Voice Interface with Continuous Conversation
+        // Apple-style ORA Voice Interface
         let isListening = false;
+        let isProcessing = false;
         let recognition = null;
         let currentAudio = null;
         let interactionStarted = false;
-        let conversationHistory = []; // Store conversation history for continuity
+        let conversationHistory = [];
 
         // Initialize speech recognition
         function initializeSpeechRecognition() {
@@ -867,13 +868,6 @@
                     const transcript = event.results[0][0].transcript;
                     console.log('🗣️ User said:', transcript);
                     
-                    // Add user message to conversation history
-                    conversationHistory.push({
-                        role: "user",
-                        content: transcript,
-                        timestamp: new Date().toISOString()
-                    });
-                    
                     setSunState('thinking');
                     updateStatus('Understanding...');
                     analyzePersonalityAndSend(transcript);
@@ -881,33 +875,12 @@
                 
                 recognition.onerror = function(event) {
                     console.error('❌ Speech recognition error:', event.error);
-                    if (event.error !== 'no-speech') {
-                        resetToReady();
-                    } else {
-                        // For no-speech errors, just try to restart listening
-                        console.log('🔄 No speech detected, continuing to listen...');
-                        setTimeout(() => {
-                            if (!isListening && !currentAudio) {
-                                startListening();
-                            }
-                        }, 1000);
-                    }
+                    resetToReady();
                 };
                 
                 recognition.onend = function() {
                     console.log('🎤 Speech recognition ended');
                     isListening = false;
-                    
-                    // Don't automatically restart if we're playing audio
-                    if (!currentAudio) {
-                        // Small delay before restarting to avoid rapid cycling
-                        setTimeout(() => {
-                            if (!isListening && !currentAudio) {
-                                console.log('🔄 Restarting speech recognition for continuous conversation');
-                                startListening();
-                            }
-                        }, 500);
-                    }
                 };
                 
                 console.log('✅ Speech recognition initialized');
@@ -952,8 +925,12 @@
         // Reset to ready state
         function resetToReady() {
             isListening = false;
+            isProcessing = false;
             setSunState('idle');
             updateStatus('Ready to listen');
+            if (interactionStarted) {
+                setTimeout(showInteractionHint, 2000);
+            }
         }
 
         // Haptic feedback simulation
@@ -965,12 +942,25 @@
             }, 100);
         }
 
-        // Send user input to ORA backend with conversation history
+        // Send user input to ORA backend
         async function analyzePersonalityAndSend(userInput) {
+            if (isProcessing) {
+                console.log('⚠️ Already processing a request');
+                return;
+            }
+            
+            isProcessing = true;
             console.log('📤 Sending to ORA backend:', userInput);
             console.log('📚 Conversation history:', conversationHistory.length, 'turns');
             
             try {
+                // Add user message to conversation history
+                conversationHistory.push({
+                    role: 'user',
+                    content: userInput,
+                    timestamp: new Date().toISOString()
+                });
+                
                 // Call ORA backend with JSON payload including conversation history
                 const response = await fetch('/voice_conversation', {
                     method: 'POST',
@@ -992,26 +982,26 @@
                 const responseData = await response.json();
                 console.log('📥 ORA response:', responseData);
                 
-                // Add assistant response to conversation history
-                if (responseData.assistant_response) {
-                    conversationHistory.push({
-                        role: "assistant",
-                        content: responseData.assistant_response,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-                
+                // SINGLE PROCESSING: Handle response only once
                 handleOraResponse(responseData);
                 
             } catch (error) {
                 console.error('❌ Error calling ORA backend:', error);
+                isProcessing = false;
                 resetToReady();
             }
         }
 
-        // Handle ORA's response
+        // Handle ORA's response (SINGLE PROCESSING ONLY)
         function handleOraResponse(responseData) {
-            console.log("📥 Raw response received:", responseData);
+            // Add assistant message to conversation history (ONCE ONLY)
+            if (responseData.assistant_response) {
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: responseData.assistant_response,
+                    timestamp: new Date().toISOString()
+                });
+            }
             
             let audioUrl = "";
             if (responseData) {
@@ -1027,10 +1017,10 @@
                 }
             }
             
-            console.log('🎵 Found audio URL:', audioUrl);
+            console.log('🎵 Found audio URL:', audioUrl.substring(0, 50) + '...');
             
             if (audioUrl) {
-                console.log("🔊 Playing audio:", audioUrl);
+                console.log("🔊 Playing audio response");
                 
                 setSunState('speaking');
                 updateStatus('Speaking...');
@@ -1078,25 +1068,25 @@
                 
                 currentAudio.onended = () => {
                     console.log("✅ Audio finished playing");
-                    currentAudio = null;
-                    
+                    isProcessing = false;
                     // Continue conversation - start listening again automatically
                     setTimeout(() => {
-                        console.log("🔄 Continuing conversation - starting to listen again");
-                        setSunState('idle');
-                        updateStatus('Ready to listen');
-                        startListening();
-                    }, 800);
+                        if (!isListening && !isProcessing) {
+                            console.log('🔄 Continuing conversation - starting to listen again');
+                            startListening();
+                        }
+                    }, 500);
                 };
                 
                 currentAudio.onerror = (error) => {
                     console.error("❌ Audio playback error:", error);
-                    currentAudio = null;
+                    isProcessing = false;
                     resetToReady();
                 };
                 
             } else {
                 console.log("❌ No audio URL found in response");
+                isProcessing = false;
                 resetToReady();
             }
         }
@@ -1104,19 +1094,18 @@
         // Start listening
         function startListening() {
             if (currentAudio) {
-                console.log("🔇 Stopping current audio to start listening");
                 currentAudio.pause();
                 currentAudio = null;
                 setSunState('idle');
             }
             
-            if (recognition && !isListening) {
+            if (recognition && !isListening && !isProcessing) {
                 simulateHaptic();
                 recognition.start();
             }
         }
 
-        // End call and clear conversation
+        // End call
         function endCall() {
             if (currentAudio) {
                 currentAudio.pause();
@@ -1127,12 +1116,12 @@
                 recognition.stop();
             }
             
-            // Clear conversation history
+            // Reset conversation history
             conversationHistory = [];
-            console.log("🧹 Conversation history cleared");
             
             updateStatus('Session ended');
             setSunState('idle');
+            isProcessing = false;
             setTimeout(() => {
                 updateStatus('Ready to listen');
                 showInteractionHint();
@@ -1147,12 +1136,10 @@
             initializeSpeechRecognition();
             setSunState('idle');
             
-            // Tap anywhere to speak (only for initial start)
+            // Tap anywhere to speak
             document.addEventListener('click', function(e) {
                 if (e.target.id !== 'endCallHint') {
-                    if (!interactionStarted) {
-                        startListening();
-                    }
+                    startListening();
                 }
             });
             
@@ -1170,9 +1157,4 @@
     </script>
 </body>
 </html>
-
-
-
-
-
 
