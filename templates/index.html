@@ -838,55 +838,228 @@
     </div>
 
     <script>
-        // Apple-style ORA Voice Interface
+        // Enhanced ORA Voice Interface with Continuous Listening and Interruption Detection
         let isListening = false;
         let isProcessing = false;
+        let isSpeaking = false;
         let recognition = null;
         let currentAudio = null;
         let interactionStarted = false;
         let conversationHistory = [];
+        let silenceTimer = null;
+        let currentTranscript = '';
+        let finalTranscript = '';
+        let speechTimeout = null;
 
-        // Initialize speech recognition
+        // Enhanced speech recognition with continuous listening
         function initializeSpeechRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 recognition = new SpeechRecognition();
                 
-                recognition.continuous = false;
-                recognition.interimResults = false;
+                // ENHANCED SETTINGS FOR CONTINUOUS LISTENING
+                recognition.continuous = true;  // Keep listening continuously
+                recognition.interimResults = true;  // Get partial results for real-time feedback
                 recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
                 
                 recognition.onstart = function() {
-                    console.log('🎤 Speech recognition started');
+                    console.log('🎤 Enhanced speech recognition started (continuous mode)');
                     isListening = true;
                     setSunState('listening');
                     updateStatus('Listening...');
                     hideInteractionHint();
+                    
+                    // Clear any existing speech timeout
+                    if (speechTimeout) {
+                        clearTimeout(speechTimeout);
+                        speechTimeout = null;
+                    }
                 };
                 
                 recognition.onresult = function(event) {
-                    const transcript = event.results[0][0].transcript;
-                    console.log('🗣️ User said:', transcript);
+                    let interimTranscript = '';
+                    let finalTranscriptPart = '';
                     
-                    setSunState('thinking');
-                    updateStatus('Understanding...');
-                    analyzePersonalityAndSend(transcript);
+                    // Process all results
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        
+                        if (event.results[i].isFinal) {
+                            finalTranscriptPart += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    // Update current transcript
+                    if (finalTranscriptPart) {
+                        finalTranscript += finalTranscriptPart;
+                        console.log('🗣️ Final transcript part:', finalTranscriptPart);
+                    }
+                    
+                    if (interimTranscript) {
+                        currentTranscript = finalTranscript + interimTranscript;
+                        console.log('🔄 Current transcript:', currentTranscript);
+                    }
+                    
+                    // INTERRUPTION DETECTION: If user speaks while AI is speaking
+                    if (isSpeaking && (finalTranscriptPart || interimTranscript)) {
+                        console.log('🚨 INTERRUPTION DETECTED - User spoke while AI was speaking');
+                        handleInterruption();
+                    }
+                    
+                    // SMART SILENCE DETECTION: Reset silence timer on any speech
+                    if (speechTimeout) {
+                        clearTimeout(speechTimeout);
+                    }
+                    
+                    // Set new silence timer (2 seconds of silence triggers processing)
+                    speechTimeout = setTimeout(() => {
+                        if (finalTranscript.trim()) {
+                            console.log('✅ Complete speech captured:', finalTranscript);
+                            processFinalSpeech(finalTranscript.trim());
+                        }
+                    }, 2000);
+                };
+                
+                recognition.onaudiostart = function() {
+                    console.log('🎵 Audio input started');
+                    // INTERRUPTION DETECTION: Audio started while AI speaking
+                    if (isSpeaking) {
+                        console.log('🚨 INTERRUPTION: Audio detected during AI speech');
+                        handleInterruption();
+                    }
                 };
                 
                 recognition.onerror = function(event) {
                     console.error('❌ Speech recognition error:', event.error);
+                    
+                    // Handle specific errors gracefully
+                    if (event.error === 'no-speech') {
+                        console.log('⚠️ No speech detected, continuing to listen...');
+                        // Don't reset, just continue listening
+                        return;
+                    }
+                    
+                    if (event.error === 'network') {
+                        console.log('⚠️ Network error, retrying...');
+                        setTimeout(() => {
+                            if (!isListening && !isProcessing) {
+                                startContinuousListening();
+                            }
+                        }, 1000);
+                        return;
+                    }
+                    
+                    // For other errors, reset gracefully
                     resetToReady();
                 };
                 
                 recognition.onend = function() {
                     console.log('🎤 Speech recognition ended');
                     isListening = false;
+                    
+                    // AUTO-RESTART: Restart listening if not processing and not speaking
+                    if (!isProcessing && !isSpeaking) {
+                        console.log('🔄 Auto-restarting speech recognition...');
+                        setTimeout(() => {
+                            startContinuousListening();
+                        }, 100);
+                    }
                 };
                 
-                console.log('✅ Speech recognition initialized');
+                console.log('✅ Enhanced speech recognition initialized');
             } else {
                 console.error('❌ Speech recognition not supported');
                 updateStatus('Voice not supported');
+            }
+        }
+
+        // Handle interruption when user speaks over AI
+        function handleInterruption() {
+            console.log('🛑 Handling interruption...');
+            
+            // Stop AI audio immediately
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            
+            // Reset speaking state
+            isSpeaking = false;
+            isProcessing = false;
+            
+            // Set to listening state
+            setSunState('listening');
+            updateStatus('Listening...');
+            
+            // Clear any pending speech processing
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            
+            // Reset transcripts for fresh input
+            currentTranscript = '';
+            finalTranscript = '';
+        }
+
+        // Process final speech after silence detection
+        function processFinalSpeech(transcript) {
+            if (isProcessing) {
+                console.log('⚠️ Already processing, ignoring new speech');
+                return;
+            }
+            
+            console.log('🎯 Processing final speech:', transcript);
+            
+            // Stop listening temporarily while processing
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            
+            // Reset transcripts
+            currentTranscript = '';
+            finalTranscript = '';
+            
+            // Clear speech timeout
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            
+            // Process the speech
+            setSunState('thinking');
+            updateStatus('Understanding...');
+            analyzePersonalityAndSend(transcript);
+        }
+
+        // Start continuous listening
+        function startContinuousListening() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                setSunState('idle');
+            }
+            
+            if (recognition && !isListening && !isProcessing && !isSpeaking) {
+                simulateHaptic();
+                
+                // Reset transcripts
+                currentTranscript = '';
+                finalTranscript = '';
+                
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('❌ Error starting recognition:', error);
+                    setTimeout(() => {
+                        if (!isListening && !isProcessing && !isSpeaking) {
+                            startContinuousListening();
+                        }
+                    }, 1000);
+                }
             }
         }
 
@@ -926,8 +1099,20 @@
         function resetToReady() {
             isListening = false;
             isProcessing = false;
+            isSpeaking = false;
             setSunState('idle');
             updateStatus('Ready to listen');
+            
+            // Clear timeouts
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            
+            // Reset transcripts
+            currentTranscript = '';
+            finalTranscript = '';
+            
             if (interactionStarted) {
                 setTimeout(showInteractionHint, 2000);
             }
@@ -982,19 +1167,24 @@
                 const responseData = await response.json();
                 console.log('📥 ORA response:', responseData);
                 
-                // SINGLE PROCESSING: Handle response only once
+                // Handle response
                 handleOraResponse(responseData);
                 
             } catch (error) {
                 console.error('❌ Error calling ORA backend:', error);
                 isProcessing = false;
                 resetToReady();
+                
+                // Restart listening after error
+                setTimeout(() => {
+                    startContinuousListening();
+                }, 1000);
             }
         }
 
-        // Handle ORA's response (SINGLE PROCESSING ONLY)
+        // Handle ORA's response
         function handleOraResponse(responseData) {
-            // Add assistant message to conversation history (ONCE ONLY)
+            // Add assistant message to conversation history
             if (responseData.assistant_response) {
                 conversationHistory.push({
                     role: 'assistant',
@@ -1022,6 +1212,7 @@
             if (audioUrl) {
                 console.log("🔊 Playing audio response");
                 
+                isSpeaking = true;
                 setSunState('speaking');
                 updateStatus('Speaking...');
                 
@@ -1068,40 +1259,39 @@
                 
                 currentAudio.onended = () => {
                     console.log("✅ Audio finished playing");
+                    isSpeaking = false;
                     isProcessing = false;
-                    // Continue conversation - start listening again automatically
+                    
+                    // Continue conversation - restart listening automatically
                     setTimeout(() => {
-                        if (!isListening && !isProcessing) {
-                            console.log('🔄 Continuing conversation - starting to listen again');
-                            startListening();
+                        if (!isListening && !isProcessing && !isSpeaking) {
+                            console.log('🔄 Continuing conversation - restarting continuous listening');
+                            startContinuousListening();
                         }
-                    }, 500);
+                    }, 300);
                 };
                 
                 currentAudio.onerror = (error) => {
                     console.error("❌ Audio playback error:", error);
+                    isSpeaking = false;
                     isProcessing = false;
                     resetToReady();
+                    
+                    // Restart listening after audio error
+                    setTimeout(() => {
+                        startContinuousListening();
+                    }, 1000);
                 };
                 
             } else {
                 console.log("❌ No audio URL found in response");
                 isProcessing = false;
                 resetToReady();
-            }
-        }
-
-        // Start listening
-        function startListening() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-                setSunState('idle');
-            }
-            
-            if (recognition && !isListening && !isProcessing) {
-                simulateHaptic();
-                recognition.start();
+                
+                // Restart listening if no audio
+                setTimeout(() => {
+                    startContinuousListening();
+                }, 1000);
             }
         }
 
@@ -1116,12 +1306,27 @@
                 recognition.stop();
             }
             
+            // Clear timeouts
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            
+            // Reset all states
+            isListening = false;
+            isProcessing = false;
+            isSpeaking = false;
+            
             // Reset conversation history
             conversationHistory = [];
             
+            // Reset transcripts
+            currentTranscript = '';
+            finalTranscript = '';
+            
             updateStatus('Session ended');
             setSunState('idle');
-            isProcessing = false;
+            
             setTimeout(() => {
                 updateStatus('Ready to listen');
                 showInteractionHint();
@@ -1131,15 +1336,15 @@
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Apple-style ORA Interface Loading...');
+            console.log('🚀 Enhanced ORA Interface Loading...');
             
             initializeSpeechRecognition();
             setSunState('idle');
             
-            // Tap anywhere to speak
+            // Tap anywhere to start continuous listening
             document.addEventListener('click', function(e) {
                 if (e.target.id !== 'endCallHint') {
-                    startListening();
+                    startContinuousListening();
                 }
             });
             
@@ -1152,9 +1357,11 @@
                 });
             }
             
-            console.log('✅ Apple-style ORA Interface Ready');
+            console.log('✅ Enhanced ORA Interface Ready');
         });
     </script>
 </body>
 </html>
+
+
 
