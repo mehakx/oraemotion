@@ -838,7 +838,7 @@
     </div>
 
     <script>
-        // Apple-style ORA Voice Interface with Enhanced Features
+        // Ultra-Fast ORA Voice Interface
         let isListening = false;
         let recognition = null;
         let currentAudio = null;
@@ -848,13 +848,13 @@
         let interimTranscript = '';
         let finalTranscript = '';
 
-        // Initialize speech recognition with enhanced features
+        // Initialize speech recognition with ultra-fast settings
         function initializeSpeechRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 recognition = new SpeechRecognition();
                 
-                // ENHANCED SETTINGS: Continuous listening with interim results
+                // ULTRA-FAST SETTINGS
                 recognition.continuous = true;
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
@@ -890,7 +890,7 @@
                         updateStatus('Listening...');
                     }
                     
-                    // SILENCE DETECTION: Start timer when we have final transcript
+                    // ULTRA-FAST SILENCE DETECTION: Only 300ms wait time
                     if (finalTranscript) {
                         console.log('🗣️ Final transcript:', finalTranscript);
                         clearTimeout(silenceTimer);
@@ -900,7 +900,7 @@
                                 finalTranscript = '';
                                 recognition.stop();
                             }
-                        }, 1500); // Wait 1.5 seconds after final speech
+                        }, 300); // REDUCED from 1500ms to 300ms for ultra-fast response
                     }
                 };
                 
@@ -917,7 +917,7 @@
                     clearTimeout(silenceTimer);
                 };
                 
-                console.log('✅ Enhanced speech recognition initialized');
+                console.log('✅ Ultra-fast speech recognition initialized');
             } else {
                 console.error('❌ Speech recognition not supported');
                 updateStatus('Voice not supported');
@@ -926,7 +926,7 @@
 
         // Process user input with conversation history
         function processUserInput(userInput) {
-            console.log('📤 Processing user input:', userInput);
+            console.log('⚡ Processing user input:', userInput);
             
             // Add user message to conversation history
             conversationHistory.push({
@@ -935,7 +935,7 @@
             });
             
             setSunState('thinking');
-            updateStatus('Understanding...');
+            updateStatus('Thinking...');
             sendToBackend(userInput);
         }
 
@@ -991,9 +991,11 @@
             }, 100);
         }
 
-        // Send user input to ORA backend with conversation history
+        // Send user input to ultra-fast backend
         async function sendToBackend(userInput) {
-            console.log('📤 Sending to ORA backend:', userInput);
+            console.log('⚡ Sending to ultra-fast backend:', userInput);
+            
+            const startTime = performance.now();
             
             try {
                 // Prepare payload with conversation history
@@ -1015,7 +1017,8 @@
                 }
                 
                 const responseData = await response.json();
-                console.log('📥 ORA response received');
+                const processingTime = performance.now() - startTime;
+                console.log(`⚡ Response received in ${processingTime.toFixed(0)}ms`);
                 
                 // Add assistant response to conversation history
                 if (responseData.response) {
@@ -1028,12 +1031,12 @@
                 handleOraResponse(responseData);
                 
             } catch (error) {
-                console.error('❌ Error calling ORA backend:', error);
+                console.error('❌ Error calling backend:', error);
                 resetToReady();
             }
         }
 
-        // Handle ORA's response - SINGLE PROCESSING: Handle response only once
+        // Handle ORA's response
         function handleOraResponse(responseData) {
             let audioUrl = "";
             if (responseData) {
@@ -1102,7 +1105,7 @@
                     // Continue conversation - start listening again automatically
                     setTimeout(() => {
                         startListening();
-                    }, 500);
+                    }, 200); // REDUCED from 500ms to 200ms for faster continuation
                 };
                 
                 currentAudio.onerror = (error) => {
@@ -1156,7 +1159,7 @@
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Apple-style ORA Interface Loading...');
+            console.log('🚀 Ultra-Fast ORA Interface Loading...');
             
             initializeSpeechRecognition();
             setSunState('idle');
@@ -1177,11 +1180,13 @@
                 });
             }
             
-            console.log('✅ Apple-style ORA Interface Ready');
+            console.log('✅ Ultra-Fast ORA Interface Ready');
         });
     </script>
 </body>
 </html>
+
+
 
 
 
