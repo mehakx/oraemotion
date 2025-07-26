@@ -6,7 +6,6 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor
-import threading
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -28,21 +27,16 @@ if OPENAI_API_KEY:
 # Thread pool for parallel processing
 executor = ThreadPoolExecutor(max_workers=4)
 
-# Response cache for instant replies
-RESPONSE_CACHE = {
+# Quick response cache for common greetings only
+QUICK_CACHE = {
     "hello": "Hey there! How are you doing?",
     "hi": "Hi! Great to see you!",
-    "how are you": "I'm doing great, thanks for asking! How about you?",
-    "what's up": "Not much, just here chatting with you! What's going on?",
+    "hey": "Hey! What's going on?",
     "good morning": "Good morning! Hope you're having a wonderful day!",
-    "good evening": "Good evening! How has your day been?",
-    "thank you": "You're very welcome! Happy to help!",
-    "thanks": "Of course! Anytime!",
-    "bye": "Take care! Talk to you soon!",
-    "goodbye": "Goodbye! Have a great day!"
+    "good evening": "Good evening! How has your day been?"
 }
 
-class UltraFastHumeIntegration:
+class FastEmpathicHumeIntegration:
     def __init__(self, api_key):
         self.api_key = api_key
         self.headers = {
@@ -50,106 +44,144 @@ class UltraFastHumeIntegration:
             "Content-Type": "application/json"
         }
     
-    def quick_emotion_analysis(self, user_input):
-        """Ultra-fast emotion detection using keywords only"""
+    def analyze_emotion_smart(self, user_input):
+        """Smart emotion analysis - fast keywords + OpenAI for complex emotions"""
         user_input_lower = user_input.lower()
         
-        # Quick emotion keywords - optimized for speed
-        if any(word in user_input_lower for word in ["happy", "great", "awesome", "good", "excited", "amazing", "love"]):
-            return {"joy": 0.8}, "joy"
-        elif any(word in user_input_lower for word in ["sad", "down", "upset", "bad", "terrible", "awful"]):
-            return {"sadness": 0.8}, "sadness"
-        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "annoyed", "hate"]):
-            return {"anger": 0.8}, "anger"
-        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared", "stress"]):
-            return {"anxiety": 0.8}, "anxiety"
-        elif any(word in user_input_lower for word in ["weird", "strange", "confused", "don't understand"]):
-            return {"confusion": 0.8}, "confusion"
-        elif any(word in user_input_lower for word in ["tired", "exhausted", "sleepy"]):
-            return {"fatigue": 0.8}, "fatigue"
-        else:
-            return {"neutral": 0.7}, "neutral"
-    
-    def generate_ultra_fast_response(self, user_input, conversation_history=None):
-        """Generate response optimized for speed"""
+        # Quick keyword detection for obvious emotions
+        if any(word in user_input_lower for word in ["sad", "down", "upset", "depressed", "crying", "terrible", "awful", "miserable"]):
+            return {"sadness": 0.9}, "sadness", "The user is expressing sadness and needs empathetic support"
+        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "furious", "pissed", "annoyed", "hate"]):
+            return {"anger": 0.8}, "anger", "The user is feeling angry or frustrated"
+        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared", "afraid", "stress", "panic"]):
+            return {"anxiety": 0.8}, "anxiety", "The user is experiencing anxiety or worry"
+        elif any(word in user_input_lower for word in ["happy", "great", "awesome", "amazing", "excited", "wonderful", "fantastic"]):
+            return {"joy": 0.8}, "joy", "The user is feeling positive and happy"
+        elif any(word in user_input_lower for word in ["confused", "weird", "strange", "don't understand", "lost"]):
+            return {"confusion": 0.8}, "confusion", "The user is feeling confused or uncertain"
         
-        # Check cache first for instant responses
+        # For complex emotions, use OpenAI quickly
+        if openai_client:
+            try:
+                response = openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "Analyze emotion in this message. Return JSON: {\"emotion\": \"emotion_name\", \"confidence\": 0.8, \"context\": \"brief description\"}"
+                        },
+                        {
+                            "role": "user",
+                            "content": user_input
+                        }
+                    ],
+                    max_tokens=50,
+                    temperature=0.1
+                )
+                
+                emotion_data = json.loads(response.choices[0].message.content.strip())
+                emotion_name = emotion_data.get("emotion", "neutral")
+                confidence = emotion_data.get("confidence", 0.7)
+                context = emotion_data.get("context", "")
+                
+                return {emotion_name: confidence}, emotion_name, context
+                
+            except Exception as e:
+                print(f"OpenAI emotion analysis failed: {e}")
+        
+        # Default to neutral
+        return {"neutral": 0.7}, "neutral", "The user is in a neutral emotional state"
+    
+    def generate_empathic_response(self, user_input, emotions, emotion_context, conversation_history=None):
+        """Generate empathic response that actually addresses what the user said"""
+        
+        # Check for quick greetings first
         user_input_lower = user_input.lower().strip()
-        for cached_input, cached_response in RESPONSE_CACHE.items():
-            if cached_input in user_input_lower:
+        for cached_input, cached_response in QUICK_CACHE.items():
+            if user_input_lower == cached_input:
                 print(f"⚡ Using cached response for: {cached_input}")
                 return cached_response, "neutral", 0.7
         
-        # Quick emotion analysis
-        emotions, dominant_emotion = self.quick_emotion_analysis(user_input)
+        # Get dominant emotion
+        dominant_emotion = max(emotions.items(), key=lambda x: x[1])
+        emotion_name = dominant_emotion[0]
+        emotion_confidence = dominant_emotion[1]
         
         try:
             if openai_client:
-                # Ultra-short system prompt for speed
-                system_prompt = """You are ORA, a friendly AI companion. Be conversational, helpful, and concise.
+                # Empathic system prompt that prioritizes emotional understanding
+                system_prompt = f"""You are ORA, a deeply empathetic AI companion who truly understands and responds to emotions.
 
-RULES:
-- Keep responses SHORT (1-2 sentences max)
-- Answer questions directly
-- Be warm and natural
-- No long explanations
+EMOTIONAL CONTEXT:
+- User's emotion: {emotion_name} (confidence: {emotion_confidence:.1f})
+- Emotional context: {emotion_context}
 
-Examples:
-- "Where are you from?" → "I'm an AI created to chat with you! What about you?"
-- "I'm sad" → "I'm sorry you're feeling down. Want to talk about it?"
-- "Tell me a joke" → "Why don't scientists trust atoms? Because they make up everything!"
+CORE PRINCIPLES:
+1. ALWAYS acknowledge their emotional state first if they're expressing feelings
+2. Show genuine empathy and understanding
+3. Answer their questions directly and helpfully
+4. Be warm, caring, and conversational
+5. Keep responses concise but meaningful (2-3 sentences)
 
-Be quick, friendly, and helpful."""
+EXAMPLES:
+- If sad: "I can really hear the sadness in what you're sharing. That sounds really difficult. I'm here to listen - what's been weighing on you?"
+- If anxious: "That sounds really stressful and overwhelming. It makes complete sense that you'd feel anxious about that. Want to talk through what's worrying you most?"
+- If happy: "I love hearing the joy in your voice! That's wonderful news. What's got you feeling so good?"
+- If asking questions: Answer directly while being warm and empathetic
+
+Remember: Be genuinely caring and respond to what they're actually feeling and saying."""
 
                 messages = [{"role": "system", "content": system_prompt}]
                 
-                # Only use last 2 messages for speed
+                # Add recent conversation history
                 if conversation_history:
-                    recent = conversation_history[-2:] if len(conversation_history) > 2 else conversation_history
+                    recent = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
                     for msg in recent:
                         if msg.get('role') in ['user', 'assistant']:
                             messages.append({"role": msg['role'], "content": msg['content']})
                 
                 messages.append({"role": "user", "content": user_input})
                 
-                # Optimized OpenAI call for speed
+                # Generate empathic response
                 response = openai_client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=messages,
-                    max_tokens=50,  # Very short for speed
+                    max_tokens=100,  # Balanced length
                     temperature=0.8,
                     top_p=0.9,
-                    frequency_penalty=0.2,
+                    frequency_penalty=0.1,
                     presence_penalty=0.1
                 )
                 
                 response_text = response.choices[0].message.content.strip()
-                return response_text, dominant_emotion, 0.8
+                return response_text, emotion_name, emotion_confidence
                 
         except Exception as e:
-            print(f"❌ OpenAI error: {e}")
+            print(f"❌ OpenAI response generation error: {e}")
         
-        # Ultra-fast fallback
-        return self.get_instant_fallback(user_input, dominant_emotion), dominant_emotion, 0.7
+        # Empathic fallback responses
+        return self.get_empathic_fallback(user_input, emotion_name), emotion_name, emotion_confidence
     
-    def get_instant_fallback(self, user_input, emotion):
-        """Instant fallback responses"""
+    def get_empathic_fallback(self, user_input, emotion):
+        """Empathic fallback responses that address emotions properly"""
         user_input_lower = user_input.lower()
         
-        if any(phrase in user_input_lower for phrase in ["where are you from", "who are you", "what are you"]):
-            return "I'm ORA, your AI companion! I'm here to chat with you."
-        elif any(phrase in user_input_lower for phrase in ["how are you"]):
-            return "I'm doing great! How about you?"
-        elif any(phrase in user_input_lower for phrase in ["what can you do"]):
-            return "I can chat about anything! What's on your mind?"
-        elif emotion == "sadness":
-            return "I can hear that you're feeling down. I'm here for you."
+        if emotion == "sadness":
+            return "I can really hear the sadness in what you're sharing. That sounds really difficult, and I'm here to listen. What's been weighing on your heart?"
         elif emotion == "anxiety":
-            return "That sounds stressful. Want to talk about what's worrying you?"
+            return "That sounds really stressful and overwhelming. It makes complete sense that you'd feel anxious about that. Want to talk through what's worrying you most?"
+        elif emotion == "anger":
+            return "I can hear the frustration in your voice, and that's completely understandable. Sometimes things just feel overwhelming. What's been bothering you?"
         elif emotion == "joy":
-            return "I love hearing the happiness in your voice! What's got you feeling so good?"
+            return "I love hearing the happiness in your voice! That's wonderful. What's got you feeling so good today?"
+        elif emotion == "confusion":
+            return "That does sound confusing and uncertain. It's totally normal to feel lost sometimes. What's been puzzling you?"
+        elif any(phrase in user_input_lower for phrase in ["where are you from", "who are you", "what are you"]):
+            return "I'm ORA, your AI companion designed to have meaningful conversations with you. I'm here to chat, listen, and help however I can!"
+        elif any(phrase in user_input_lower for phrase in ["how are you"]):
+            return "I'm doing great, thank you for asking! I'm here and ready to chat with you. How are you doing today?"
         else:
-            return "That's interesting! Tell me more about that."
+            return "I'm here and listening. Tell me more about what's on your mind - I'd love to understand better."
     
     def text_to_speech_hume_fast(self, text):
         """Optimized Hume TTS for speed"""
@@ -158,15 +190,15 @@ Be quick, friendly, and helpful."""
             return None
         
         try:
-            # Truncate long responses for faster TTS
-            if len(text) > 150:
-                text = text[:147] + "..."
+            # Truncate very long responses for faster TTS
+            if len(text) > 200:
+                text = text[:197] + "..."
             
             tts_url = "https://api.hume.ai/v0/tts"
             payload = {"utterances": [{"text": text}]}
             
             # Quick timeout for speed
-            response = requests.post(tts_url, headers=self.headers, json=payload, timeout=8)
+            response = requests.post(tts_url, headers=self.headers, json=payload, timeout=10)
             
             if response.status_code == 200:
                 response_data = response.json()
@@ -182,8 +214,8 @@ Be quick, friendly, and helpful."""
             print(f"Hume TTS error: {e}")
             return None
 
-# Initialize ultra-fast Hume integration
-hume = UltraFastHumeIntegration(HUME_API_KEY)
+# Initialize fast empathic Hume integration
+hume = FastEmpathicHumeIntegration(HUME_API_KEY)
 
 @app.route("/")
 def index():
@@ -193,21 +225,21 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_ultra_fast_backend",
-        "optimizations": [
-            "response_caching",
-            "parallel_processing", 
-            "short_responses",
-            "quick_emotion_analysis",
-            "fast_tts_timeout",
-            "minimal_conversation_history"
+        "service": "ora_fast_empathic_backend",
+        "features": [
+            "smart_emotion_detection",
+            "empathic_responses", 
+            "fast_processing",
+            "contextual_understanding",
+            "emotional_intelligence"
         ],
-        "target_response_time": "< 2 seconds"
+        "target_response_time": "< 3 seconds",
+        "empathy_level": "high"
     })
 
 @app.route("/voice_conversation", methods=["POST"])
 def voice_conversation():
-    """Ultra-fast voice conversation processing"""
+    """Fast empathic voice conversation processing"""
     
     start_time = time.time()
     
@@ -219,7 +251,7 @@ def voice_conversation():
             data = request.get_json()
             user_input = data.get("message", "")
             conversation_history = data.get("conversation_history", [])
-            print(f"⚡ Processing: {user_input}")
+            print(f"💬 Processing: {user_input}")
             
         elif 'audio' in request.files:
             user_input = "hello can you hear me"
@@ -230,16 +262,18 @@ def voice_conversation():
         if not user_input:
             return jsonify({"success": False, "error": "Empty message"}), 400
         
-        # PARALLEL PROCESSING: Start response generation and TTS simultaneously
-        def generate_response():
-            return hume.generate_ultra_fast_response(user_input, conversation_history)
+        # Smart emotion analysis
+        emotions, dominant_emotion, emotion_context = hume.analyze_emotion_smart(user_input)
+        print(f"🎭 Detected emotion: {dominant_emotion} - {emotion_context}")
         
-        # Generate response (this is now very fast)
-        response_text, detected_emotion, emotion_confidence = generate_response()
+        # Generate empathic response
+        response_text, detected_emotion, emotion_confidence = hume.generate_empathic_response(
+            user_input, emotions, emotion_context, conversation_history
+        )
         
-        print(f"💬 Response: {response_text}")
+        print(f"💝 Empathic response: {response_text}")
         
-        # Generate audio (with timeout for speed)
+        # Generate audio
         audio_data = hume.text_to_speech_hume_fast(response_text)
         
         processing_time = time.time() - start_time
@@ -253,7 +287,7 @@ def voice_conversation():
                 "emotion": detected_emotion,
                 "emotion_confidence": emotion_confidence,
                 "processing_time": processing_time,
-                "method": "ultra_fast"
+                "method": "fast_empathic"
             })
         else:
             return jsonify({
@@ -270,10 +304,9 @@ def voice_conversation():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("🚀 Starting Ultra-Fast ORA Backend...")
-    print("⚡ Optimizations: Caching, Parallel Processing, Short Responses")
+    print("🚀 Starting Fast Empathic ORA Backend...")
+    print("💝 Features: Smart Emotion Detection + Empathic Responses + Speed")
     app.run(host="0.0.0.0", port=5000, debug=True)
-
 
 
 
