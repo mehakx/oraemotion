@@ -1,4 +1,4 @@
-import os
+ import os
 import json
 import requests
 import time
@@ -239,44 +239,80 @@ Keep responses 2-3 sentences, deeply empathetic, and emotionally intelligent."""
         else:
             return "I'm here and I'm listening to you with my whole attention. Whatever you're feeling right now is valid and important. What's on your mind?"
     
-    def text_to_speech_hume_empathetic(self, text):
-        """Hume TTS optimized for empathetic delivery"""
+    def text_to_speech_hume_reliable(self, text):
+        """Reliable Hume TTS with retry logic and better timeout handling"""
         
         if not self.hume_api_key:
             print("❌ No Hume API key")
             return None
         
-        try:
-            print(f"🔊 Empathetic TTS: {text[:40]}...")
-            
-            # Keep text length reasonable for natural delivery
-            if len(text) > 180:
-                text = text[:177] + "..."
-            
-            tts_url = "https://api.hume.ai/v0/tts"
-            payload = {"utterances": [{"text": text}]}
-            
-            response = requests.post(
-                tts_url, 
-                headers=self.headers, 
-                json=payload, 
-                timeout=8
-            )
-            
-            if response.status_code == 200:
-                response_data = response.json()
-                if "generations" in response_data and response_data["generations"]:
-                    generation = response_data["generations"][0]
-                    if "audio" in generation:
-                        print("✅ Empathetic TTS success")
-                        return generation["audio"]
-            
-            print(f"❌ TTS error: {response.status_code}")
-            return None
+        # Keep text length reasonable for natural delivery
+        if len(text) > 180:
+            text = text[:177] + "..."
+        
+        tts_url = "https://api.hume.ai/v0/tts"
+        payload = {"utterances": [{"text": text}]}
+        
+        # Try multiple times with increasing timeouts
+        timeouts = [12, 15, 20]  # Increased timeouts
+        
+        for attempt, timeout in enumerate(timeouts, 1):
+            try:
+                print(f"🔊 TTS attempt {attempt}/{len(timeouts)} (timeout: {timeout}s): {text[:40]}...")
                 
-        except Exception as e:
-            print(f"❌ TTS error: {e}")
-            return None
+                response = requests.post(
+                    tts_url, 
+                    headers=self.headers, 
+                    json=payload, 
+                    timeout=timeout
+                )
+                
+                print(f"🔊 TTS response status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    try:
+                        response_data = response.json()
+                        
+                        if "generations" in response_data and response_data["generations"]:
+                            generation = response_data["generations"][0]
+                            
+                            if "audio" in generation:
+                                audio_data = generation["audio"]
+                                print(f"✅ TTS success on attempt {attempt}: {len(audio_data)} chars")
+                                return audio_data
+                            else:
+                                print(f"❌ No 'audio' key in generation (attempt {attempt})")
+                        else:
+                            print(f"❌ No 'generations' in response (attempt {attempt})")
+                            
+                    except json.JSONDecodeError as e:
+                        print(f"❌ JSON decode error (attempt {attempt}): {e}")
+                        
+                elif response.status_code == 429:  # Rate limit
+                    print(f"⏳ Rate limited, waiting before retry...")
+                    time.sleep(2)
+                    continue
+                else:
+                    print(f"❌ TTS HTTP error (attempt {attempt}): {response.status_code}")
+                    print(f"❌ Response: {response.text[:200]}")
+                    
+            except requests.exceptions.Timeout:
+                print(f"⏰ TTS timeout on attempt {attempt} ({timeout}s)")
+                if attempt < len(timeouts):
+                    print(f"🔄 Retrying with longer timeout...")
+                    continue
+            except requests.exceptions.ConnectionError:
+                print(f"🌐 Connection error on attempt {attempt}")
+                if attempt < len(timeouts):
+                    time.sleep(1)
+                    continue
+            except Exception as e:
+                print(f"❌ TTS error on attempt {attempt}: {e}")
+                if attempt < len(timeouts):
+                    continue
+        
+        print("❌ All TTS attempts failed")
+        return None
 
 # Initialize balanced empathy integration
 hume = BalancedEmpathyIntegration(HUME_API_KEY)
@@ -289,25 +325,27 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_balanced_empathy_speed",
+        "service": "ora_fixed_tts_empathy",
         "groq_working": groq_working,
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
         "ai_provider": "Groq + Empathetic Intelligence",
         "empathy_engine": "active",
+        "tts_reliability": "enhanced_with_retry",
         "target_response_time": "< 2 seconds with emotional intelligence",
         "empathetic_cache_size": len(EMPATHETIC_CACHE),
         "features": [
             "advanced_emotion_detection",
             "empathetic_response_generation",
             "emotional_cache_responses",
+            "reliable_tts_with_retry",
             "balanced_speed_and_empathy"
         ]
     })
 
 @app.route("/voice_conversation", methods=["POST"])
 def voice_conversation():
-    """Balanced empathy and speed voice conversation processing"""
+    """Balanced empathy and speed voice conversation processing with reliable TTS"""
     
     total_start_time = time.time()
     
@@ -342,9 +380,9 @@ def voice_conversation():
         print(f"💝 Empathetic response: {response_text}")
         print(f"⚡ Generation time: {ai_time:.3f}s")
         
-        # Generate empathetic audio
+        # Generate reliable empathetic audio
         tts_start = time.time()
-        audio_data = hume.text_to_speech_hume_empathetic(response_text)
+        audio_data = hume.text_to_speech_hume_reliable(response_text)
         tts_time = time.time() - tts_start
         
         total_time = time.time() - total_start_time
@@ -362,9 +400,10 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
-                "method": "balanced_empathy_speed",
+                "method": "fixed_tts_empathy",
                 "ai_provider": "Empathetic Intelligence Engine",
-                "empathy_level": "high"
+                "empathy_level": "high",
+                "tts_status": "success"
             })
         else:
             return jsonify({
@@ -375,8 +414,10 @@ def voice_conversation():
                 "emotion_context": emotion_context,
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
-                "error": "Audio generation failed",
-                "ai_provider": "Empathetic Intelligence Engine"
+                "tts_time": tts_time,
+                "error": "Audio generation failed after retries",
+                "ai_provider": "Empathetic Intelligence Engine",
+                "tts_status": "failed"
             })
         
     except Exception as e:
@@ -384,11 +425,13 @@ def voice_conversation():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("💝 Starting BALANCED EMPATHY + SPEED ORA Backend...")
+    print("💝 Starting FIXED TTS + EMPATHY ORA Backend...")
     print(f"🎭 Empathy Engine: ACTIVE")
+    print(f"🔊 TTS: Enhanced reliability with retry logic")
     print(f"⚡ AI Provider: {'Groq + Empathy' if groq_working else 'Empathetic Fallbacks'}")
-    print(f"🎯 Target: < 2 seconds with deep emotional intelligence")
+    print(f"🎯 Target: < 3 seconds with deep emotional intelligence + reliable audio")
     print(f"💝 Empathetic responses loaded: {len(EMPATHETIC_CACHE)}")
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
