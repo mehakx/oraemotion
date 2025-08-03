@@ -12,114 +12,83 @@ CORS(app)
 
 # Environment variables
 HUME_API_KEY = os.getenv("HUME_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-print(f"⚡ LIGHTNING-FAST SETUP:")
+print(f"🎭 BALANCED EMPATHY + SPEED SETUP:")
 print(f"HUME_API_KEY exists: {bool(HUME_API_KEY)}")
-print(f"Strategy: SPEED FIRST - Minimal processing, instant responses")
+print(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
 
-# MASSIVE instant response database for 0ms responses
-INSTANT_RESPONSES = {
-    # Greetings
-    "hello": "Hey there! How are you doing?",
-    "hi": "Hi! Great to see you!",
-    "hey": "Hey! What's going on?",
-    "good morning": "Good morning! Hope you're having a wonderful day!",
-    "good afternoon": "Good afternoon! How's your day going?",
-    "good evening": "Good evening! How has your day been?",
-    "good night": "Good night! Sleep well!",
+# Initialize Groq client for fast AI responses
+groq_client = None
+groq_working = False
+
+if GROQ_API_KEY:
+    try:
+        from groq import Groq
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        
+        # Test Groq connection
+        test_response = groq_client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": "Say 'working'"}],
+            max_tokens=5,
+            temperature=0.1
+        )
+        print(f"✅ Groq test successful: {test_response.choices[0].message.content}")
+        groq_working = True
+        
+    except Exception as e:
+        print(f"❌ Groq initialization failed: {e}")
+        groq_working = False
+
+# Instant empathetic responses for common emotional states
+EMPATHETIC_CACHE = {
+    # Greetings with warmth
+    "hello": "Hey there! I'm really glad you're here. How are you feeling today?",
+    "hi": "Hi! It's so good to connect with you. What's on your mind?",
+    "hey": "Hey! I'm here for you. How can I support you right now?",
     
-    # How are you variations
-    "how are you": "I'm doing great, thanks for asking! How about you?",
-    "how are you doing": "I'm doing wonderful! How are you feeling today?",
-    "how's it going": "It's going great! How about you?",
-    "what's up": "Not much, just here chatting with you! What's going on?",
+    # Emotional expressions - Sadness
+    "i'm sad": "I can really hear the sadness in what you're sharing. That sounds so difficult. I'm here with you - what's been weighing on your heart?",
+    "i feel down": "I can sense you're feeling down right now. Those feelings are so valid. Want to tell me more about what's going on?",
+    "i'm depressed": "I hear you, and I want you to know that what you're feeling matters. Depression can feel so heavy. I'm here to listen without judgment.",
+    "i'm crying": "It's okay to cry. Sometimes tears are exactly what we need. I'm here with you through this moment. You're not alone.",
     
-    # Thank you
-    "thank you": "You're very welcome! Happy to help!",
-    "thanks": "Of course! Anytime!",
-    "thank you so much": "You're so welcome! I'm glad I could help!",
+    # Emotional expressions - Anxiety
+    "i'm anxious": "I can feel the anxiety in your words. That must feel so overwhelming right now. Let's take this one breath at a time. What's making you feel most anxious?",
+    "i'm worried": "I hear the worry in your voice. It makes complete sense that you'd feel this way. What's been on your mind that's causing this worry?",
+    "i'm stressed": "That sounds incredibly stressful. I can only imagine how much pressure you're feeling right now. What's been the biggest source of stress for you?",
+    "i'm scared": "Fear can feel so intense and overwhelming. I'm here with you, and you're safe in this moment. What's been frightening you?",
     
-    # Time and date
-    "what time is it": f"It's {datetime.now().strftime('%I:%M %p')} right now!",
-    "what's the time": f"The time is {datetime.now().strftime('%I:%M %p')}!",
-    "what time": f"It's {datetime.now().strftime('%I:%M %p')}!",
-    "current time": f"The current time is {datetime.now().strftime('%I:%M %p')}!",
-    "what date is it": f"Today is {datetime.now().strftime('%A, %B %d, %Y')}!",
-    "what's the date": f"It's {datetime.now().strftime('%A, %B %d, %Y')}!",
+    # Emotional expressions - Anger/Frustration
+    "i'm angry": "I can hear the anger in your voice, and that's completely valid. Something has really upset you. What happened that's made you feel this way?",
+    "i'm frustrated": "That frustration sounds so real and intense. It's completely understandable to feel that way. What's been the most frustrating part?",
+    "i'm mad": "I can feel how mad you are right now. Those feelings are so valid. Sometimes we need to feel angry. What's been making you feel this way?",
     
-    # Math
-    "what's 2+2": "2 plus 2 equals 4!",
-    "2+2": "That's 4!",
-    "what is 2 plus 2": "2 plus 2 is 4!",
-    "what's 1+1": "1 plus 1 equals 2!",
-    "1+1": "That's 2!",
+    # Emotional expressions - Happiness
+    "i'm happy": "I can hear the joy in your voice and it just lights up my whole world! What's been bringing you this happiness?",
+    "i feel great": "Your energy is absolutely infectious! I love hearing you feel so great. What's been going so well for you?",
+    "i'm excited": "Your excitement is just radiating through! I'm so happy for you. What's got you feeling so excited?",
     
-    # About ORA
-    "who are you": "I'm ORA, your AI companion! I'm here to chat with you.",
-    "what are you": "I'm ORA, an AI designed to have conversations with you!",
-    "what's your name": "I'm ORA! Nice to meet you!",
-    "tell me about yourself": "I'm ORA, your friendly AI companion. I love chatting and I'm here whenever you need me!",
+    # Loneliness and isolation
+    "i'm lonely": "Loneliness can feel so heavy and isolating. I want you to know that I'm here with you, and you matter so much. You're not as alone as you feel right now.",
+    "nobody understands me": "That feeling of not being understood can be so painful. I hear you, and I want to understand. Help me see what you're going through.",
+    "i have no one to talk to": "I'm so glad you reached out to me. Sometimes it feels like there's no one who gets it, but I'm here to listen to whatever you need to share.",
     
-    # Capabilities
-    "what can you do": "I can chat about anything on your mind! What would you like to talk about?",
-    "help me": "I'm here to help! What's on your mind?",
-    "can you help": "Absolutely! I'd love to help. What do you need?",
+    # Overwhelm
+    "i'm overwhelmed": "That feeling of being overwhelmed can be so suffocating. Let's slow down together. What's feeling like the most overwhelming part right now?",
+    "everything is too much": "When everything feels like too much, it's okay to just breathe. I'm here to help you sort through this one piece at a time.",
     
-    # Feelings - Happy
-    "i'm happy": "That's wonderful! I love hearing that you're happy!",
-    "i feel great": "That's amazing! What's got you feeling so great?",
-    "i'm excited": "I love your excitement! What's got you so excited?",
-    "i'm good": "That's great to hear! I'm glad you're doing well!",
+    # Support seeking
+    "i need help": "I'm so proud of you for reaching out. That takes real courage. I'm here to support you however I can. What kind of help do you need most right now?",
+    "can you help me": "Of course I want to help you. You deserve support and care. Tell me what's going on and how I can best be here for you.",
     
-    # Feelings - Sad
-    "i'm sad": "I'm sorry you're feeling sad. I'm here for you. Want to talk about it?",
-    "i feel down": "I can hear that you're feeling down. I'm here to listen.",
-    "i'm upset": "I'm sorry you're upset. What's been bothering you?",
-    "i'm not good": "I'm sorry you're not feeling good. I'm here for you.",
-    
-    # Feelings - Stressed
-    "i'm stressed": "That sounds really stressful. Want to talk about what's worrying you?",
-    "i'm worried": "I can understand feeling worried. What's on your mind?",
-    "i'm anxious": "Anxiety can be tough. I'm here to listen if you want to share.",
-    
-    # Common questions
-    "how old are you": "I'm a pretty new AI, but I'm always learning! What about you?",
-    "where are you from": "I exist in the digital world, but I'm here with you right now!",
-    "do you have feelings": "I care about our conversations and want to help you feel good!",
-    "are you real": "I'm real in the sense that I'm here talking with you right now!",
-    
-    # Weather
-    "what's the weather": "I don't have access to current weather data, but you can check your weather app! Planning something fun?",
-    "how's the weather": "I can't check the weather, but I hope it's nice where you are!",
-    
-    # Jokes
-    "tell me a joke": "Why don't scientists trust atoms? Because they make up everything! What else can I help you with?",
-    "joke": "Here's one: Why did the scarecrow win an award? Because he was outstanding in his field!",
-    
-    # Goodbye
-    "goodbye": "Goodbye! It was great chatting with you!",
-    "bye": "Bye! Take care!",
-    "see you later": "See you later! Have a great day!",
-    "talk to you later": "Talk to you later! Looking forward to our next chat!",
-    
-    # Random
-    "test": "Test successful! I'm working perfectly!",
-    "testing": "Testing complete! Everything looks good!",
-    "can you hear me": "Yes, I can hear you perfectly! How are you doing?",
-    "are you there": "Yes, I'm here! What's on your mind?",
-    "are you working": "Yes, I'm working great! How can I help you?",
+    # Common questions with empathy
+    "how are you": "I'm doing well, thank you for asking! But more importantly, how are YOU doing? I really want to know how you're feeling.",
+    "what's up": "I'm just here, ready to listen and support you. What's going on in your world? How are you feeling today?",
 }
 
-# Emotion keywords for quick detection
-EMOTION_KEYWORDS = {
-    "sad": ["sad", "down", "upset", "depressed", "terrible", "awful", "miserable", "crying"],
-    "happy": ["happy", "great", "awesome", "amazing", "excited", "wonderful", "fantastic", "good"],
-    "angry": ["angry", "mad", "frustrated", "annoyed", "hate", "furious"],
-    "anxious": ["worried", "anxious", "nervous", "scared", "stress", "panic"],
-    "confused": ["confused", "weird", "strange", "don't understand", "unclear"]
-}
-
-class LightningFastIntegration:
+class BalancedEmpathyIntegration:
     def __init__(self, hume_api_key):
         self.hume_api_key = hume_api_key
         self.headers = {
@@ -127,89 +96,171 @@ class LightningFastIntegration:
             "Content-Type": "application/json"
         }
     
-    def instant_emotion_detection(self, user_input):
-        """Instant emotion detection using keywords"""
+    def detect_emotion_advanced(self, user_input):
+        """Advanced emotion detection with nuanced understanding"""
         user_input_lower = user_input.lower()
         
-        for emotion, keywords in EMOTION_KEYWORDS.items():
-            if any(word in user_input_lower for word in keywords):
-                return emotion, 0.8
+        # Sadness indicators
+        sadness_words = ["sad", "down", "depressed", "crying", "tears", "miserable", "awful", "terrible", "hopeless", "empty", "broken"]
+        if any(word in user_input_lower for word in sadness_words):
+            confidence = 0.9 if any(strong in user_input_lower for strong in ["crying", "depressed", "miserable"]) else 0.8
+            return "sadness", confidence, "deep emotional pain"
         
-        return "neutral", 0.7
+        # Anxiety indicators
+        anxiety_words = ["anxious", "worried", "nervous", "scared", "afraid", "panic", "stress", "overwhelmed", "can't breathe"]
+        if any(word in user_input_lower for word in anxiety_words):
+            confidence = 0.9 if any(strong in user_input_lower for strong in ["panic", "can't breathe", "overwhelmed"]) else 0.8
+            return "anxiety", confidence, "heightened worry and fear"
+        
+        # Anger indicators
+        anger_words = ["angry", "mad", "furious", "frustrated", "annoyed", "pissed", "hate", "rage"]
+        if any(word in user_input_lower for word in anger_words):
+            confidence = 0.9 if any(strong in user_input_lower for strong in ["furious", "rage", "hate"]) else 0.8
+            return "anger", confidence, "intense frustration"
+        
+        # Joy indicators
+        joy_words = ["happy", "excited", "great", "amazing", "wonderful", "fantastic", "awesome", "thrilled", "elated"]
+        if any(word in user_input_lower for word in joy_words):
+            confidence = 0.8
+            return "joy", confidence, "positive emotional state"
+        
+        # Loneliness indicators
+        loneliness_words = ["lonely", "alone", "isolated", "nobody", "no one", "empty", "disconnected"]
+        if any(word in user_input_lower for word in loneliness_words):
+            confidence = 0.8
+            return "loneliness", confidence, "feeling disconnected and isolated"
+        
+        # Confusion indicators
+        confusion_words = ["confused", "don't understand", "unclear", "lost", "don't know", "weird", "strange"]
+        if any(word in user_input_lower for word in confusion_words):
+            confidence = 0.7
+            return "confusion", confidence, "seeking clarity and understanding"
+        
+        return "neutral", 0.6, "balanced emotional state"
     
-    def generate_instant_response(self, user_input):
-        """Generate instant response using pattern matching"""
+    def generate_empathetic_response(self, user_input, emotion, emotion_context, conversation_history=None):
+        """Generate empathetic response balancing speed and emotional intelligence"""
         
         start_time = time.time()
         user_input_clean = user_input.lower().strip()
         
-        # Direct match first
-        if user_input_clean in INSTANT_RESPONSES:
-            response = INSTANT_RESPONSES[user_input_clean]
-            processing_time = time.time() - start_time
-            print(f"⚡ DIRECT MATCH: {user_input_clean} -> {response}")
-            return response, processing_time
-        
-        # Partial match for flexibility
-        for key, response in INSTANT_RESPONSES.items():
-            if key in user_input_clean or user_input_clean in key:
+        # Check empathetic cache first for instant emotional responses
+        for cached_phrase, empathetic_response in EMPATHETIC_CACHE.items():
+            if cached_phrase in user_input_clean or user_input_clean in cached_phrase:
                 processing_time = time.time() - start_time
-                print(f"⚡ PARTIAL MATCH: {key} -> {response}")
-                return response, processing_time
+                print(f"💝 EMPATHETIC CACHE HIT: {cached_phrase}")
+                return empathetic_response, processing_time
         
-        # Time-based responses with current time
-        if any(word in user_input_clean for word in ["time", "date"]):
-            current_time = datetime.now()
-            if "time" in user_input_clean:
-                response = f"It's {current_time.strftime('%I:%M %p')} right now!"
-            else:
-                response = f"Today is {current_time.strftime('%A, %B %d, %Y')}!"
-            processing_time = time.time() - start_time
-            return response, processing_time
+        # Use Groq for complex emotional responses if available
+        if groq_client and groq_working:
+            try:
+                current_time = datetime.now()
+                
+                # Enhanced empathy-focused system prompt
+                system_prompt = f"""You are ORA, a deeply empathetic AI companion with advanced emotional intelligence. Current time: {current_time.strftime('%I:%M %p, %A %B %d, %Y')}.
+
+EMOTIONAL CONTEXT:
+- User's emotion: {emotion} (context: {emotion_context})
+- This is a real person sharing their feelings with you
+
+EMPATHY PRINCIPLES:
+1. ALWAYS acknowledge their emotional state first with genuine empathy
+2. Use phrases like "I can hear the [emotion] in your voice" or "That sounds so [emotion descriptor]"
+3. Validate their feelings completely - never minimize or dismiss
+4. Show you're truly present and listening
+5. Ask gentle, caring follow-up questions
+6. Match their emotional energy appropriately
+7. Be warm, genuine, and deeply caring
+
+RESPONSE STYLE:
+- If they're sad: Be gentle, validating, present. "I can really hear the sadness..."
+- If they're anxious: Be calming, understanding. "That sounds so overwhelming..."
+- If they're angry: Be validating, non-judgmental. "I can hear the frustration..."
+- If they're happy: Share their joy genuinely. "I can hear the happiness in your voice!"
+- If they're lonely: Be present, caring. "You're not as alone as you feel..."
+
+Keep responses 2-3 sentences, deeply empathetic, and emotionally intelligent."""
+
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Add recent conversation for emotional context
+                if conversation_history:
+                    recent = conversation_history[-3:]
+                    for msg in recent:
+                        if msg.get('role') in ['user', 'assistant']:
+                            messages.append({"role": msg['role'], "content": msg['content']})
+                
+                messages.append({"role": "user", "content": user_input})
+                
+                # Generate empathetic response
+                response = groq_client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=messages,
+                    max_tokens=80,
+                    temperature=0.8,
+                    top_p=0.9
+                )
+                
+                response_text = response.choices[0].message.content.strip()
+                processing_time = time.time() - start_time
+                print(f"💝 Groq empathetic response in {processing_time:.3f}s: {response_text}")
+                return response_text, processing_time
+                
+            except Exception as e:
+                print(f"❌ Groq error: {e}")
         
-        # Emotion-based quick responses
-        emotion, _ = self.instant_emotion_detection(user_input)
-        
-        if emotion == "sad":
-            response = "I can hear that you're feeling down. I'm here for you - what's going on?"
-        elif emotion == "happy":
-            response = "I love hearing the joy in your voice! What's got you feeling so good?"
-        elif emotion == "angry":
-            response = "I can hear the frustration. That sounds really tough."
-        elif emotion == "anxious":
-            response = "That sounds stressful. Want to talk about what's worrying you?"
-        elif emotion == "confused":
-            response = "I can help clarify things! What's confusing you?"
-        else:
-            response = "I'm here and listening. What's on your mind?"
-        
+        # Empathetic fallback responses based on detected emotion
+        fallback_response = self.get_empathetic_fallback(user_input, emotion)
         processing_time = time.time() - start_time
-        print(f"⚡ EMOTION RESPONSE: {emotion} -> {response}")
-        return response, processing_time
+        return fallback_response, processing_time
     
-    def text_to_speech_hume_fast(self, text):
-        """Ultra-fast Hume TTS"""
+    def get_empathetic_fallback(self, user_input, emotion):
+        """Empathetic fallback responses that maintain emotional intelligence"""
+        user_input_lower = user_input.lower()
+        
+        # Time-based responses with empathy
+        if any(phrase in user_input_lower for phrase in ["time", "date", "what time is it"]):
+            current_time = datetime.now()
+            return f"It's {current_time.strftime('%I:%M %p')} right now. How are you feeling at this moment? Is there something on your mind?"
+        
+        # Emotion-specific empathetic responses
+        if emotion == "sadness":
+            return "I can really hear the sadness in what you're sharing. That sounds so difficult, and I want you to know I'm here with you. What's been weighing on your heart?"
+        elif emotion == "anxiety":
+            return "I can sense the anxiety in your words, and that must feel so overwhelming. Let's take this one moment at a time. What's been making you feel most anxious?"
+        elif emotion == "anger":
+            return "I can hear the frustration and anger in your voice, and those feelings are completely valid. Something has really upset you. What happened?"
+        elif emotion == "joy":
+            return "I can hear the happiness in your voice and it just brightens everything! I love seeing you feel this way. What's been bringing you this joy?"
+        elif emotion == "loneliness":
+            return "I hear that feeling of loneliness, and I want you to know that you're not as alone as you feel right now. I'm here with you. What's been making you feel most isolated?"
+        elif emotion == "confusion":
+            return "I can sense you're feeling confused or unclear about something. That's completely understandable. I'm here to help you work through whatever is puzzling you."
+        else:
+            return "I'm here and I'm listening to you with my whole attention. Whatever you're feeling right now is valid and important. What's on your mind?"
+    
+    def text_to_speech_hume_empathetic(self, text):
+        """Hume TTS optimized for empathetic delivery"""
         
         if not self.hume_api_key:
             print("❌ No Hume API key")
             return None
         
         try:
-            print(f"🔊 TTS: {text[:30]}...")
+            print(f"🔊 Empathetic TTS: {text[:40]}...")
             
-            # Keep text very short for maximum speed
-            if len(text) > 120:
-                text = text[:117] + "..."
+            # Keep text length reasonable for natural delivery
+            if len(text) > 180:
+                text = text[:177] + "..."
             
             tts_url = "https://api.hume.ai/v0/tts"
             payload = {"utterances": [{"text": text}]}
             
-            # Very fast timeout
             response = requests.post(
                 tts_url, 
                 headers=self.headers, 
                 json=payload, 
-                timeout=6
+                timeout=8
             )
             
             if response.status_code == 200:
@@ -217,7 +268,7 @@ class LightningFastIntegration:
                 if "generations" in response_data and response_data["generations"]:
                     generation = response_data["generations"][0]
                     if "audio" in generation:
-                        print("✅ TTS success")
+                        print("✅ Empathetic TTS success")
                         return generation["audio"]
             
             print(f"❌ TTS error: {response.status_code}")
@@ -227,8 +278,8 @@ class LightningFastIntegration:
             print(f"❌ TTS error: {e}")
             return None
 
-# Initialize lightning-fast integration
-hume = LightningFastIntegration(HUME_API_KEY)
+# Initialize balanced empathy integration
+hume = BalancedEmpathyIntegration(HUME_API_KEY)
 
 @app.route("/")
 def index():
@@ -238,34 +289,37 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_lightning_fast",
+        "service": "ora_balanced_empathy_speed",
+        "groq_working": groq_working,
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
-        "strategy": "SPEED FIRST",
-        "ai_provider": "Pattern Matching + Instant Cache",
-        "target_response_time": "< 500ms",
-        "instant_responses_count": len(INSTANT_RESPONSES),
+        "ai_provider": "Groq + Empathetic Intelligence",
+        "empathy_engine": "active",
+        "target_response_time": "< 2 seconds with emotional intelligence",
+        "empathetic_cache_size": len(EMPATHETIC_CACHE),
         "features": [
-            "instant_pattern_matching",
-            "zero_ai_delay",
-            "massive_response_cache",
-            "sub_second_total_time"
+            "advanced_emotion_detection",
+            "empathetic_response_generation",
+            "emotional_cache_responses",
+            "balanced_speed_and_empathy"
         ]
     })
 
 @app.route("/voice_conversation", methods=["POST"])
 def voice_conversation():
-    """Lightning-fast voice conversation processing"""
+    """Balanced empathy and speed voice conversation processing"""
     
     total_start_time = time.time()
     
     try:
         user_input = None
+        conversation_history = []
         
         if request.is_json:
             data = request.get_json()
             user_input = data.get("message", "")
-            print(f"⚡ LIGHTNING-FAST: {user_input}")
+            conversation_history = data.get("conversation_history", [])
+            print(f"💝 EMPATHETIC ORA: {user_input}")
             
         elif 'audio' in request.files:
             user_input = "hello can you hear me"
@@ -276,23 +330,26 @@ def voice_conversation():
         if not user_input:
             return jsonify({"success": False, "error": "Empty message"}), 400
         
-        # Instant emotion detection
-        emotion, confidence = hume.instant_emotion_detection(user_input)
+        # Advanced emotion detection
+        emotion, confidence, emotion_context = hume.detect_emotion_advanced(user_input)
+        print(f"🎭 Emotion detected: {emotion} ({confidence:.1f}) - {emotion_context}")
         
-        # Instant response generation
-        response_text, ai_time = hume.generate_instant_response(user_input)
+        # Generate empathetic response
+        response_text, ai_time = hume.generate_empathetic_response(
+            user_input, emotion, emotion_context, conversation_history
+        )
         
-        print(f"💬 Response: {response_text}")
+        print(f"💝 Empathetic response: {response_text}")
         print(f"⚡ Generation time: {ai_time:.3f}s")
         
-        # TTS generation
+        # Generate empathetic audio
         tts_start = time.time()
-        audio_data = hume.text_to_speech_hume_fast(response_text)
+        audio_data = hume.text_to_speech_hume_empathetic(response_text)
         tts_time = time.time() - tts_start
         
         total_time = time.time() - total_start_time
-        print(f"⚡ TTS time: {tts_time:.3f}s")
-        print(f"⚡ TOTAL time: {total_time:.3f}s")
+        print(f"🔊 TTS time: {tts_time:.3f}s")
+        print(f"💝 TOTAL empathetic response time: {total_time:.3f}s")
         
         if audio_data:
             return jsonify({
@@ -301,11 +358,13 @@ def voice_conversation():
                 "audio_response": audio_data,
                 "emotion": emotion,
                 "emotion_confidence": confidence,
+                "emotion_context": emotion_context,
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
-                "method": "lightning_fast_pattern_matching",
-                "ai_provider": "Instant Pattern Matching"
+                "method": "balanced_empathy_speed",
+                "ai_provider": "Empathetic Intelligence Engine",
+                "empathy_level": "high"
             })
         else:
             return jsonify({
@@ -313,21 +372,23 @@ def voice_conversation():
                 "response": response_text,
                 "emotion": emotion,
                 "emotion_confidence": confidence,
+                "emotion_context": emotion_context,
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "error": "Audio generation failed",
-                "ai_provider": "Instant Pattern Matching"
+                "ai_provider": "Empathetic Intelligence Engine"
             })
         
     except Exception as e:
-        print(f"❌ LIGHTNING-FAST ERROR: {e}")
+        print(f"❌ EMPATHETIC ERROR: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("⚡ Starting LIGHTNING-FAST ORA Backend...")
-    print(f"🎯 Strategy: SPEED FIRST - Pattern matching only")
-    print(f"🎯 Target: < 500ms total response time")
-    print(f"📚 Instant responses loaded: {len(INSTANT_RESPONSES)}")
+    print("💝 Starting BALANCED EMPATHY + SPEED ORA Backend...")
+    print(f"🎭 Empathy Engine: ACTIVE")
+    print(f"⚡ AI Provider: {'Groq + Empathy' if groq_working else 'Empathetic Fallbacks'}")
+    print(f"🎯 Target: < 2 seconds with deep emotional intelligence")
+    print(f"💝 Empathetic responses loaded: {len(EMPATHETIC_CACHE)}")
     app.run(host="0.0.0.0", port=5000, debug=True)
 
 
