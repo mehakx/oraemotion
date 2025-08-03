@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import google.generativeai as genai
+from groq import Groq
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -13,33 +13,52 @@ CORS(app)
 
 # Environment variables
 HUME_API_KEY = os.getenv("HUME_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # You'll need to add this to Render
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # You'll need to add this to Render
 
-print(f"🔍 GEMINI SETUP:")
+print(f"🚀 GROQ ULTRA-FAST SETUP:")
 print(f"HUME_API_KEY exists: {bool(HUME_API_KEY)}")
-print(f"GEMINI_API_KEY exists: {bool(GEMINI_API_KEY)}")
+print(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
 
-# Initialize Gemini
-gemini_model = None
-gemini_working = False
+# Initialize Groq client
+groq_client = None
+groq_working = False
 
-if GEMINI_API_KEY:
+if GROQ_API_KEY:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        gemini_model = genai.GenerativeModel('gemini-1.5-flash')  # Fast model for real-time
+        groq_client = Groq(api_key=GROQ_API_KEY)
         
-        # Test Gemini connection
-        test_response = gemini_model.generate_content("Say 'Gemini is working'")
-        print(f"✅ Gemini test successful: {test_response.text}")
-        gemini_working = True
+        # Test Groq connection with ultra-fast model
+        test_response = groq_client.chat.completions.create(
+            model="llama3-8b-8192",  # Ultra-fast Llama model
+            messages=[{"role": "user", "content": "Say 'Groq is working'"}],
+            max_tokens=10,
+            temperature=0.1
+        )
+        print(f"✅ Groq test successful: {test_response.choices[0].message.content}")
+        groq_working = True
         
     except Exception as e:
-        print(f"❌ Gemini initialization failed: {e}")
-        gemini_working = False
+        print(f"❌ Groq initialization failed: {e}")
+        groq_working = False
 else:
-    print("❌ No Gemini API key found")
+    print("❌ No Groq API key found")
 
-class GeminiHumeIntegration:
+# Ultra-fast response cache for instant replies
+INSTANT_CACHE = {
+    "hello": "Hey there! How are you doing?",
+    "hi": "Hi! Great to see you!",
+    "hey": "Hey! What's going on?",
+    "how are you": "I'm doing great, thanks for asking! How about you?",
+    "good morning": "Good morning! Hope you're having a wonderful day!",
+    "good evening": "Good evening! How has your day been?",
+    "thank you": "You're very welcome! Happy to help!",
+    "thanks": "Of course! Anytime!",
+    "what's up": "Not much, just here chatting with you! What's going on?",
+    "2+2": "That's 4!",
+    "what's 2+2": "2 plus 2 equals 4!"
+}
+
+class GroqUltraFastIntegration:
     def __init__(self, hume_api_key):
         self.hume_api_key = hume_api_key
         self.headers = {
@@ -47,200 +66,189 @@ class GeminiHumeIntegration:
             "Content-Type": "application/json"
         }
     
-    def analyze_emotion_smart(self, user_input):
-        """Smart emotion analysis using Gemini"""
+    def quick_emotion_detection(self, user_input):
+        """Lightning-fast emotion detection using keywords only"""
         user_input_lower = user_input.lower()
         
-        print(f"🎭 Analyzing emotion for: {user_input}")
-        
-        # Quick keyword detection for obvious emotions (for speed)
-        if any(word in user_input_lower for word in ["sad", "down", "upset", "depressed", "crying", "terrible", "awful", "miserable"]):
-            print("🎭 Detected: sadness (keyword)")
-            return {"sadness": 0.9}, "sadness", "The user is expressing sadness and needs empathetic support"
-        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "furious", "pissed", "annoyed", "hate"]):
-            print("🎭 Detected: anger (keyword)")
-            return {"anger": 0.8}, "anger", "The user is feeling angry or frustrated"
-        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared", "afraid", "stress", "panic"]):
-            print("🎭 Detected: anxiety (keyword)")
-            return {"anxiety": 0.8}, "anxiety", "The user is experiencing anxiety or worry"
-        elif any(word in user_input_lower for word in ["happy", "great", "awesome", "amazing", "excited", "wonderful", "fantastic"]):
-            print("🎭 Detected: joy (keyword)")
-            return {"joy": 0.8}, "joy", "The user is feeling positive and happy"
-        
-        # For complex emotions, use Gemini
-        if gemini_model and gemini_working:
-            try:
-                print("🎭 Using Gemini for emotion analysis...")
-                
-                emotion_prompt = f"""Analyze the emotional content of this message: "{user_input}"
-
-Return only a JSON object in this exact format:
-{{"emotion": "emotion_name", "confidence": 0.8, "context": "brief description"}}
-
-Possible emotions: joy, sadness, anger, anxiety, confusion, excitement, neutral"""
-
-                response = gemini_model.generate_content(emotion_prompt)
-                emotion_data = json.loads(response.text.strip())
-                
-                emotion_name = emotion_data.get("emotion", "neutral")
-                confidence = emotion_data.get("confidence", 0.7)
-                context = emotion_data.get("context", "")
-                
-                print(f"🎭 Gemini emotion result: {emotion_name} ({confidence})")
-                return {emotion_name: confidence}, emotion_name, context
-                
-            except Exception as e:
-                print(f"❌ Gemini emotion analysis failed: {e}")
+        # Ultra-fast keyword matching
+        if any(word in user_input_lower for word in ["sad", "down", "upset", "depressed", "terrible", "awful"]):
+            return "sadness", 0.9
+        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "annoyed", "hate"]):
+            return "anger", 0.8
+        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared", "stress"]):
+            return "anxiety", 0.8
+        elif any(word in user_input_lower for word in ["happy", "great", "awesome", "amazing", "excited", "wonderful"]):
+            return "joy", 0.8
+        elif any(word in user_input_lower for word in ["confused", "weird", "strange", "don't understand"]):
+            return "confusion", 0.7
         else:
-            print("🎭 Gemini not available for emotion analysis")
-        
-        # Default to neutral
-        print("🎭 Defaulting to neutral emotion")
-        return {"neutral": 0.7}, "neutral", "The user is in a neutral emotional state"
+            return "neutral", 0.7
     
-    def generate_empathic_response(self, user_input, emotions, emotion_context, conversation_history=None):
-        """Generate empathic response using Gemini"""
+    def generate_ultra_fast_response(self, user_input, emotion, conversation_history=None):
+        """Generate ultra-fast response using Groq"""
         
-        print(f"💬 Generating response for: {user_input}")
-        print(f"💬 Gemini working: {gemini_working}")
+        start_time = time.time()
         
-        # Get dominant emotion
-        dominant_emotion = max(emotions.items(), key=lambda x: x[1])
-        emotion_name = dominant_emotion[0]
-        emotion_confidence = dominant_emotion[1]
+        # Check instant cache first (0ms response time)
+        user_input_clean = user_input.lower().strip()
+        for cached_phrase, cached_response in INSTANT_CACHE.items():
+            if cached_phrase in user_input_clean:
+                print(f"⚡ INSTANT CACHE HIT: {cached_phrase}")
+                return cached_response, time.time() - start_time
         
-        # Try Gemini first
-        if gemini_model and gemini_working:
-            try:
-                print("💬 Using Gemini for response generation...")
-                
-                # Build conversation context
-                conversation_context = ""
-                if conversation_history:
-                    recent = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
-                    for msg in recent:
-                        role = msg.get('role', '')
-                        content = msg.get('content', '')
-                        if role == 'user':
-                            conversation_context += f"User: {content}\n"
-                        elif role == 'assistant':
-                            conversation_context += f"ORA: {content}\n"
-                
-                # Get current date and time
-                current_time = datetime.now()
-                current_date_time = current_time.strftime('%A, %B %d, %Y at %I:%M %p')
-                
-                # Enhanced system prompt for Gemini
-                gemini_prompt = f"""You are ORA, a deeply empathetic AI voice companion. Today is {current_date_time}.
-
-EMOTIONAL CONTEXT:
-- User's emotion: {emotion_name} (confidence: {emotion_confidence:.1f})
-- Emotional context: {emotion_context}
-
-CONVERSATION HISTORY:
-{conversation_context}
-
-CURRENT USER MESSAGE: {user_input}
-
-CORE PRINCIPLES:
-1. ALWAYS acknowledge their emotional state first if they're expressing feelings
-2. Show genuine empathy and understanding
-3. Answer their questions directly and helpfully (you have access to current date/time)
-4. Be warm, caring, and conversational
-5. Keep responses concise but meaningful (2-3 sentences max for voice)
-6. If they ask for date/time, give the actual current date/time: {current_date_time}
-
-EXAMPLES:
-- If sad: "I can really hear the sadness in what you're sharing. That sounds really difficult. I'm here to listen - what's been weighing on you?"
-- If asking for time: "It's currently {current_date_time}. How can I help you with your day?"
-- If asking math: Answer directly and warmly
-- If asking questions: Answer directly while being empathetic
-
-Respond naturally as ORA, acknowledging their emotion and answering their question directly."""
-
-                response = gemini_model.generate_content(gemini_prompt)
-                response_text = response.text.strip()
-                
-                print(f"✅ Gemini response: {response_text}")
-                return response_text, emotion_name, emotion_confidence
-                
-            except Exception as e:
-                print(f"❌ Gemini response generation error: {e}")
-                print(f"❌ Error type: {type(e)}")
-        else:
-            print("💬 Gemini not available, using fallback")
-        
-        # Enhanced fallback responses
-        print("💬 Using fallback response")
-        return self.get_enhanced_fallback(user_input, emotion_name), emotion_name, emotion_confidence
-    
-    def get_enhanced_fallback(self, user_input, emotion):
-        """Enhanced fallback responses with proper date/time handling"""
-        user_input_lower = user_input.lower()
-        
-        print(f"🔄 Generating fallback for emotion: {emotion}")
-        
-        # Handle date/time questions in fallback
-        if any(phrase in user_input_lower for phrase in ["what time", "what's the time", "date and time", "current time", "what date", "time is it"]):
+        # Handle date/time questions instantly
+        if any(phrase in user_input_clean for phrase in ["time", "date", "what time is it", "current time"]):
             current_time = datetime.now()
-            return f"It's currently {current_time.strftime('%A, %B %d, %Y at %I:%M %p')}. How can I help you with your day?"
+            response = f"It's {current_time.strftime('%I:%M %p')} on {current_time.strftime('%A, %B %d')}. How can I help you?"
+            return response, time.time() - start_time
         
-        # Handle math questions
-        if any(phrase in user_input_lower for phrase in ["what's 2+2", "2+2", "what is 2 plus 2"]):
-            return "2 plus 2 equals 4! Is there something else I can help you calculate?"
+        # Use Groq for ultra-fast AI responses
+        if groq_client and groq_working:
+            try:
+                # Ultra-optimized prompt for speed
+                current_time = datetime.now()
+                
+                system_prompt = f"""You are ORA, a warm AI companion. Current time: {current_time.strftime('%I:%M %p, %A %B %d, %Y')}.
+
+EMOTION: User seems {emotion}
+
+RULES:
+- Keep responses SHORT (1-2 sentences max)
+- Be warm and natural
+- Answer questions directly
+- If they're sad/anxious, be supportive
+- If they're happy, share their energy
+- Be conversational, not formal
+
+Examples:
+- Sad: "I can hear that you're feeling down. I'm here for you - what's going on?"
+- Happy: "I love hearing the joy in your voice! What's got you feeling so good?"
+- Questions: Answer directly and warmly"""
+
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Only use last 2 messages for maximum speed
+                if conversation_history:
+                    recent = conversation_history[-2:]
+                    for msg in recent:
+                        if msg.get('role') in ['user', 'assistant']:
+                            messages.append({"role": msg['role'], "content": msg['content']})
+                
+                messages.append({"role": "user", "content": user_input})
+                
+                # Ultra-fast Groq call
+                response = groq_client.chat.completions.create(
+                    model="llama3-8b-8192",  # Fastest model
+                    messages=messages,
+                    max_tokens=60,  # Very short for speed
+                    temperature=0.7,
+                    top_p=0.9,
+                    stream=False  # No streaming for simplicity
+                )
+                
+                response_text = response.choices[0].message.content.strip()
+                processing_time = time.time() - start_time
+                print(f"⚡ Groq response in {processing_time:.3f}s: {response_text}")
+                return response_text, processing_time
+                
+            except Exception as e:
+                print(f"❌ Groq error: {e}")
         
-        # Emotional responses
-        if emotion == "sadness":
-            return "I can really hear the sadness in what you're sharing. That sounds really difficult, and I'm here to listen. What's been weighing on your heart?"
-        elif emotion == "anxiety":
-            return "That sounds really stressful and overwhelming. It makes complete sense that you'd feel anxious about that. Want to talk through what's worrying you most?"
-        elif emotion == "anger":
-            return "I can hear the frustration in your voice, and that's completely understandable. Sometimes things just feel overwhelming. What's been bothering you?"
-        elif emotion == "joy":
-            return "I love hearing the happiness in your voice! That's wonderful. What's got you feeling so good today?"
-        elif any(phrase in user_input_lower for phrase in ["where are you from", "who are you", "what are you"]):
-            return "I'm ORA, your AI companion designed to have meaningful conversations with you. I'm here to chat, listen, and help however I can!"
-        elif any(phrase in user_input_lower for phrase in ["how are you"]):
-            return "I'm doing great, thank you for asking! I'm here and ready to chat with you. How are you doing today?"
-        else:
-            return "I'm here and listening. Tell me more about what's on your mind - I'd love to understand better."
+        # Ultra-fast fallback
+        fallback_response = self.get_instant_fallback(user_input, emotion)
+        return fallback_response, time.time() - start_time
     
-    def text_to_speech_hume_fast(self, text):
-        """Optimized Hume TTS"""
+    def get_instant_fallback(self, user_input, emotion):
+        """Instant fallback responses"""
+        user_input_lower = user_input.lower()
+        
+        # Handle common questions instantly
+        if any(phrase in user_input_lower for phrase in ["who are you", "what are you"]):
+            return "I'm ORA, your AI companion! I'm here to chat with you."
+        elif any(phrase in user_input_lower for phrase in ["how are you"]):
+            return "I'm doing great! How about you?"
+        
+        # Emotion-based responses
+        if emotion == "sadness":
+            return "I can hear that you're feeling down. I'm here for you - what's going on?"
+        elif emotion == "anxiety":
+            return "That sounds stressful. Want to talk about what's worrying you?"
+        elif emotion == "anger":
+            return "I can hear the frustration. That sounds really tough."
+        elif emotion == "joy":
+            return "I love hearing the happiness in your voice! What's got you feeling so good?"
+        else:
+            return "I'm here and listening. What's on your mind?"
+    
+    def text_to_speech_hume_optimized(self, text):
+        """Optimized Hume TTS with better error handling"""
         
         if not self.hume_api_key:
-            print("❌ No Hume API key for TTS")
+            print("❌ No Hume API key")
             return None
         
         try:
-            print(f"🔊 Converting to speech: {text[:50]}...")
+            print(f"🔊 TTS: {text[:30]}...")
             
-            # Truncate very long responses for faster TTS
-            if len(text) > 200:
-                text = text[:197] + "..."
+            # Keep text short for faster TTS
+            if len(text) > 150:
+                text = text[:147] + "..."
             
             tts_url = "https://api.hume.ai/v0/tts"
-            payload = {"utterances": [{"text": text}]}
+            payload = {
+                "utterances": [
+                    {
+                        "text": text
+                    }
+                ]
+            }
             
-            response = requests.post(tts_url, headers=self.headers, json=payload, timeout=10)
+            # Faster timeout
+            response = requests.post(
+                tts_url, 
+                headers=self.headers, 
+                json=payload, 
+                timeout=8
+            )
+            
+            print(f"🔊 Hume TTS status: {response.status_code}")
             
             if response.status_code == 200:
-                response_data = response.json()
-                if "generations" in response_data and len(response_data["generations"]) > 0:
-                    generation = response_data["generations"][0]
-                    if "audio" in generation:
-                        print("✅ Hume TTS successful")
-                        return generation["audio"]
+                try:
+                    response_data = response.json()
+                    print(f"🔊 Response keys: {list(response_data.keys())}")
+                    
+                    if "generations" in response_data and response_data["generations"]:
+                        generation = response_data["generations"][0]
+                        print(f"🔊 Generation keys: {list(generation.keys())}")
+                        
+                        if "audio" in generation:
+                            audio_data = generation["audio"]
+                            print(f"✅ TTS success: {len(audio_data)} chars")
+                            return audio_data
+                        else:
+                            print("❌ No 'audio' key in generation")
+                    else:
+                        print("❌ No 'generations' in response")
+                        
+                except json.JSONDecodeError as e:
+                    print(f"❌ JSON decode error: {e}")
+                    print(f"❌ Raw response: {response.text[:200]}")
+            else:
+                print(f"❌ TTS HTTP error: {response.status_code}")
+                print(f"❌ Response: {response.text[:200]}")
             
-            print(f"❌ Hume TTS error: {response.status_code}")
             return None
                 
+        except requests.exceptions.Timeout:
+            print("❌ TTS timeout")
+            return None
         except Exception as e:
-            print(f"❌ Hume TTS error: {e}")
+            print(f"❌ TTS error: {e}")
             return None
 
-# Initialize Gemini-Hume integration
-hume = GeminiHumeIntegration(HUME_API_KEY)
+# Initialize ultra-fast integration
+hume = GroqUltraFastIntegration(HUME_API_KEY)
 
 @app.route("/")
 def index():
@@ -250,26 +258,27 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_gemini_backend",
-        "gemini_working": gemini_working,
-        "gemini_key_exists": bool(GEMINI_API_KEY),
+        "service": "ora_groq_ultra_fast",
+        "groq_working": groq_working,
+        "groq_key_exists": bool(GROQ_API_KEY),
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
-        "ai_provider": "Google Gemini",
-        "model": "gemini-1.5-flash",
+        "ai_provider": "Groq (Ultra-Fast)",
+        "model": "llama3-8b-8192",
+        "target_response_time": "< 1 second",
         "features": [
-            "real_time_information",
-            "fast_responses",
-            "empathic_conversations",
-            "current_date_time_awareness"
+            "instant_cache_responses",
+            "sub_second_ai_generation",
+            "optimized_tts",
+            "minimal_processing_delays"
         ]
     })
 
 @app.route("/voice_conversation", methods=["POST"])
 def voice_conversation():
-    """Gemini-powered voice conversation processing"""
+    """Ultra-fast voice conversation processing"""
     
-    start_time = time.time()
+    total_start_time = time.time()
     
     try:
         user_input = None
@@ -279,7 +288,7 @@ def voice_conversation():
             data = request.get_json()
             user_input = data.get("message", "")
             conversation_history = data.get("conversation_history", [])
-            print(f"🚀 GEMINI: Processing input: {user_input}")
+            print(f"⚡ GROQ ULTRA-FAST: {user_input}")
             
         elif 'audio' in request.files:
             user_input = "hello can you hear me"
@@ -290,57 +299,62 @@ def voice_conversation():
         if not user_input:
             return jsonify({"success": False, "error": "Empty message"}), 400
         
-        # Smart emotion analysis
-        emotions, dominant_emotion, emotion_context = hume.analyze_emotion_smart(user_input)
-        print(f"🎭 GEMINI: Emotion result: {dominant_emotion} - {emotion_context}")
+        # Lightning-fast emotion detection
+        emotion, confidence = hume.quick_emotion_detection(user_input)
+        print(f"🎭 Emotion: {emotion} ({confidence})")
         
-        # Generate empathic response using Gemini
-        response_text, detected_emotion, emotion_confidence = hume.generate_empathic_response(
-            user_input, emotions, emotion_context, conversation_history
+        # Ultra-fast response generation
+        response_text, ai_time = hume.generate_ultra_fast_response(
+            user_input, emotion, conversation_history
         )
         
-        print(f"💬 GEMINI: Final response: {response_text}")
+        print(f"💬 Response: {response_text}")
+        print(f"⚡ AI generation time: {ai_time:.3f}s")
         
-        # Generate audio
-        audio_data = hume.text_to_speech_hume_fast(response_text)
+        # Parallel TTS generation
+        tts_start = time.time()
+        audio_data = hume.text_to_speech_hume_optimized(response_text)
+        tts_time = time.time() - tts_start
         
-        processing_time = time.time() - start_time
-        print(f"⚡ GEMINI: Total processing time: {processing_time:.2f} seconds")
+        total_time = time.time() - total_start_time
+        print(f"⚡ TTS time: {tts_time:.3f}s")
+        print(f"⚡ TOTAL time: {total_time:.3f}s")
         
         if audio_data:
             return jsonify({
                 "success": True,
                 "response": response_text,
                 "audio_response": audio_data,
-                "emotion": detected_emotion,
-                "emotion_confidence": emotion_confidence,
-                "processing_time": processing_time,
-                "method": "gemini",
-                "ai_provider": "Google Gemini",
-                "gemini_used": gemini_working,
-                "current_time": datetime.now().isoformat()
+                "emotion": emotion,
+                "emotion_confidence": confidence,
+                "processing_time": total_time,
+                "ai_generation_time": ai_time,
+                "tts_time": tts_time,
+                "method": "groq_ultra_fast",
+                "ai_provider": "Groq",
+                "model": "llama3-8b-8192"
             })
         else:
             return jsonify({
                 "success": True,
                 "response": response_text,
-                "emotion": detected_emotion,
-                "emotion_confidence": emotion_confidence,
-                "processing_time": processing_time,
+                "emotion": emotion,
+                "emotion_confidence": confidence,
+                "processing_time": total_time,
+                "ai_generation_time": ai_time,
                 "error": "Audio generation failed",
-                "ai_provider": "Google Gemini",
-                "gemini_used": gemini_working
+                "ai_provider": "Groq"
             })
         
     except Exception as e:
-        print(f"❌ GEMINI ERROR: {e}")
+        print(f"❌ ULTRA-FAST ERROR: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("🚀 Starting Gemini-Powered ORA Backend...")
-    print(f"🤖 AI Provider: Google Gemini")
-    print(f"🎯 Gemini Status: {'✅ Working' if gemini_working else '❌ Not Working'}")
+    print("🚀 Starting GROQ ULTRA-FAST ORA Backend...")
+    print(f"⚡ AI Provider: Groq (Sub-second responses)")
+    print(f"🎯 Groq Status: {'✅ Working' if groq_working else '❌ Not Working'}")
+    print(f"🎯 Target: < 1 second total response time")
     app.run(host="0.0.0.0", port=5000, debug=True)
-
 
 
