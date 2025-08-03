@@ -12,61 +12,114 @@ CORS(app)
 
 # Environment variables
 HUME_API_KEY = os.getenv("HUME_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-print(f"🚀 GROQ ULTRA-FAST SETUP:")
+print(f"⚡ LIGHTNING-FAST SETUP:")
 print(f"HUME_API_KEY exists: {bool(HUME_API_KEY)}")
-print(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
+print(f"Strategy: SPEED FIRST - Minimal processing, instant responses")
 
-# Initialize Groq client with better error handling
-groq_client = None
-groq_working = False
-
-if GROQ_API_KEY:
-    try:
-        # Try importing and initializing Groq
-        from groq import Groq
-        
-        # Initialize with minimal parameters to avoid compatibility issues
-        groq_client = Groq(api_key=GROQ_API_KEY)
-        
-        # Test Groq connection
-        test_response = groq_client.chat.completions.create(
-            model="llama3-8b-8192",
-            messages=[{"role": "user", "content": "Say 'working'"}],
-            max_tokens=5,
-            temperature=0.1
-        )
-        print(f"✅ Groq test successful: {test_response.choices[0].message.content}")
-        groq_working = True
-        
-    except ImportError as e:
-        print(f"❌ Groq import failed: {e}")
-        groq_working = False
-    except Exception as e:
-        print(f"❌ Groq initialization failed: {e}")
-        groq_working = False
-else:
-    print("❌ No Groq API key found")
-
-# Ultra-fast response cache for instant replies
-INSTANT_CACHE = {
+# MASSIVE instant response database for 0ms responses
+INSTANT_RESPONSES = {
+    # Greetings
     "hello": "Hey there! How are you doing?",
     "hi": "Hi! Great to see you!",
     "hey": "Hey! What's going on?",
-    "how are you": "I'm doing great, thanks for asking! How about you?",
     "good morning": "Good morning! Hope you're having a wonderful day!",
+    "good afternoon": "Good afternoon! How's your day going?",
     "good evening": "Good evening! How has your day been?",
+    "good night": "Good night! Sleep well!",
+    
+    # How are you variations
+    "how are you": "I'm doing great, thanks for asking! How about you?",
+    "how are you doing": "I'm doing wonderful! How are you feeling today?",
+    "how's it going": "It's going great! How about you?",
+    "what's up": "Not much, just here chatting with you! What's going on?",
+    
+    # Thank you
     "thank you": "You're very welcome! Happy to help!",
     "thanks": "Of course! Anytime!",
-    "what's up": "Not much, just here chatting with you! What's going on?",
-    "2+2": "That's 4!",
-    "what's 2+2": "2 plus 2 equals 4!",
+    "thank you so much": "You're so welcome! I'm glad I could help!",
+    
+    # Time and date
     "what time is it": f"It's {datetime.now().strftime('%I:%M %p')} right now!",
-    "what's the time": f"The time is {datetime.now().strftime('%I:%M %p')}!"
+    "what's the time": f"The time is {datetime.now().strftime('%I:%M %p')}!",
+    "what time": f"It's {datetime.now().strftime('%I:%M %p')}!",
+    "current time": f"The current time is {datetime.now().strftime('%I:%M %p')}!",
+    "what date is it": f"Today is {datetime.now().strftime('%A, %B %d, %Y')}!",
+    "what's the date": f"It's {datetime.now().strftime('%A, %B %d, %Y')}!",
+    
+    # Math
+    "what's 2+2": "2 plus 2 equals 4!",
+    "2+2": "That's 4!",
+    "what is 2 plus 2": "2 plus 2 is 4!",
+    "what's 1+1": "1 plus 1 equals 2!",
+    "1+1": "That's 2!",
+    
+    # About ORA
+    "who are you": "I'm ORA, your AI companion! I'm here to chat with you.",
+    "what are you": "I'm ORA, an AI designed to have conversations with you!",
+    "what's your name": "I'm ORA! Nice to meet you!",
+    "tell me about yourself": "I'm ORA, your friendly AI companion. I love chatting and I'm here whenever you need me!",
+    
+    # Capabilities
+    "what can you do": "I can chat about anything on your mind! What would you like to talk about?",
+    "help me": "I'm here to help! What's on your mind?",
+    "can you help": "Absolutely! I'd love to help. What do you need?",
+    
+    # Feelings - Happy
+    "i'm happy": "That's wonderful! I love hearing that you're happy!",
+    "i feel great": "That's amazing! What's got you feeling so great?",
+    "i'm excited": "I love your excitement! What's got you so excited?",
+    "i'm good": "That's great to hear! I'm glad you're doing well!",
+    
+    # Feelings - Sad
+    "i'm sad": "I'm sorry you're feeling sad. I'm here for you. Want to talk about it?",
+    "i feel down": "I can hear that you're feeling down. I'm here to listen.",
+    "i'm upset": "I'm sorry you're upset. What's been bothering you?",
+    "i'm not good": "I'm sorry you're not feeling good. I'm here for you.",
+    
+    # Feelings - Stressed
+    "i'm stressed": "That sounds really stressful. Want to talk about what's worrying you?",
+    "i'm worried": "I can understand feeling worried. What's on your mind?",
+    "i'm anxious": "Anxiety can be tough. I'm here to listen if you want to share.",
+    
+    # Common questions
+    "how old are you": "I'm a pretty new AI, but I'm always learning! What about you?",
+    "where are you from": "I exist in the digital world, but I'm here with you right now!",
+    "do you have feelings": "I care about our conversations and want to help you feel good!",
+    "are you real": "I'm real in the sense that I'm here talking with you right now!",
+    
+    # Weather
+    "what's the weather": "I don't have access to current weather data, but you can check your weather app! Planning something fun?",
+    "how's the weather": "I can't check the weather, but I hope it's nice where you are!",
+    
+    # Jokes
+    "tell me a joke": "Why don't scientists trust atoms? Because they make up everything! What else can I help you with?",
+    "joke": "Here's one: Why did the scarecrow win an award? Because he was outstanding in his field!",
+    
+    # Goodbye
+    "goodbye": "Goodbye! It was great chatting with you!",
+    "bye": "Bye! Take care!",
+    "see you later": "See you later! Have a great day!",
+    "talk to you later": "Talk to you later! Looking forward to our next chat!",
+    
+    # Random
+    "test": "Test successful! I'm working perfectly!",
+    "testing": "Testing complete! Everything looks good!",
+    "can you hear me": "Yes, I can hear you perfectly! How are you doing?",
+    "are you there": "Yes, I'm here! What's on your mind?",
+    "are you working": "Yes, I'm working great! How can I help you?",
 }
 
-class UltraFastIntegration:
+# Emotion keywords for quick detection
+EMOTION_KEYWORDS = {
+    "sad": ["sad", "down", "upset", "depressed", "terrible", "awful", "miserable", "crying"],
+    "happy": ["happy", "great", "awesome", "amazing", "excited", "wonderful", "fantastic", "good"],
+    "angry": ["angry", "mad", "frustrated", "annoyed", "hate", "furious"],
+    "anxious": ["worried", "anxious", "nervous", "scared", "stress", "panic"],
+    "confused": ["confused", "weird", "strange", "don't understand", "unclear"]
+}
+
+class LightningFastIntegration:
     def __init__(self, hume_api_key):
         self.hume_api_key = hume_api_key
         self.headers = {
@@ -74,132 +127,68 @@ class UltraFastIntegration:
             "Content-Type": "application/json"
         }
     
-    def quick_emotion_detection(self, user_input):
-        """Lightning-fast emotion detection using keywords only"""
+    def instant_emotion_detection(self, user_input):
+        """Instant emotion detection using keywords"""
         user_input_lower = user_input.lower()
         
-        # Ultra-fast keyword matching
-        if any(word in user_input_lower for word in ["sad", "down", "upset", "depressed", "terrible", "awful"]):
-            return "sadness", 0.9
-        elif any(word in user_input_lower for word in ["angry", "mad", "frustrated", "annoyed", "hate"]):
-            return "anger", 0.8
-        elif any(word in user_input_lower for word in ["worried", "anxious", "nervous", "scared", "stress"]):
-            return "anxiety", 0.8
-        elif any(word in user_input_lower for word in ["happy", "great", "awesome", "amazing", "excited", "wonderful"]):
-            return "joy", 0.8
-        elif any(word in user_input_lower for word in ["confused", "weird", "strange", "don't understand"]):
-            return "confusion", 0.7
-        else:
-            return "neutral", 0.7
+        for emotion, keywords in EMOTION_KEYWORDS.items():
+            if any(word in user_input_lower for word in keywords):
+                return emotion, 0.8
+        
+        return "neutral", 0.7
     
-    def generate_ultra_fast_response(self, user_input, emotion, conversation_history=None):
-        """Generate ultra-fast response using Groq or smart fallbacks"""
+    def generate_instant_response(self, user_input):
+        """Generate instant response using pattern matching"""
         
         start_time = time.time()
-        
-        # Check instant cache first (0ms response time)
         user_input_clean = user_input.lower().strip()
-        for cached_phrase, cached_response in INSTANT_CACHE.items():
-            if cached_phrase in user_input_clean:
-                print(f"⚡ INSTANT CACHE HIT: {cached_phrase}")
-                return cached_response, time.time() - start_time
         
-        # Handle date/time questions instantly with current time
-        if any(phrase in user_input_clean for phrase in ["time", "date", "what time is it", "current time"]):
-            current_time = datetime.now()
-            response = f"It's {current_time.strftime('%I:%M %p')} on {current_time.strftime('%A, %B %d')}. How can I help you?"
-            return response, time.time() - start_time
+        # Direct match first
+        if user_input_clean in INSTANT_RESPONSES:
+            response = INSTANT_RESPONSES[user_input_clean]
+            processing_time = time.time() - start_time
+            print(f"⚡ DIRECT MATCH: {user_input_clean} -> {response}")
+            return response, processing_time
         
-        # Try Groq if available
-        if groq_client and groq_working:
-            try:
-                # Ultra-optimized prompt for speed
-                current_time = datetime.now()
-                
-                system_prompt = f"""You are ORA, a warm AI companion. Current time: {current_time.strftime('%I:%M %p, %A %B %d, %Y')}.
-
-EMOTION: User seems {emotion}
-
-RULES:
-- Keep responses SHORT (1-2 sentences max)
-- Be warm and natural
-- Answer questions directly
-- If they're sad/anxious, be supportive
-- If they're happy, share their energy
-- Be conversational, not formal
-
-Examples:
-- Sad: "I can hear that you're feeling down. I'm here for you - what's going on?"
-- Happy: "I love hearing the joy in your voice! What's got you feeling so good?"
-- Questions: Answer directly and warmly"""
-
-                messages = [{"role": "system", "content": system_prompt}]
-                
-                # Only use last 2 messages for maximum speed
-                if conversation_history:
-                    recent = conversation_history[-2:]
-                    for msg in recent:
-                        if msg.get('role') in ['user', 'assistant']:
-                            messages.append({"role": msg['role'], "content": msg['content']})
-                
-                messages.append({"role": "user", "content": user_input})
-                
-                # Ultra-fast Groq call
-                response = groq_client.chat.completions.create(
-                    model="llama3-8b-8192",
-                    messages=messages,
-                    max_tokens=60,
-                    temperature=0.7,
-                    top_p=0.9
-                )
-                
-                response_text = response.choices[0].message.content.strip()
+        # Partial match for flexibility
+        for key, response in INSTANT_RESPONSES.items():
+            if key in user_input_clean or user_input_clean in key:
                 processing_time = time.time() - start_time
-                print(f"⚡ Groq response in {processing_time:.3f}s: {response_text}")
-                return response_text, processing_time
-                
-            except Exception as e:
-                print(f"❌ Groq error: {e}")
-                print("🔄 Falling back to smart responses")
+                print(f"⚡ PARTIAL MATCH: {key} -> {response}")
+                return response, processing_time
         
-        # Smart fallback responses (still very fast)
-        fallback_response = self.get_smart_fallback(user_input, emotion)
-        return fallback_response, time.time() - start_time
-    
-    def get_smart_fallback(self, user_input, emotion):
-        """Smart fallback responses that feel natural"""
-        user_input_lower = user_input.lower()
+        # Time-based responses with current time
+        if any(word in user_input_clean for word in ["time", "date"]):
+            current_time = datetime.now()
+            if "time" in user_input_clean:
+                response = f"It's {current_time.strftime('%I:%M %p')} right now!"
+            else:
+                response = f"Today is {current_time.strftime('%A, %B %d, %Y')}!"
+            processing_time = time.time() - start_time
+            return response, processing_time
         
-        # Handle common questions intelligently
-        if any(phrase in user_input_lower for phrase in ["who are you", "what are you"]):
-            return "I'm ORA, your AI companion! I'm here to chat with you."
-        elif any(phrase in user_input_lower for phrase in ["how are you"]):
-            return "I'm doing great! How about you?"
-        elif any(phrase in user_input_lower for phrase in ["what can you do", "help me"]):
-            return "I can chat about anything on your mind! What would you like to talk about?"
-        elif any(phrase in user_input_lower for phrase in ["tell me a joke", "joke"]):
-            return "Why don't scientists trust atoms? Because they make up everything! What else can I help you with?"
-        elif any(phrase in user_input_lower for phrase in ["how old are you", "age"]):
-            return "I'm a pretty new AI, but I'm always learning! What about you?"
-        elif "weather" in user_input_lower:
-            return "I don't have access to current weather data, but you can check your weather app! Is there something specific you're planning?"
-        elif any(word in user_input_lower for word in ["calculate", "math", "plus", "minus", "times", "divided"]):
-            return "I'd be happy to help with math! What calculation do you need?"
+        # Emotion-based quick responses
+        emotion, _ = self.instant_emotion_detection(user_input)
         
-        # Emotion-based responses
-        if emotion == "sadness":
-            return "I can hear that you're feeling down. I'm here for you - what's going on?"
-        elif emotion == "anxiety":
-            return "That sounds stressful. Want to talk about what's worrying you?"
-        elif emotion == "anger":
-            return "I can hear the frustration. That sounds really tough."
-        elif emotion == "joy":
-            return "I love hearing the happiness in your voice! What's got you feeling so good?"
+        if emotion == "sad":
+            response = "I can hear that you're feeling down. I'm here for you - what's going on?"
+        elif emotion == "happy":
+            response = "I love hearing the joy in your voice! What's got you feeling so good?"
+        elif emotion == "angry":
+            response = "I can hear the frustration. That sounds really tough."
+        elif emotion == "anxious":
+            response = "That sounds stressful. Want to talk about what's worrying you?"
+        elif emotion == "confused":
+            response = "I can help clarify things! What's confusing you?"
         else:
-            return "I'm here and listening. What's on your mind?"
+            response = "I'm here and listening. What's on your mind?"
+        
+        processing_time = time.time() - start_time
+        print(f"⚡ EMOTION RESPONSE: {emotion} -> {response}")
+        return response, processing_time
     
-    def text_to_speech_hume_optimized(self, text):
-        """Optimized Hume TTS with better error handling"""
+    def text_to_speech_hume_fast(self, text):
+        """Ultra-fast Hume TTS"""
         
         if not self.hume_api_key:
             print("❌ No Hume API key")
@@ -208,61 +197,38 @@ Examples:
         try:
             print(f"🔊 TTS: {text[:30]}...")
             
-            # Keep text short for faster TTS
-            if len(text) > 150:
-                text = text[:147] + "..."
+            # Keep text very short for maximum speed
+            if len(text) > 120:
+                text = text[:117] + "..."
             
             tts_url = "https://api.hume.ai/v0/tts"
-            payload = {
-                "utterances": [
-                    {
-                        "text": text
-                    }
-                ]
-            }
+            payload = {"utterances": [{"text": text}]}
             
-            # Faster timeout
+            # Very fast timeout
             response = requests.post(
                 tts_url, 
                 headers=self.headers, 
                 json=payload, 
-                timeout=8
+                timeout=6
             )
             
-            print(f"🔊 Hume TTS status: {response.status_code}")
-            
             if response.status_code == 200:
-                try:
-                    response_data = response.json()
-                    
-                    if "generations" in response_data and response_data["generations"]:
-                        generation = response_data["generations"][0]
-                        
-                        if "audio" in generation:
-                            audio_data = generation["audio"]
-                            print(f"✅ TTS success: {len(audio_data)} chars")
-                            return audio_data
-                        else:
-                            print("❌ No 'audio' key in generation")
-                    else:
-                        print("❌ No 'generations' in response")
-                        
-                except json.JSONDecodeError as e:
-                    print(f"❌ JSON decode error: {e}")
-            else:
-                print(f"❌ TTS HTTP error: {response.status_code}")
+                response_data = response.json()
+                if "generations" in response_data and response_data["generations"]:
+                    generation = response_data["generations"][0]
+                    if "audio" in generation:
+                        print("✅ TTS success")
+                        return generation["audio"]
             
+            print(f"❌ TTS error: {response.status_code}")
             return None
                 
-        except requests.exceptions.Timeout:
-            print("❌ TTS timeout")
-            return None
         except Exception as e:
             print(f"❌ TTS error: {e}")
             return None
 
-# Initialize ultra-fast integration
-hume = UltraFastIntegration(HUME_API_KEY)
+# Initialize lightning-fast integration
+hume = LightningFastIntegration(HUME_API_KEY)
 
 @app.route("/")
 def index():
@@ -272,37 +238,34 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_ultra_fast_fixed",
-        "groq_working": groq_working,
-        "groq_key_exists": bool(GROQ_API_KEY),
+        "service": "ora_lightning_fast",
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
-        "ai_provider": "Groq + Smart Fallbacks",
-        "model": "llama3-8b-8192" if groq_working else "Smart Fallbacks",
-        "target_response_time": "< 2 seconds",
+        "strategy": "SPEED FIRST",
+        "ai_provider": "Pattern Matching + Instant Cache",
+        "target_response_time": "< 500ms",
+        "instant_responses_count": len(INSTANT_RESPONSES),
         "features": [
-            "instant_cache_responses",
-            "smart_fallback_responses",
-            "optimized_tts",
-            "minimal_processing_delays"
+            "instant_pattern_matching",
+            "zero_ai_delay",
+            "massive_response_cache",
+            "sub_second_total_time"
         ]
     })
 
 @app.route("/voice_conversation", methods=["POST"])
 def voice_conversation():
-    """Ultra-fast voice conversation processing"""
+    """Lightning-fast voice conversation processing"""
     
     total_start_time = time.time()
     
     try:
         user_input = None
-        conversation_history = []
         
         if request.is_json:
             data = request.get_json()
             user_input = data.get("message", "")
-            conversation_history = data.get("conversation_history", [])
-            print(f"⚡ ULTRA-FAST: {user_input}")
+            print(f"⚡ LIGHTNING-FAST: {user_input}")
             
         elif 'audio' in request.files:
             user_input = "hello can you hear me"
@@ -313,21 +276,18 @@ def voice_conversation():
         if not user_input:
             return jsonify({"success": False, "error": "Empty message"}), 400
         
-        # Lightning-fast emotion detection
-        emotion, confidence = hume.quick_emotion_detection(user_input)
-        print(f"🎭 Emotion: {emotion} ({confidence})")
+        # Instant emotion detection
+        emotion, confidence = hume.instant_emotion_detection(user_input)
         
-        # Ultra-fast response generation
-        response_text, ai_time = hume.generate_ultra_fast_response(
-            user_input, emotion, conversation_history
-        )
+        # Instant response generation
+        response_text, ai_time = hume.generate_instant_response(user_input)
         
         print(f"💬 Response: {response_text}")
-        print(f"⚡ AI generation time: {ai_time:.3f}s")
+        print(f"⚡ Generation time: {ai_time:.3f}s")
         
         # TTS generation
         tts_start = time.time()
-        audio_data = hume.text_to_speech_hume_optimized(response_text)
+        audio_data = hume.text_to_speech_hume_fast(response_text)
         tts_time = time.time() - tts_start
         
         total_time = time.time() - total_start_time
@@ -344,9 +304,8 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
-                "method": "ultra_fast_fixed",
-                "ai_provider": "Groq + Smart Fallbacks",
-                "groq_used": groq_working
+                "method": "lightning_fast_pattern_matching",
+                "ai_provider": "Instant Pattern Matching"
             })
         else:
             return jsonify({
@@ -357,17 +316,18 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "error": "Audio generation failed",
-                "ai_provider": "Groq + Smart Fallbacks"
+                "ai_provider": "Instant Pattern Matching"
             })
         
     except Exception as e:
-        print(f"❌ ULTRA-FAST ERROR: {e}")
+        print(f"❌ LIGHTNING-FAST ERROR: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("🚀 Starting ULTRA-FAST ORA Backend (Fixed)...")
-    print(f"⚡ AI Provider: {'Groq' if groq_working else 'Smart Fallbacks'}")
-    print(f"🎯 Groq Status: {'✅ Working' if groq_working else '❌ Using Fallbacks'}")
-    print(f"🎯 Target: < 2 seconds total response time")
+    print("⚡ Starting LIGHTNING-FAST ORA Backend...")
+    print(f"🎯 Strategy: SPEED FIRST - Pattern matching only")
+    print(f"🎯 Target: < 500ms total response time")
+    print(f"📚 Instant responses loaded: {len(INSTANT_RESPONSES)}")
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
