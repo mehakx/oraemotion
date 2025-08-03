@@ -1,22 +1,5 @@
-# ORA Application Requirements - Deployment Safe
-# Core Flask dependencies
-flask>=3.0.0
-flask-cors>=6.0.0
-python-dotenv>=1.0.0
-
-# AI dependencies
-openai>=1.33.0
-
-# Skip mem0ai for now due to SQLAlchemy conflicts
-# mem0ai>=0.1.0
-
-# Basic dependencies
-requests>=2.25.0
-uuid
-gunicorn>=20.0.0
-
-# Optional: Add these if needed
-# sqlalchemy>=2.0.0
-
-
-
+Flask==2.3.3
+Flask-CORS==4.0.0
+requests==2.31.0
+google-generativeai==0.3.2
+gunicorn==21.2.0
