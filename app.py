@@ -5,7 +5,6 @@ import time
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from groq import Groq
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -13,30 +12,37 @@ CORS(app)
 
 # Environment variables
 HUME_API_KEY = os.getenv("HUME_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # You'll need to add this to Render
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 print(f"🚀 GROQ ULTRA-FAST SETUP:")
 print(f"HUME_API_KEY exists: {bool(HUME_API_KEY)}")
 print(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
 
-# Initialize Groq client
+# Initialize Groq client with better error handling
 groq_client = None
 groq_working = False
 
 if GROQ_API_KEY:
     try:
+        # Try importing and initializing Groq
+        from groq import Groq
+        
+        # Initialize with minimal parameters to avoid compatibility issues
         groq_client = Groq(api_key=GROQ_API_KEY)
         
-        # Test Groq connection with ultra-fast model
+        # Test Groq connection
         test_response = groq_client.chat.completions.create(
-            model="llama3-8b-8192",  # Ultra-fast Llama model
-            messages=[{"role": "user", "content": "Say 'Groq is working'"}],
-            max_tokens=10,
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": "Say 'working'"}],
+            max_tokens=5,
             temperature=0.1
         )
         print(f"✅ Groq test successful: {test_response.choices[0].message.content}")
         groq_working = True
         
+    except ImportError as e:
+        print(f"❌ Groq import failed: {e}")
+        groq_working = False
     except Exception as e:
         print(f"❌ Groq initialization failed: {e}")
         groq_working = False
@@ -55,10 +61,12 @@ INSTANT_CACHE = {
     "thanks": "Of course! Anytime!",
     "what's up": "Not much, just here chatting with you! What's going on?",
     "2+2": "That's 4!",
-    "what's 2+2": "2 plus 2 equals 4!"
+    "what's 2+2": "2 plus 2 equals 4!",
+    "what time is it": f"It's {datetime.now().strftime('%I:%M %p')} right now!",
+    "what's the time": f"The time is {datetime.now().strftime('%I:%M %p')}!"
 }
 
-class GroqUltraFastIntegration:
+class UltraFastIntegration:
     def __init__(self, hume_api_key):
         self.hume_api_key = hume_api_key
         self.headers = {
@@ -85,7 +93,7 @@ class GroqUltraFastIntegration:
             return "neutral", 0.7
     
     def generate_ultra_fast_response(self, user_input, emotion, conversation_history=None):
-        """Generate ultra-fast response using Groq"""
+        """Generate ultra-fast response using Groq or smart fallbacks"""
         
         start_time = time.time()
         
@@ -96,13 +104,13 @@ class GroqUltraFastIntegration:
                 print(f"⚡ INSTANT CACHE HIT: {cached_phrase}")
                 return cached_response, time.time() - start_time
         
-        # Handle date/time questions instantly
+        # Handle date/time questions instantly with current time
         if any(phrase in user_input_clean for phrase in ["time", "date", "what time is it", "current time"]):
             current_time = datetime.now()
             response = f"It's {current_time.strftime('%I:%M %p')} on {current_time.strftime('%A, %B %d')}. How can I help you?"
             return response, time.time() - start_time
         
-        # Use Groq for ultra-fast AI responses
+        # Try Groq if available
         if groq_client and groq_working:
             try:
                 # Ultra-optimized prompt for speed
@@ -138,12 +146,11 @@ Examples:
                 
                 # Ultra-fast Groq call
                 response = groq_client.chat.completions.create(
-                    model="llama3-8b-8192",  # Fastest model
+                    model="llama3-8b-8192",
                     messages=messages,
-                    max_tokens=60,  # Very short for speed
+                    max_tokens=60,
                     temperature=0.7,
-                    top_p=0.9,
-                    stream=False  # No streaming for simplicity
+                    top_p=0.9
                 )
                 
                 response_text = response.choices[0].message.content.strip()
@@ -153,20 +160,31 @@ Examples:
                 
             except Exception as e:
                 print(f"❌ Groq error: {e}")
+                print("🔄 Falling back to smart responses")
         
-        # Ultra-fast fallback
-        fallback_response = self.get_instant_fallback(user_input, emotion)
+        # Smart fallback responses (still very fast)
+        fallback_response = self.get_smart_fallback(user_input, emotion)
         return fallback_response, time.time() - start_time
     
-    def get_instant_fallback(self, user_input, emotion):
-        """Instant fallback responses"""
+    def get_smart_fallback(self, user_input, emotion):
+        """Smart fallback responses that feel natural"""
         user_input_lower = user_input.lower()
         
-        # Handle common questions instantly
+        # Handle common questions intelligently
         if any(phrase in user_input_lower for phrase in ["who are you", "what are you"]):
             return "I'm ORA, your AI companion! I'm here to chat with you."
         elif any(phrase in user_input_lower for phrase in ["how are you"]):
             return "I'm doing great! How about you?"
+        elif any(phrase in user_input_lower for phrase in ["what can you do", "help me"]):
+            return "I can chat about anything on your mind! What would you like to talk about?"
+        elif any(phrase in user_input_lower for phrase in ["tell me a joke", "joke"]):
+            return "Why don't scientists trust atoms? Because they make up everything! What else can I help you with?"
+        elif any(phrase in user_input_lower for phrase in ["how old are you", "age"]):
+            return "I'm a pretty new AI, but I'm always learning! What about you?"
+        elif "weather" in user_input_lower:
+            return "I don't have access to current weather data, but you can check your weather app! Is there something specific you're planning?"
+        elif any(word in user_input_lower for word in ["calculate", "math", "plus", "minus", "times", "divided"]):
+            return "I'd be happy to help with math! What calculation do you need?"
         
         # Emotion-based responses
         if emotion == "sadness":
@@ -216,11 +234,9 @@ Examples:
             if response.status_code == 200:
                 try:
                     response_data = response.json()
-                    print(f"🔊 Response keys: {list(response_data.keys())}")
                     
                     if "generations" in response_data and response_data["generations"]:
                         generation = response_data["generations"][0]
-                        print(f"🔊 Generation keys: {list(generation.keys())}")
                         
                         if "audio" in generation:
                             audio_data = generation["audio"]
@@ -233,10 +249,8 @@ Examples:
                         
                 except json.JSONDecodeError as e:
                     print(f"❌ JSON decode error: {e}")
-                    print(f"❌ Raw response: {response.text[:200]}")
             else:
                 print(f"❌ TTS HTTP error: {response.status_code}")
-                print(f"❌ Response: {response.text[:200]}")
             
             return None
                 
@@ -248,7 +262,7 @@ Examples:
             return None
 
 # Initialize ultra-fast integration
-hume = GroqUltraFastIntegration(HUME_API_KEY)
+hume = UltraFastIntegration(HUME_API_KEY)
 
 @app.route("/")
 def index():
@@ -258,17 +272,17 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_groq_ultra_fast",
+        "service": "ora_ultra_fast_fixed",
         "groq_working": groq_working,
         "groq_key_exists": bool(GROQ_API_KEY),
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
-        "ai_provider": "Groq (Ultra-Fast)",
-        "model": "llama3-8b-8192",
-        "target_response_time": "< 1 second",
+        "ai_provider": "Groq + Smart Fallbacks",
+        "model": "llama3-8b-8192" if groq_working else "Smart Fallbacks",
+        "target_response_time": "< 2 seconds",
         "features": [
             "instant_cache_responses",
-            "sub_second_ai_generation",
+            "smart_fallback_responses",
             "optimized_tts",
             "minimal_processing_delays"
         ]
@@ -288,7 +302,7 @@ def voice_conversation():
             data = request.get_json()
             user_input = data.get("message", "")
             conversation_history = data.get("conversation_history", [])
-            print(f"⚡ GROQ ULTRA-FAST: {user_input}")
+            print(f"⚡ ULTRA-FAST: {user_input}")
             
         elif 'audio' in request.files:
             user_input = "hello can you hear me"
@@ -311,7 +325,7 @@ def voice_conversation():
         print(f"💬 Response: {response_text}")
         print(f"⚡ AI generation time: {ai_time:.3f}s")
         
-        # Parallel TTS generation
+        # TTS generation
         tts_start = time.time()
         audio_data = hume.text_to_speech_hume_optimized(response_text)
         tts_time = time.time() - tts_start
@@ -330,9 +344,9 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
-                "method": "groq_ultra_fast",
-                "ai_provider": "Groq",
-                "model": "llama3-8b-8192"
+                "method": "ultra_fast_fixed",
+                "ai_provider": "Groq + Smart Fallbacks",
+                "groq_used": groq_working
             })
         else:
             return jsonify({
@@ -343,7 +357,7 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "error": "Audio generation failed",
-                "ai_provider": "Groq"
+                "ai_provider": "Groq + Smart Fallbacks"
             })
         
     except Exception as e:
@@ -351,10 +365,9 @@ def voice_conversation():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("🚀 Starting GROQ ULTRA-FAST ORA Backend...")
-    print(f"⚡ AI Provider: Groq (Sub-second responses)")
-    print(f"🎯 Groq Status: {'✅ Working' if groq_working else '❌ Not Working'}")
-    print(f"🎯 Target: < 1 second total response time")
+    print("🚀 Starting ULTRA-FAST ORA Backend (Fixed)...")
+    print(f"⚡ AI Provider: {'Groq' if groq_working else 'Smart Fallbacks'}")
+    print(f"🎯 Groq Status: {'✅ Working' if groq_working else '❌ Using Fallbacks'}")
+    print(f"🎯 Target: < 2 seconds total response time")
     app.run(host="0.0.0.0", port=5000, debug=True)
-
 
