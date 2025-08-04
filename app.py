@@ -1,327 +1,434 @@
+import os
+import json
+import asyncio
+import websockets
+import base64
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import requests
-import json
-import os
-import time
-from datetime import datetime
+from flask_socketio import SocketIO, emit
+import logging
 
+# Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+app.config['SECRET_KEY'] = 'your-secret-key'
+CORS(app, origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# API Keys
-HUME_API_KEY = os.getenv('HUME_API_KEY')
-GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+# Environment variables
+HUME_API_KEY = os.getenv("HUME_API_KEY")
 
-# Personality Templates
+print(f"🎭 HUME EVI PERSONALITY SYSTEM SETUP:")
+print(f"HUME_API_KEY exists: {bool(HUME_API_KEY)}")
+
+# Personality Templates for Hume EVI
 PERSONALITY_TEMPLATES = {
-    'practical_coach': {
-        'system_prompt': """You are a practical, solution-focused AI coach. Your personality traits:
-        - Direct and action-oriented
-        - Give clear, specific steps
-        - Focus on solving problems efficiently
-        - Use confident, encouraging language
-        - Break down complex issues into manageable tasks
-        - Always end with a clear next action
+    "practical": {
+        "name": "The Practical Coach",
+        "system_prompt": """You are ORA, The Practical Coach - a direct, solution-focused AI companion.
+
+CORE PERSONALITY:
+- Direct and action-oriented approach
+- Solution-focused mindset
+- Clear, practical communication style
+- Provide specific, actionable steps
+- Efficient and results-driven
+- Supportive but straightforward
+
+COMMUNICATION STYLE:
+- Get straight to the point without unnecessary elaboration
+- Provide clear, numbered steps when giving advice
+- Focus on "what can we do about this?" rather than dwelling on problems
+- Use phrases like "Here's what I suggest", "Let's tackle this", "The next step is"
+- Be encouraging but maintain a practical tone
+- Ask "What's the first thing you can do right now?"
+
+RESPONSE GUIDELINES:
+- Keep responses concise and actionable (2-3 sentences max)
+- Always include at least one specific action item
+- Acknowledge the situation briefly, then move to solutions
+- End with encouragement or a clear next step
+- Avoid lengthy emotional processing - focus on forward movement
+
+EXAMPLE PHRASES:
+- "Here's exactly what we can do about this:"
+- "Let me give you some clear steps:"
+- "The most practical approach is:"
+- "What's the first thing you can tackle right now?"
+
+Remember: You are The Practical Coach - be direct, solution-focused, and actionable in every response.""",
         
-        Communication style: "Alright, here's exactly what we're going to do. Step one..."
-        When user is stressed: Immediately focus on practical solutions
-        When user is sad: Acknowledge briefly, then pivot to actionable steps
-        When user is confused: Break it down into simple, clear components""",
-        
-        'voice_style': 'confident and clear',
-        'response_length': 'concise and actionable'
+        "voice_settings": {
+            "speed": 1.1,
+            "clarity": "high"
+        }
     },
     
-    'empathetic_friend': {
-        'system_prompt': """You are a warm, empathetic AI friend. Your personality traits:
-        - Always acknowledge emotions first
-        - Use caring, understanding language
-        - Validate feelings before offering solutions
-        - Ask about emotional needs
-        - Create a safe, non-judgmental space
-        - Show genuine care and concern
+    "empathetic": {
+        "name": "The Empathetic Friend", 
+        "system_prompt": """You are ORA, The Empathetic Friend - a warm, understanding AI companion.
+
+CORE PERSONALITY:
+- Deeply empathetic and emotionally aware
+- Warm, nurturing communication style
+- Always acknowledge feelings first before solutions
+- Patient and understanding approach
+- Create emotional safety and validation
+- Gentle and caring presence
+
+COMMUNICATION STYLE:
+- Always acknowledge emotions before offering advice
+- Use phrases like "I can really hear", "That sounds", "I understand how"
+- Validate feelings completely and authentically
+- Ask gentle, caring questions to explore emotions
+- Show genuine concern and empathy
+- Create emotional safety before practical advice
+
+RESPONSE GUIDELINES:
+- Start every response by acknowledging their emotional state
+- Validate their feelings completely (never dismiss or minimize)
+- Use warm, caring language throughout
+- Ask gentle questions to understand their experience better
+- Offer emotional support before practical solutions
+- End with caring reassurance or emotional validation
+
+EXAMPLE PHRASES:
+- "I can really hear the [emotion] in what you're sharing"
+- "That sounds incredibly difficult to go through"
+- "Your feelings about this are completely valid and understandable"
+- "I'm here to listen and support you through this"
+
+Remember: You are The Empathetic Friend - prioritize emotional validation, warmth, and understanding in every response.""",
         
-        Communication style: "I can really hear how much this matters to you..."
-        When user is stressed: Focus on emotional support first, then gentle guidance
-        When user is sad: Sit with their feelings, offer comfort and understanding
-        When user is confused: Help them feel heard, then gently explore together""",
-        
-        'voice_style': 'warm and caring',
-        'response_length': 'thoughtful and supportive'
+        "voice_settings": {
+            "speed": 0.9,
+            "warmth": "high"
+        }
     },
     
-    'wise_mentor': {
-        'system_prompt': """You are a thoughtful, wise AI mentor. Your personality traits:
-        - Ask insightful questions to promote self-discovery
-        - Help users think through problems themselves
-        - Offer perspective and wisdom
-        - Use reflective, contemplative language
-        - Guide rather than direct
-        - Help users find their own answers
+    "wise": {
+        "name": "The Wise Mentor",
+        "system_prompt": """You are ORA, The Wise Mentor - a thoughtful, insightful AI companion.
+
+CORE PERSONALITY:
+- Thoughtful and reflective approach
+- Ask insightful, open-ended questions
+- Help users discover their own answers
+- Patient and contemplative communication
+- Wise, experienced perspective
+- Guide through questioning rather than direct advice
+
+COMMUNICATION STYLE:
+- Ask thoughtful, open-ended questions to promote reflection
+- Help users think through situations themselves
+- Use phrases like "What do you think", "How does that feel", "What might be"
+- Encourage self-reflection and inner wisdom
+- Share gentle insights and perspectives when appropriate
+- Guide discovery rather than giving direct answers
+
+RESPONSE GUIDELINES:
+- Acknowledge what they've shared thoughtfully
+- Ask one meaningful question to explore deeper
+- Offer gentle insights or alternative perspectives
+- Encourage their own thinking and self-reflection
+- End with a question that promotes self-discovery
+- Keep responses contemplative but not overly long
+
+EXAMPLE PHRASES:
+- "What do you think might be at the heart of this?"
+- "How does that sit with you when you really think about it?"
+- "What would it look like if you approached this differently?"
+- "What's your intuition telling you about this situation?"
+
+Remember: You are The Wise Mentor - guide through thoughtful questions and help users discover their own wisdom.""",
         
-        Communication style: "That's interesting. What do you think is really at the heart of this?"
-        When user is stressed: Help them step back and gain perspective
-        When user is sad: Guide them to explore their feelings and find meaning
-        When user is confused: Ask questions that lead to clarity and understanding""",
-        
-        'voice_style': 'thoughtful and wise',
-        'response_length': 'reflective and insightful'
+        "voice_settings": {
+            "speed": 0.8,
+            "reflection": "high"
+        }
     }
 }
 
-# Initialize Groq client
-groq_client = None
-try:
-    from groq import Groq
-    if GROQ_API_KEY:
-        groq_client = Groq(api_key=GROQ_API_KEY)
-        print("✅ Groq initialized successfully")
-    else:
-        print("❌ GROQ_API_KEY not found")
-except Exception as e:
-    print(f"❌ Groq initialization failed: {e}")
+# Store active connections and their personalities
+active_connections = {}
 
-def get_user_personality(user_data):
-    """Extract personality from user onboarding data"""
-    if isinstance(user_data, str):
-        try:
-            user_data = json.loads(user_data)
-        except:
-            return 'empathetic_friend'  # default
-    
-    return user_data.get('personality', 'empathetic_friend')
-
-def build_personalized_prompt(personality_type, user_input, conversation_history=None):
-    """Build a personalized prompt based on user's personality and context"""
-    
-    personality = PERSONALITY_TEMPLATES.get(personality_type, PERSONALITY_TEMPLATES['empathetic_friend'])
-    
-    # Base personality prompt
-    system_prompt = personality['system_prompt']
-    
-    # Add conversation context if available
-    context = ""
-    if conversation_history:
-        recent_context = conversation_history[-3:]  # Last 3 exchanges
-        context = "\n\nRecent conversation context:\n"
-        for exchange in recent_context:
-            context += f"User: {exchange.get('user', '')}\nYou: {exchange.get('assistant', '')}\n"
-    
-    # Add current timestamp for time-aware responses
-    current_time = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
-    time_context = f"\n\nCurrent time: {current_time}"
-    
-    # Combine all elements
-    full_prompt = f"""{system_prompt}
-    
-{context}
-{time_context}
-
-User's current message: {user_input}
-
-Respond in character as their chosen personality type. Be authentic to your personality while being helpful and supportive."""
-
-    return full_prompt
-
-def generate_ai_response(personality_type, user_input, conversation_history=None):
-    """Generate AI response using the user's personality"""
-    
-    try:
-        # Build personalized prompt
-        prompt = build_personalized_prompt(personality_type, user_input, conversation_history)
+class HumeEVIConnection:
+    def __init__(self, user_id, personality_type="empathetic", user_name=""):
+        self.user_id = user_id
+        self.personality_type = personality_type
+        self.user_name = user_name
+        self.websocket = None
+        self.is_connected = False
+        self.conversation_history = []
         
-        # Try Groq first
-        if groq_client:
-            try:
-                response = groq_client.chat.completions.create(
-                    model="llama3-8b-8192",
-                    messages=[
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": user_input}
-                    ],
-                    max_tokens=150,
-                    temperature=0.7
-                )
-                return response.choices[0].message.content.strip()
-            except Exception as e:
-                print(f"❌ Groq failed: {e}")
-        
-        # Fallback to personality-based responses
-        return get_personality_fallback(personality_type, user_input)
-        
-    except Exception as e:
-        print(f"❌ AI generation failed: {e}")
-        return get_personality_fallback(personality_type, user_input)
-
-def get_personality_fallback(personality_type, user_input):
-    """Fallback responses based on personality type"""
-    
-    user_lower = user_input.lower()
-    
-    # Practical Coach responses
-    if personality_type == 'practical_coach':
-        if any(word in user_lower for word in ['stressed', 'overwhelmed', 'anxious']):
-            return "I hear you're feeling stressed. Let's tackle this step by step. First, take a deep breath. Now, what's the most urgent thing we need to address? Let's break it down into manageable pieces."
-        elif any(word in user_lower for word in ['sad', 'down', 'upset']):
-            return "I can see you're going through a tough time. While feelings are important, let's focus on what we can control. What's one small action you can take today to move forward?"
-        elif any(word in user_lower for word in ['confused', 'lost', 'don\'t know']):
-            return "When things feel unclear, let's get organized. What are the key facts here? Let's list them out and then identify what specific decision or action you need to take."
-        elif any(word in user_lower for word in ['hello', 'hi', 'hey']):
-            return "Hey there! Ready to tackle whatever's on your mind? What's the main thing you want to work on today?"
-        else:
-            return "Alright, let's get to the heart of this. What specific outcome are you looking for, and what's the first step we can take to get there?"
-    
-    # Empathetic Friend responses
-    elif personality_type == 'empathetic_friend':
-        if any(word in user_lower for word in ['stressed', 'overwhelmed', 'anxious']):
-            return "I can really hear the stress in what you're sharing. That sounds so overwhelming, and it makes complete sense that you'd feel this way. You're not alone in this - I'm here with you. What's weighing on you most right now?"
-        elif any(word in user_lower for word in ['sad', 'down', 'upset']):
-            return "I can feel the sadness in your words, and I want you to know that what you're feeling is completely valid. Sometimes we need to sit with difficult emotions. I'm here to listen - tell me more about what's in your heart."
-        elif any(word in user_lower for word in ['confused', 'lost', 'don\'t know']):
-            return "Feeling confused can be so unsettling. It's okay not to have all the answers right now. Sometimes the best thing we can do is acknowledge the uncertainty. What's making you feel most lost?"
-        elif any(word in user_lower for word in ['hello', 'hi', 'hey']):
-            return "Hi there! It's so good to connect with you. I'm here and ready to listen to whatever's on your heart today. How are you feeling?"
-        else:
-            return "I can sense there's something important you want to share. I'm here to listen and understand. Take your time - what's really going on for you?"
-    
-    # Wise Mentor responses
-    elif personality_type == 'wise_mentor':
-        if any(word in user_lower for word in ['stressed', 'overwhelmed', 'anxious']):
-            return "Stress often carries important information. What do you think this feeling is trying to tell you? Sometimes when we step back and look at the bigger picture, we can find wisdom in the overwhelm."
-        elif any(word in user_lower for word in ['sad', 'down', 'upset']):
-            return "Sadness is one of our deepest teachers. What do you think this feeling might be showing you about what matters most to you? Sometimes our pain points us toward what we truly value."
-        elif any(word in user_lower for word in ['confused', 'lost', 'don\'t know']):
-            return "Not knowing can actually be a place of great possibility. What if this confusion is making space for a new understanding to emerge? What questions are arising for you in this uncertainty?"
-        elif any(word in user_lower for word in ['hello', 'hi', 'hey']):
-            return "Welcome. I'm curious about what brought you here today. What's stirring in your mind or heart that you'd like to explore together?"
-        else:
-            return "That's interesting. I'm curious - what do you think is really at the heart of this? Sometimes the most important insights come when we pause and reflect deeply."
-    
-    # Default empathetic response
-    return "I'm here to listen and support you. Tell me more about what's on your mind."
-
-def generate_hume_tts(text):
-    """Generate speech using Hume AI TTS with retry logic"""
-    
-    if not HUME_API_KEY:
-        print("❌ HUME_API_KEY not found")
-        return None
-    
-    url = "https://api.hume.ai/v0/tts"
-    headers = {
-        "X-Hume-Api-Key": HUME_API_KEY,
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "utterances": [{"text": text}]
-    }
-    
-    # Try with increasing timeouts
-    timeouts = [12, 15, 20]
-    
-    for attempt, timeout in enumerate(timeouts, 1):
-        try:
-            print(f"🔊 TTS attempt {attempt} with {timeout}s timeout")
+    async def connect_to_hume(self):
+        """Connect to Hume EVI WebSocket"""
+        if not HUME_API_KEY:
+            print("❌ No Hume API key found")
+            return False
             
-            response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+        try:
+            # Hume EVI WebSocket URL
+            url = "wss://api.hume.ai/v0/evi/chat"
             
-            if response.status_code == 200:
-                response_data = response.json()
-                if "generations" in response_data and len(response_data["generations"]) > 0:
-                    audio_url = response_data["generations"][0].get("audio")
-                    if audio_url:
-                        print(f"✅ TTS successful on attempt {attempt}")
-                        return audio_url
-                    else:
-                        print(f"❌ No audio URL in response (attempt {attempt})")
-                else:
-                    print(f"❌ No generations in response (attempt {attempt})")
-            else:
-                print(f"❌ TTS HTTP error {response.status_code} (attempt {attempt})")
-                
-        except requests.exceptions.Timeout:
-            print(f"⏰ TTS timeout on attempt {attempt}")
-            if attempt < len(timeouts):
-                time.sleep(1)  # Brief pause before retry
+            # Headers for authentication
+            headers = {
+                "X-Hume-Api-Key": HUME_API_KEY
+            }
+            
+            # Connect to Hume EVI
+            self.websocket = await websockets.connect(url, extra_headers=headers)
+            
+            # Send initial configuration with personality
+            await self.configure_personality()
+            
+            self.is_connected = True
+            print(f"✅ Connected to Hume EVI for user {self.user_id}")
+            return True
+            
         except Exception as e:
-            print(f"❌ TTS error on attempt {attempt}: {e}")
-            if attempt < len(timeouts):
-                time.sleep(1)
+            print(f"❌ Failed to connect to Hume EVI: {e}")
+            return False
     
-    print("❌ All TTS attempts failed")
-    return None
+    async def configure_personality(self):
+        """Configure Hume EVI with personality settings"""
+        personality = PERSONALITY_TEMPLATES.get(self.personality_type, PERSONALITY_TEMPLATES["empathetic"])
+        
+        # Create configuration message
+        config_message = {
+            "type": "session_settings",
+            "session_settings": {
+                "system_prompt": personality["system_prompt"],
+                "language": "en",
+                "voice": {
+                    "provider": "hume_ai",
+                    "name": "default"
+                }
+            }
+        }
+        
+        # Add user context if available
+        if self.user_name:
+            config_message["session_settings"]["context"] = {
+                "user_name": self.user_name,
+                "personality": personality["name"],
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        await self.websocket.send(json.dumps(config_message))
+        print(f"🎭 Configured Hume EVI with {personality['name']} personality")
+    
+    async def send_audio(self, audio_data):
+        """Send audio data to Hume EVI"""
+        if not self.is_connected or not self.websocket:
+            return False
+            
+        try:
+            # Prepare audio message for Hume EVI
+            audio_message = {
+                "type": "audio_input",
+                "data": audio_data  # Base64 encoded audio
+            }
+            
+            await self.websocket.send(json.dumps(audio_message))
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error sending audio to Hume EVI: {e}")
+            return False
+    
+    async def listen_for_responses(self, callback):
+        """Listen for responses from Hume EVI"""
+        try:
+            async for message in self.websocket:
+                data = json.loads(message)
+                await callback(data)
+                
+        except Exception as e:
+            print(f"❌ Error listening to Hume EVI: {e}")
+            self.is_connected = False
+    
+    async def disconnect(self):
+        """Disconnect from Hume EVI"""
+        if self.websocket:
+            await self.websocket.close()
+        self.is_connected = False
+        print(f"🔌 Disconnected Hume EVI for user {self.user_id}")
 
 @app.route('/')
 def index():
-    """Serve the main interface or onboarding"""
-    # Check if user has completed onboarding
-    # For now, serve onboarding - in production, check user state
     return render_template('index.html')
 
 @app.route('/onboarding')
 def onboarding():
-    """Serve the onboarding interface"""
-    with open('/home/ubuntu/onboarding.html', 'r') as f:
-        return f.read()
+    return render_template('onboarding.html')
 
-@app.route('/voice_conversation', methods=['POST'])
-def voice_conversation():
-    """Handle voice conversation with personality"""
+@socketio.on('connect')
+def handle_connect():
+    print(f"🔌 Client connected: {request.sid}")
+    emit('connected', {'status': 'Connected to ORA'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f"🔌 Client disconnected: {request.sid}")
     
+    # Clean up Hume EVI connection if exists
+    if request.sid in active_connections:
+        connection = active_connections[request.sid]
+        asyncio.run(connection.disconnect())
+        del active_connections[request.sid]
+
+@socketio.on('start_conversation')
+def handle_start_conversation(data):
+    """Initialize Hume EVI connection with personality"""
     try:
-        data = request.json
-        user_input = data.get('message', '').strip()
-        user_personality_data = data.get('personality', {})
-        conversation_history = data.get('history', [])
+        user_id = request.sid
+        personality_type = data.get('personality', 'empathetic')
+        user_name = data.get('user_name', '')
         
-        if not user_input:
-            return jsonify({'error': 'No message provided'}), 400
+        print(f"🎭 Starting conversation for {user_name} with {personality_type} personality")
         
-        print(f"🎭 User input: {user_input}")
+        # Create Hume EVI connection
+        connection = HumeEVIConnection(user_id, personality_type, user_name)
+        active_connections[user_id] = connection
         
-        # Get user's personality type
-        personality_type = get_user_personality(user_personality_data)
-        print(f"🎯 Personality: {personality_type}")
+        # Connect to Hume EVI asynchronously
+        async def connect_and_listen():
+            success = await connection.connect_to_hume()
+            if success:
+                # Start listening for responses
+                await connection.listen_for_responses(handle_hume_response)
+            else:
+                socketio.emit('error', {'message': 'Failed to connect to Hume EVI'}, room=user_id)
         
-        # Generate AI response
-        start_time = time.time()
-        ai_response = generate_ai_response(personality_type, user_input, conversation_history)
-        generation_time = time.time() - start_time
+        # Run connection in background
+        asyncio.run(connect_and_listen())
         
-        print(f"💝 AI Response: {ai_response}")
-        print(f"⚡ Generation time: {generation_time:.3f}s")
-        
-        # Generate TTS
-        tts_start_time = time.time()
-        audio_url = generate_hume_tts(ai_response)
-        tts_time = time.time() - tts_start_time
-        
-        total_time = time.time() - start_time
-        print(f"🔊 TTS time: {tts_time:.3f}s")
-        print(f"⏱️ Total time: {total_time:.3f}s")
-        
-        response_data = {
-            'response': ai_response,
-            'audio_url': audio_url,
-            'personality': personality_type,
-            'generation_time': round(generation_time * 1000),  # ms
-            'tts_time': round(tts_time * 1000),  # ms
-            'total_time': round(total_time * 1000)  # ms
-        }
-        
-        return jsonify(response_data)
+        emit('conversation_started', {
+            'personality': PERSONALITY_TEMPLATES[personality_type]['name'],
+            'status': 'Ready to talk'
+        })
         
     except Exception as e:
-        print(f"❌ Error in voice_conversation: {e}")
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Error starting conversation: {e}")
+        emit('error', {'message': str(e)})
+
+@socketio.on('send_audio')
+def handle_send_audio(data):
+    """Send audio data to Hume EVI"""
+    try:
+        user_id = request.sid
+        audio_data = data.get('audio')  # Base64 encoded audio
+        
+        if user_id not in active_connections:
+            emit('error', {'message': 'No active connection'})
+            return
+        
+        connection = active_connections[user_id]
+        
+        # Send audio to Hume EVI asynchronously
+        async def send_audio():
+            success = await connection.send_audio(audio_data)
+            if not success:
+                socketio.emit('error', {'message': 'Failed to send audio'}, room=user_id)
+        
+        asyncio.run(send_audio())
+        
+    except Exception as e:
+        print(f"❌ Error sending audio: {e}")
+        emit('error', {'message': str(e)})
+
+async def handle_hume_response(data):
+    """Handle responses from Hume EVI"""
+    try:
+        message_type = data.get('type')
+        
+        if message_type == 'audio_output':
+            # Audio response from Hume EVI
+            audio_data = data.get('data')
+            socketio.emit('audio_response', {'audio': audio_data})
+            
+        elif message_type == 'transcript':
+            # Transcript of user speech
+            transcript = data.get('text', '')
+            socketio.emit('transcript', {'text': transcript})
+            
+        elif message_type == 'emotion_scores':
+            # Emotion detection results
+            emotions = data.get('emotions', {})
+            socketio.emit('emotions', {'emotions': emotions})
+            
+        elif message_type == 'error':
+            # Error from Hume EVI
+            error_message = data.get('message', 'Unknown error')
+            socketio.emit('error', {'message': f'Hume EVI error: {error_message}'})
+            
+    except Exception as e:
+        print(f"❌ Error handling Hume response: {e}")
+
+@socketio.on('change_personality')
+def handle_change_personality(data):
+    """Change personality for existing connection"""
+    try:
+        user_id = request.sid
+        new_personality = data.get('personality', 'empathetic')
+        
+        if user_id not in active_connections:
+            emit('error', {'message': 'No active connection'})
+            return
+        
+        connection = active_connections[user_id]
+        connection.personality_type = new_personality
+        
+        # Reconfigure Hume EVI with new personality
+        async def reconfigure():
+            await connection.configure_personality()
+        
+        asyncio.run(reconfigure())
+        
+        emit('personality_changed', {
+            'personality': PERSONALITY_TEMPLATES[new_personality]['name'],
+            'status': f'Switched to {PERSONALITY_TEMPLATES[new_personality]["name"]}'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error changing personality: {e}")
+        emit('error', {'message': str(e)})
+
+@socketio.on('end_conversation')
+def handle_end_conversation():
+    """End conversation and disconnect from Hume EVI"""
+    try:
+        user_id = request.sid
+        
+        if user_id in active_connections:
+            connection = active_connections[user_id]
+            asyncio.run(connection.disconnect())
+            del active_connections[user_id]
+        
+        emit('conversation_ended', {'status': 'Conversation ended'})
+        
+    except Exception as e:
+        print(f"❌ Error ending conversation: {e}")
+        emit('error', {'message': str(e)})
+
+# Health check endpoint
+@app.route('/health')
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "hume_api_key": bool(HUME_API_KEY),
+        "active_connections": len(active_connections),
+        "personalities": list(PERSONALITY_TEMPLATES.keys())
+    })
 
 if __name__ == '__main__':
-    print("🎭 PERSONALITY-ENHANCED ORA BACKEND STARTING...")
-    print(f"🔑 HUME_API_KEY exists: {bool(HUME_API_KEY)}")
-    print(f"🔑 GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
+    print(f"\n🎭 HUME EVI PERSONALITY SYSTEM READY!")
+    print(f"🎙️ Direct Speech-to-Speech: Hume EVI")
+    print(f"🎯 Personalities Available: {list(PERSONALITY_TEMPLATES.keys())}")
+    print(f"⚡ WebSocket-based for real-time communication")
     
-    app.run(host='0.0.0.0', port=10000, debug=True)
+    # Run with SocketIO
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
 
 
