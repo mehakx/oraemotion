@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ORA - Voice Wellness Companion</title>
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * {
             margin: 0;
@@ -450,9 +449,9 @@
     </div>
 
     <div class="voice-interface">
-        <div class="status-indicator" id="statusIndicator">Click anywhere to start talking</div>
+        <div class="status-indicator" id="statusIndicator">Click anywhere to start conversation</div>
         
-        <div class="sun-container" onclick="toggleListening()">
+        <div class="sun-container" onclick="toggleConversation()">
             <div class="abstract-sun" id="abstractSun">
                 <div class="sun-aura"></div>
                 <div class="sun-core"></div>
@@ -469,12 +468,12 @@
     </div>
 
     <script>
-        // Initialize Socket.IO connection
-        const socket = io();
-        
         // State variables
-        let isListening = false;
         let isConnected = false;
+        let humeWebSocket = null;
+        let mediaStream = null;
+        let audioContext = null;
+        let processor = null;
         let currentPersonality = 'empathetic';
         let userName = localStorage.getItem('ora_user_name') || 'User';
         let userPersonality = localStorage.getItem('ora_personality') || 'empathetic';
@@ -485,213 +484,261 @@
         const personalityDisplay = document.getElementById('personalityDisplay');
         const userGreeting = document.getElementById('userGreeting');
         
+        // Personality templates
+        const personalities = {
+            'practical': {
+                name: 'The Practical Coach',
+                prompt: 'You are ORA, The Practical Coach - direct, solution-focused, and actionable. Keep responses concise and provide clear steps.'
+            },
+            'empathetic': {
+                name: 'The Empathetic Friend', 
+                prompt: 'You are ORA, The Empathetic Friend - warm, understanding, and emotionally supportive. Always acknowledge feelings first.'
+            },
+            'wise': {
+                name: 'The Wise Mentor',
+                prompt: 'You are ORA, The Wise Mentor - thoughtful and reflective. Ask insightful questions to help users discover their own answers.'
+            }
+        };
+        
         // Initialize on page load
         window.addEventListener('load', function() {
-            // Set user info from localStorage
             currentPersonality = userPersonality;
             updatePersonalityDisplay();
             updateUserGreeting();
-            
-            // Connect to server
-            connectToServer();
+            updatePersonalityButtons();
         });
         
-        // Socket event handlers
-        socket.on('connect', function() {
-            console.log('Connected to server');
-            isConnected = true;
-            updateStatus('Connected! Click anywhere to start talking');
-        });
-        
-        socket.on('disconnect', function() {
-            console.log('Disconnected from server');
-            isConnected = false;
-            updateStatus('Disconnected. Refresh to reconnect.');
-            abstractSun.className = 'abstract-sun';
-        });
-        
-        socket.on('conversation_started', function(data) {
-            console.log('Conversation started:', data);
-            updateStatus('Ready to talk! Click anywhere to speak');
-            abstractSun.className = 'abstract-sun';
-        });
-        
-        socket.on('audio_response', function(data) {
-            console.log('Received audio response');
-            playAudioResponse(data.audio);
-        });
-        
-        socket.on('transcript', function(data) {
-            console.log('Transcript:', data.text);
-            updateStatus('You said: "' + data.text + '"');
-        });
-        
-        socket.on('emotions', function(data) {
-            console.log('Emotions detected:', data.emotions);
-        });
-        
-        socket.on('personality_changed', function(data) {
-            console.log('Personality changed:', data);
-            updateStatus(data.status);
-            updatePersonalityDisplay();
-        });
-        
-        socket.on('error', function(data) {
-            console.error('Socket error:', data.message);
-            updateStatus('Error: ' + data.message);
-            abstractSun.className = 'abstract-sun';
-            isListening = false;
-        });
-        
-        // Main functions
-        function connectToServer() {
-            if (!isConnected) {
-                updateStatus('Connecting...');
-                return;
-            }
-            
-            // Start conversation with personality
-            socket.emit('start_conversation', {
-                personality: currentPersonality,
-                user_name: userName
-            });
-        }
-        
-        function toggleListening() {
-            if (!isConnected) {
-                connectToServer();
-                return;
-            }
-            
-            if (isListening) {
-                stopListening();
+        // Main conversation toggle
+        function toggleConversation() {
+            if (isConnected) {
+                stopConversation();
             } else {
-                startListening();
+                startConversation();
             }
         }
         
-        function startListening() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                updateStatus('Microphone not supported');
-                return;
-            }
-            
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(function(stream) {
-                    isListening = true;
-                    updateStatus('Listening... Click to stop');
-                    abstractSun.className = 'abstract-sun listening';
-                    
-                    // Start recording audio
-                    startAudioRecording(stream);
-                })
-                .catch(function(error) {
-                    console.error('Microphone access denied:', error);
-                    updateStatus('Microphone access denied');
-                    abstractSun.className = 'abstract-sun';
-                });
-        }
-        
-        function stopListening() {
-            isListening = false;
-            updateStatus('Processing...');
-            abstractSun.className = 'abstract-sun thinking';
-            
-            // Stop recording and send audio
-            stopAudioRecording();
-        }
-        
-        function startAudioRecording(stream) {
-            // Create MediaRecorder
-            const mediaRecorder = new MediaRecorder(stream);
-            const audioChunks = [];
-            
-            mediaRecorder.ondataavailable = function(event) {
-                audioChunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = function() {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                const reader = new FileReader();
+        // Start continuous conversation
+        async function startConversation() {
+            try {
+                updateStatus('Connecting to Hume EVI...');
                 
-                reader.onload = function() {
-                    const base64Audio = reader.result.split(',')[1];
-                    socket.emit('send_audio', { audio: base64Audio });
+                // Get microphone access
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+                
+                // Connect to Hume EVI directly
+                await connectToHumeEVI();
+                
+            } catch (error) {
+                console.error('Error starting conversation:', error);
+                updateStatus('Error: ' + error.message);
+            }
+        }
+        
+        // Connect directly to Hume EVI WebSocket
+        async function connectToHumeEVI() {
+            try {
+                const HUME_API_KEY = 'YOUR_HUME_API_KEY'; // This should come from your backend
+                
+                // Connect to Hume EVI WebSocket
+                humeWebSocket = new WebSocket(`wss://api.hume.ai/v0/evi/chat?api_key=${HUME_API_KEY}`);
+                
+                humeWebSocket.onopen = function() {
+                    console.log('Connected to Hume EVI');
+                    isConnected = true;
+                    
+                    // Send initial configuration
+                    const config = {
+                        type: 'session_settings',
+                        session_settings: {
+                            system_prompt: personalities[currentPersonality].prompt,
+                            language: 'en',
+                            voice: {
+                                provider: 'hume_ai',
+                                name: 'default'
+                            }
+                        }
+                    };
+                    
+                    humeWebSocket.send(JSON.stringify(config));
+                    
+                    // Start streaming audio
+                    startAudioStreaming();
+                    
+                    updateStatus('Listening... Speak naturally');
+                    abstractSun.className = 'abstract-sun listening';
                 };
                 
-                reader.readAsDataURL(audioBlob);
+                humeWebSocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    handleHumeMessage(data);
+                };
                 
-                // Stop all tracks
-                stream.getTracks().forEach(track => track.stop());
-            };
-            
-            // Store recorder reference
-            window.currentRecorder = mediaRecorder;
-            
-            // Start recording
-            mediaRecorder.start();
-            
-            // Auto-stop after 10 seconds
-            setTimeout(function() {
-                if (isListening && mediaRecorder.state === 'recording') {
-                    stopListening();
-                }
-            }, 10000);
-        }
-        
-        function stopAudioRecording() {
-            if (window.currentRecorder && window.currentRecorder.state === 'recording') {
-                window.currentRecorder.stop();
+                humeWebSocket.onclose = function() {
+                    console.log('Hume EVI connection closed');
+                    isConnected = false;
+                    updateStatus('Disconnected. Click to reconnect.');
+                    abstractSun.className = 'abstract-sun';
+                };
+                
+                humeWebSocket.onerror = function(error) {
+                    console.error('Hume EVI error:', error);
+                    updateStatus('Connection error. Click to retry.');
+                    abstractSun.className = 'abstract-sun';
+                };
+                
+            } catch (error) {
+                console.error('Failed to connect to Hume EVI:', error);
+                updateStatus('Failed to connect. Check API key.');
             }
         }
         
+        // Start streaming audio to Hume EVI
+        function startAudioStreaming() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 16000
+            });
+            
+            const source = audioContext.createMediaStreamSource(mediaStream);
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            processor.onaudioprocess = function(event) {
+                if (humeWebSocket && humeWebSocket.readyState === WebSocket.OPEN) {
+                    const inputData = event.inputBuffer.getChannelData(0);
+                    
+                    // Convert to base64 and send to Hume
+                    const audioData = convertToBase64(inputData);
+                    
+                    humeWebSocket.send(JSON.stringify({
+                        type: 'audio_input',
+                        data: audioData
+                    }));
+                }
+            };
+            
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+        }
+        
+        // Handle messages from Hume EVI
+        function handleHumeMessage(data) {
+            const messageType = data.type;
+            
+            switch (messageType) {
+                case 'audio_output':
+                    // Play audio response immediately
+                    playAudioResponse(data.data);
+                    break;
+                    
+                case 'user_message':
+                    // Show what user said
+                    const transcript = data.message?.content || '';
+                    if (transcript) {
+                        updateStatus(`You: "${transcript}"`);
+                    }
+                    break;
+                    
+                case 'assistant_message':
+                    // AI is responding
+                    updateStatus('ORA is responding...');
+                    abstractSun.className = 'abstract-sun speaking';
+                    break;
+                    
+                case 'emotion_scores':
+                    // Handle emotion detection
+                    console.log('Emotions detected:', data.emotions);
+                    break;
+                    
+                case 'error':
+                    console.error('Hume error:', data.message);
+                    updateStatus('Error: ' + data.message);
+                    break;
+            }
+        }
+        
+        // Play audio response from Hume
         function playAudioResponse(base64Audio) {
             try {
-                updateStatus('ORA is speaking...');
-                abstractSun.className = 'abstract-sun speaking';
-                
                 const audio = new Audio('data:audio/wav;base64,' + base64Audio);
                 
                 audio.onended = function() {
-                    updateStatus('Click anywhere to continue talking');
-                    abstractSun.className = 'abstract-sun';
-                };
-                
-                audio.onerror = function() {
-                    console.error('Audio playback error');
-                    updateStatus('Audio playback error');
-                    abstractSun.className = 'abstract-sun';
+                    updateStatus('Listening... Speak naturally');
+                    abstractSun.className = 'abstract-sun listening';
                 };
                 
                 audio.play();
                 
             } catch (error) {
                 console.error('Error playing audio:', error);
-                updateStatus('Error playing audio');
-                abstractSun.className = 'abstract-sun';
+                updateStatus('Audio playback error');
             }
         }
         
+        // Convert audio data to base64
+        function convertToBase64(audioData) {
+            // Convert Float32Array to Int16Array
+            const int16Array = new Int16Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                int16Array[i] = Math.max(-32768, Math.min(32767, audioData[i] * 32768));
+            }
+            
+            // Convert to base64
+            const uint8Array = new Uint8Array(int16Array.buffer);
+            return btoa(String.fromCharCode.apply(null, uint8Array));
+        }
+        
+        // Stop conversation
+        function stopConversation() {
+            isConnected = false;
+            
+            if (humeWebSocket) {
+                humeWebSocket.close();
+                humeWebSocket = null;
+            }
+            
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+            
+            updateStatus('Click anywhere to start conversation');
+            abstractSun.className = 'abstract-sun';
+        }
+        
+        // Change personality
         function changePersonality(personality) {
             currentPersonality = personality;
             localStorage.setItem('ora_personality', personality);
             
-            // Update UI
             updatePersonalityDisplay();
             updatePersonalityButtons();
             
-            // Emit personality change
-            socket.emit('change_personality', { personality: personality });
+            // If connected, restart with new personality
+            if (isConnected) {
+                stopConversation();
+                setTimeout(() => startConversation(), 500);
+            }
         }
         
+        // UI update functions
         function updatePersonalityDisplay() {
-            const personalities = {
-                'practical': 'The Practical Coach',
-                'empathetic': 'The Empathetic Friend',
-                'wise': 'The Wise Mentor'
-            };
-            
-            personalityDisplay.textContent = personalities[currentPersonality];
+            personalityDisplay.textContent = personalities[currentPersonality].name;
         }
         
         function updatePersonalityButtons() {
@@ -711,12 +758,8 @@
         function updateStatus(message) {
             statusIndicator.textContent = message;
         }
-        
-        // Initialize personality buttons
-        updatePersonalityButtons();
     </script>
 </body>
 </html>
-
 
 
