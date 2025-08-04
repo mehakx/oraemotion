@@ -50,741 +50,559 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            padding: 2rem;
+            width: 100vw;
             position: relative;
             z-index: 1;
         }
 
-        /* Elegant status indicator */
-        .status-indicator {
+        /* Personality Header */
+        .personality-header {
             position: absolute;
-            top: 4rem;
+            top: 40px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.9rem;
-            font-weight: 400;
-            color: rgba(255, 255, 255, 0.6);
-            letter-spacing: 0.5px;
-            transition: all 0.4s ease;
             text-align: center;
+            z-index: 10;
         }
 
-        .status-indicator.listening {
-            color: rgba(0, 122, 255, 0.8);
+        .personality-name {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #ffd700;
+            margin-bottom: 5px;
         }
 
-        .status-indicator.thinking {
-            color: rgba(255, 149, 0, 0.8);
+        .user-name {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
         }
 
-        .status-indicator.speaking {
-            color: rgba(255, 69, 58, 0.8);
-        }
-
-        /* Premium sun container */
-        .sun-container {
-            position: relative;
-            width: 320px;
-            height: 320px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .abstract-sun {
-            width: 200px;
-            height: 200px;
-            position: relative;
-        }
-
-        /* Warm understanding aura */
-        .sun-aura {
-            width: 400%;
-            height: 400%;
-            background: radial-gradient(circle, 
-                rgba(255, 204, 102, 0.15) 0%,
-                rgba(255, 179, 71, 0.12) 30%,
-                rgba(255, 149, 0, 0.08) 60%,
-                transparent 80%);
+        /* Personality Buttons */
+        .personality-buttons {
             position: absolute;
-            top: -150%;
-            left: -150%;
-            animation: warmGlow 10s ease-in-out infinite;
-            filter: blur(40px);
-        }
-
-        @keyframes warmGlow {
-            0%, 100% {
-                transform: scale(1) rotate(0deg);
-                opacity: 0.8;
-            }
-            50% {
-                transform: scale(1.2) rotate(180deg);
-                opacity: 1;
-            }
-        }
-
-        /* Abstract sun core */
-        .sun-core {
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle, 
-                rgba(255, 255, 255, 0.5) 0%,
-                rgba(255, 204, 102, 0.4) 30%,
-                rgba(255, 179, 71, 0.3) 70%,
-                rgba(255, 149, 0, 0.15) 100%);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation: gentlePulse 6s ease-in-out infinite, colorCycle 15s ease-in-out infinite;
-            backdrop-filter: blur(20px);
-            border: 0.5px solid rgba(255, 204, 102, 0.5);
-            box-shadow: 
-                0 0 40px rgba(255, 204, 102, 0.6),
-                0 0 80px rgba(255, 179, 71, 0.4),
-                inset 0 0 30px rgba(255, 255, 255, 0.25);
-        }
-
-        /* Beautiful color cycling for idle state */
-        @keyframes colorCycle {
-            0% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 204, 102, 0.4) 30%,
-                    rgba(255, 179, 71, 0.3) 70%,
-                    rgba(255, 149, 0, 0.15) 100%);
-                border-color: rgba(255, 204, 102, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 204, 102, 0.6),
-                    0 0 80px rgba(255, 179, 71, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            25% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 193, 7, 0.4) 30%,
-                    rgba(255, 167, 38, 0.3) 70%,
-                    rgba(255, 138, 101, 0.15) 100%);
-                border-color: rgba(255, 193, 7, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 193, 7, 0.6),
-                    0 0 80px rgba(255, 167, 38, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            50% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 183, 77, 0.4) 30%,
-                    rgba(255, 154, 158, 0.3) 70%,
-                    rgba(255, 138, 128, 0.15) 100%);
-                border-color: rgba(255, 183, 77, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 183, 77, 0.6),
-                    0 0 80px rgba(255, 154, 158, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            75% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 171, 145, 0.4) 30%,
-                    rgba(255, 138, 101, 0.3) 70%,
-                    rgba(255, 160, 122, 0.15) 100%);
-                border-color: rgba(255, 171, 145, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 171, 145, 0.6),
-                    0 0 80px rgba(255, 138, 101, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            100% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 204, 102, 0.4) 30%,
-                    rgba(255, 179, 71, 0.3) 70%,
-                    rgba(255, 149, 0, 0.15) 100%);
-                border-color: rgba(255, 204, 102, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 204, 102, 0.6),
-                    0 0 80px rgba(255, 179, 71, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-        }
-
-        /* Abstract sun rays - NO ROTATION */
-        .sun-ray {
-            position: absolute;
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(255, 204, 102, 0.7) 50%,
-                transparent 100%);
-            border-radius: 50px;
-            transform-origin: center;
-        }
-
-        .sun-ray:nth-child(1) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(0deg);
-        }
-
-        .sun-ray:nth-child(2) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(45deg);
-        }
-
-        .sun-ray:nth-child(3) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(90deg);
-        }
-
-        .sun-ray:nth-child(4) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(135deg);
-        }
-
-        .sun-ray:nth-child(5) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(180deg);
-        }
-
-        .sun-ray:nth-child(6) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(225deg);
-        }
-
-        .sun-ray:nth-child(7) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(270deg);
-        }
-
-        .sun-ray:nth-child(8) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(315deg);
-        }
-
-        @keyframes gentlePulse {
-            0%, 100% { 
-                transform: translate(-50%, -50%) scale(1); 
-                opacity: 0.8; 
-            }
-            50% { 
-                transform: translate(-50%, -50%) scale(1.1); 
-                opacity: 1; 
-            }
-        }
-
-        /* Sun states with Apple colors */
-        .abstract-sun.listening .sun-core {
-            background: radial-gradient(circle, 
-                rgba(0, 122, 255, 0.5) 0%,
-                rgba(0, 122, 255, 0.35) 50%,
-                rgba(0, 122, 255, 0.2) 100%) !important;
-            border-color: rgba(0, 122, 255, 0.6) !important;
-            box-shadow: 
-                0 0 50px rgba(0, 122, 255, 0.7),
-                0 0 100px rgba(0, 122, 255, 0.4),
-                inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
-            animation: gentlePulse 4s ease-in-out infinite !important;
-        }
-
-        .abstract-sun.listening .sun-ray {
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(0, 122, 255, 0.8) 50%,
-                transparent 100%) !important;
-        }
-
-        .abstract-sun.thinking .sun-core {
-            background: radial-gradient(circle, 
-                rgba(255, 149, 0, 0.5) 0%,
-                rgba(255, 149, 0, 0.35) 50%,
-                rgba(255, 149, 0, 0.2) 100%) !important;
-            border-color: rgba(255, 149, 0, 0.6) !important;
-            box-shadow: 
-                0 0 50px rgba(255, 149, 0, 0.7),
-                0 0 100px rgba(255, 149, 0, 0.4),
-                inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
-            animation: gentlePulse 3s ease-in-out infinite !important;
-        }
-
-        .abstract-sun.thinking .sun-ray {
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(255, 149, 0, 0.8) 50%,
-                transparent 100%) !important;
-        }
-
-        .abstract-sun.speaking .sun-core {
-            background: radial-gradient(circle, 
-                rgba(255, 69, 58, 0.5) 0%,
-                rgba(255, 69, 58, 0.35) 50%,
-                rgba(255, 69, 58, 0.2) 100%) !important;
-            border-color: rgba(255, 69, 58, 0.6) !important;
-            box-shadow: 
-                0 0 50px rgba(255, 69, 58, 0.7),
-                0 0 100px rgba(255, 69, 58, 0.4),
-                inset 0 0 30px rgba(255, 69, 58, 0.25) !important;
-            animation: gentlePulse 2s ease-in-out infinite !important;
-        }
-
-        .abstract-sun.speaking .sun-ray {
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(255, 69, 58, 0.8) 50%,
-                transparent 100%) !important;
-        }
-
-        /* Personality display */
-        .personality-display {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 18px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.9);
-            text-align: center;
-        }
-
-        .user-greeting {
-            position: absolute;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
-            text-align: center;
-        }
-
-        /* Personality switcher */
-        .personality-switcher {
-            position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 40px;
+            right: 40px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
+            z-index: 10;
         }
 
         .personality-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.8);
-            padding: 8px 16px;
             border-radius: 20px;
+            padding: 8px 16px;
+            color: white;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 0.8rem;
             transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
         }
 
         .personality-btn:hover {
             background: rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 1);
+            border-color: #ffd700;
         }
 
         .personality-btn.active {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            color: rgba(255, 255, 255, 1);
+            background: rgba(255, 215, 0, 0.2);
+            border-color: #ffd700;
+            color: #ffd700;
         }
 
-        /* Mobile responsive */
+        /* Central Sun Interface */
+        .sun-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .sun {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(255, 215, 0, 0.9) 0%,
+                rgba(255, 193, 7, 0.8) 30%,
+                rgba(255, 152, 0, 0.7) 60%,
+                rgba(255, 87, 34, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(255, 215, 0, 0.4),
+                0 0 120px rgba(255, 215, 0, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
+        }
+
+        .sun.listening {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(33, 150, 243, 0.9) 0%,
+                rgba(30, 136, 229, 0.8) 30%,
+                rgba(25, 118, 210, 0.7) 60%,
+                rgba(21, 101, 192, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(33, 150, 243, 0.4),
+                0 0 120px rgba(33, 150, 243, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
+            animation: listeningPulse 1.5s ease-in-out infinite;
+        }
+
+        .sun.processing {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(255, 152, 0, 0.9) 0%,
+                rgba(255, 143, 0, 0.8) 30%,
+                rgba(255, 111, 0, 0.7) 60%,
+                rgba(230, 81, 0, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(255, 152, 0, 0.4),
+                0 0 120px rgba(255, 152, 0, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
+            animation: processingPulse 1s ease-in-out infinite;
+        }
+
+        .sun.speaking {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(76, 175, 80, 0.9) 0%,
+                rgba(67, 160, 71, 0.8) 30%,
+                rgba(56, 142, 60, 0.7) 60%,
+                rgba(46, 125, 50, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(76, 175, 80, 0.4),
+                0 0 120px rgba(76, 175, 80, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
+            animation: speakingPulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes listeningPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes processingPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        @keyframes speakingPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+
+        /* Sun Rays - Static */
+        .sun-rays {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ray {
+            position: absolute;
+            width: 2px;
+            height: 40px;
+            background: linear-gradient(to bottom, rgba(255, 215, 0, 0.8), transparent);
+            border-radius: 1px;
+            transform-origin: center bottom;
+        }
+
+        .ray:nth-child(1) { transform: rotate(0deg) translateY(-100px); }
+        .ray:nth-child(2) { transform: rotate(45deg) translateY(-100px); }
+        .ray:nth-child(3) { transform: rotate(90deg) translateY(-100px); }
+        .ray:nth-child(4) { transform: rotate(135deg) translateY(-100px); }
+        .ray:nth-child(5) { transform: rotate(180deg) translateY(-100px); }
+        .ray:nth-child(6) { transform: rotate(225deg) translateY(-100px); }
+        .ray:nth-child(7) { transform: rotate(270deg) translateY(-100px); }
+        .ray:nth-child(8) { transform: rotate(315deg) translateY(-100px); }
+
+        /* Status Text */
+        .status-container {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .status-text {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .status-subtext {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Connection Status */
+        .connection-status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .connection-status.connected {
+            color: #4CAF50;
+        }
+
+        .connection-status.disconnected {
+            color: #f44336;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .personality-switcher {
-                position: fixed;
-                bottom: 20px;
+            .sun-container {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .sun {
+                width: 150px;
+                height: 150px;
+            }
+
+            .personality-header {
+                top: 30px;
+            }
+
+            .personality-buttons {
+                top: 30px;
                 right: 20px;
-                top: auto;
                 flex-direction: row;
-                gap: 4px;
+                flex-wrap: wrap;
+                max-width: 200px;
             }
-            
+
             .personality-btn {
-                font-size: 10px;
                 padding: 6px 12px;
-            }
-            
-            .personality-display {
-                top: 40px;
-            }
-            
-            .user-greeting {
-                top: 70px;
+                font-size: 0.7rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="personality-display" id="personalityDisplay">The Empathetic Friend</div>
-    <div class="user-greeting" id="userGreeting">Hello, User</div>
-
-    <div class="personality-switcher">
-        <button class="personality-btn" onclick="changePersonality('practical')">Practical Coach</button>
-        <button class="personality-btn active" onclick="changePersonality('empathetic')">Empathetic Friend</button>
-        <button class="personality-btn" onclick="changePersonality('wise')">Wise Mentor</button>
-    </div>
-
     <div class="voice-interface">
-        <div class="status-indicator" id="statusIndicator">Click anywhere to start conversation</div>
-        
-        <div class="sun-container" onclick="toggleConversation()">
-            <div class="abstract-sun" id="abstractSun">
-                <div class="sun-aura"></div>
-                <div class="sun-core"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
+        <!-- Personality Header -->
+        <div class="personality-header">
+            <div class="personality-name" id="personalityName">The Empathetic Friend</div>
+            <div class="user-name" id="userNameDisplay">Hello, User</div>
+        </div>
+
+        <!-- Personality Buttons -->
+        <div class="personality-buttons">
+            <div class="personality-btn" onclick="changePersonality('practical')">Practical Coach</div>
+            <div class="personality-btn active" onclick="changePersonality('empathetic')">Empathetic Friend</div>
+            <div class="personality-btn" onclick="changePersonality('wise')">Wise Mentor</div>
+        </div>
+
+        <!-- Central Sun Interface -->
+        <div class="sun-container">
+            <div class="sun" id="sun" onclick="toggleConversation()">
+                <div class="sun-rays">
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                </div>
             </div>
         </div>
+
+        <!-- Status Text -->
+        <div class="status-container">
+            <div class="status-text" id="statusText">Ready! Click anywhere to start conversation</div>
+            <div class="status-subtext" id="statusSubtext">I'm here to listen and support you</div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="connection-status" id="connectionStatus">Initializing...</div>
     </div>
 
-    <script>
-        // State variables
+    <!-- Hume Voice SDK -->
+    <script type="module">
+        import { VoiceProvider } from "https://cdn.jsdelivr.net/npm/@humeai/voice@latest/dist/index.mjs";
+
+        // Global variables
+        let voiceProvider = null;
         let isConnected = false;
-        let humeWebSocket = null;
-        let mediaStream = null;
-        let audioContext = null;
-        let processor = null;
+        let isConversationActive = false;
         let currentPersonality = 'empathetic';
-        let userName = localStorage.getItem('ora_user_name') || 'User';
-        let userPersonality = localStorage.getItem('ora_personality') || 'empathetic';
-        let humeApiKey = null;
-        
-        // DOM elements
-        const statusIndicator = document.getElementById('statusIndicator');
-        const abstractSun = document.getElementById('abstractSun');
-        const personalityDisplay = document.getElementById('personalityDisplay');
-        const userGreeting = document.getElementById('userGreeting');
-        
+        let userProfile = null;
+
         // Personality templates
-        const personalities = {
-            'practical': {
-                name: 'The Practical Coach',
-                prompt: 'You are ORA, The Practical Coach - direct, solution-focused, and actionable. Keep responses concise and provide clear steps.'
+        const personalityTemplates = {
+            practical: {
+                name: "The Practical Coach",
+                greeting: "Ready to tackle challenges together",
+                systemPrompt: "You are a practical, solution-focused AI coach. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise. Focus on practical steps and real-world solutions."
             },
-            'empathetic': {
-                name: 'The Empathetic Friend', 
-                prompt: 'You are ORA, The Empathetic Friend - warm, understanding, and emotionally supportive. Always acknowledge feelings first.'
+            empathetic: {
+                name: "The Empathetic Friend", 
+                greeting: "I'm here to listen and support you",
+                systemPrompt: "You are a warm, empathetic AI friend. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and create a safe space for sharing. Ask thoughtful questions to show you care."
             },
-            'wise': {
-                name: 'The Wise Mentor',
-                prompt: 'You are ORA, The Wise Mentor - thoughtful and reflective. Ask insightful questions to help users discover their own answers.'
+            wise: {
+                name: "The Wise Mentor",
+                greeting: "Let's explore this together thoughtfully",
+                systemPrompt: "You are a wise, thoughtful AI mentor. Guide users through reflection and deeper thinking. Ask meaningful questions, share insights, and help users discover their own answers. Be patient and philosophical."
             }
         };
-        
+
         // Initialize on page load
-        window.addEventListener('load', async function() {
-            currentPersonality = userPersonality;
-            updatePersonalityDisplay();
-            updateUserGreeting();
-            updatePersonalityButtons();
-            
-            // Fetch Hume API key from backend
-            await fetchHumeApiKey();
+        window.addEventListener('load', function() {
+            checkUserProfile();
+            initializeHumeVoice();
         });
-        
-        // Fetch Hume API key from backend
-        async function fetchHumeApiKey() {
+
+        function checkUserProfile() {
+            // Check if user has completed onboarding
+            const profile = localStorage.getItem('oraUserProfile');
+            
+            if (!profile) {
+                // Create default profile for now
+                userProfile = {
+                    name: 'User',
+                    personality: 'empathetic'
+                };
+                localStorage.setItem('oraUserProfile', JSON.stringify(userProfile));
+            } else {
+                try {
+                    userProfile = JSON.parse(profile);
+                } catch (e) {
+                    console.error('Error parsing user profile:', e);
+                    userProfile = {
+                        name: 'User',
+                        personality: 'empathetic'
+                    };
+                }
+            }
+
+            currentPersonality = userProfile.personality;
+            updatePersonalityDisplay();
+        }
+
+        function updatePersonalityDisplay() {
+            const personality = personalityTemplates[currentPersonality];
+            if (personality) {
+                document.getElementById('personalityName').textContent = personality.name;
+                document.getElementById('userNameDisplay').textContent = `Hello, ${userProfile.name}`;
+                document.getElementById('statusSubtext').textContent = personality.greeting;
+                
+                // Update active button
+                document.querySelectorAll('.personality-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[onclick="changePersonality('${currentPersonality}')"]`).classList.add('active');
+            }
+        }
+
+        async function initializeHumeVoice() {
             try {
+                updateStatus('Connecting to Hume...', 'Getting ready');
+                updateConnectionStatus('Connecting...', 'disconnected');
+
+                // Get API key from backend
                 const response = await fetch('/api/hume-key');
                 const data = await response.json();
-                humeApiKey = data.hume_api_key;
                 
-                if (!humeApiKey) {
-                    updateStatus('Error: No Hume API key configured');
-                    return;
+                if (!data.api_key) {
+                    throw new Error('No API key received from backend');
                 }
-                
-                updateStatus('Ready! Click anywhere to start conversation');
-                
-            } catch (error) {
-                console.error('Failed to fetch Hume API key:', error);
-                updateStatus('Error: Could not connect to backend');
-            }
-        }
-        
-        // Main conversation toggle
-        function toggleConversation() {
-            if (!humeApiKey) {
-                updateStatus('Error: API key not available');
-                return;
-            }
-            
-            if (isConnected) {
-                stopConversation();
-            } else {
-                startConversation();
-            }
-        }
-        
-        // Start continuous conversation
-        async function startConversation() {
-            try {
-                updateStatus('Connecting to Hume EVI...');
-                
-                // Get microphone access
-                mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        sampleRate: 16000,
-                        channelCount: 1,
-                        echoCancellation: true,
-                        noiseSuppression: true
-                    }
+
+                // Initialize Hume Voice Provider
+                voiceProvider = await VoiceProvider.create({
+                    apiKey: data.api_key,
+                    configId: null, // Use default config
+                    onMessage: handleHumeMessage,
+                    onError: handleHumeError,
+                    onOpen: handleHumeOpen,
+                    onClose: handleHumeClose
                 });
-                
-                // Connect to Hume EVI directly
-                await connectToHumeEVI();
-                
-            } catch (error) {
-                console.error('Error starting conversation:', error);
-                updateStatus('Error: ' + error.message);
-            }
-        }
-        
-        // Connect directly to Hume EVI WebSocket
-        async function connectToHumeEVI() {
-            try {
-                // Connect to Hume EVI WebSocket with real API key
-                humeWebSocket = new WebSocket(`wss://api.hume.ai/v0/evi/chat?api_key=${humeApiKey}`);
-                
-                humeWebSocket.onopen = function() {
-                    console.log('Connected to Hume EVI');
-                    isConnected = true;
-                    
-                    // Send initial configuration
-                    const config = {
-                        type: 'session_settings',
-                        session_settings: {
-                            system_prompt: personalities[currentPersonality].prompt,
-                            language: 'en',
-                            voice: {
-                                provider: 'hume_ai',
-                                name: 'default'
-                            }
-                        }
-                    };
-                    
-                    humeWebSocket.send(JSON.stringify(config));
-                    
-                    // Start streaming audio
-                    startAudioStreaming();
-                    
-                    updateStatus('Listening... Speak naturally');
-                    abstractSun.className = 'abstract-sun listening';
-                };
-                
-                humeWebSocket.onmessage = function(event) {
-                    const data = JSON.parse(event.data);
-                    handleHumeMessage(data);
-                };
-                
-                humeWebSocket.onclose = function() {
-                    console.log('Hume EVI connection closed');
-                    isConnected = false;
-                    updateStatus('Disconnected. Click to reconnect.');
-                    abstractSun.className = 'abstract-sun';
-                };
-                
-                humeWebSocket.onerror = function(error) {
-                    console.error('Hume EVI error:', error);
-                    updateStatus('Connection error. Click to retry.');
-                    abstractSun.className = 'abstract-sun';
-                };
+
+                console.log('✅ Hume Voice Provider initialized');
                 
             } catch (error) {
-                console.error('Failed to connect to Hume EVI:', error);
-                updateStatus('Failed to connect. Check API key.');
+                console.error('❌ Error initializing Hume Voice:', error);
+                updateStatus('Connection failed', 'Please refresh the page');
+                updateConnectionStatus('Failed', 'disconnected');
             }
         }
-        
-        // Start streaming audio to Hume EVI
-        function startAudioStreaming() {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 16000
-            });
-            
-            const source = audioContext.createMediaStreamSource(mediaStream);
-            processor = audioContext.createScriptProcessor(4096, 1, 1);
-            
-            processor.onaudioprocess = function(event) {
-                if (humeWebSocket && humeWebSocket.readyState === WebSocket.OPEN) {
-                    const inputData = event.inputBuffer.getChannelData(0);
-                    
-                    // Convert to base64 and send to Hume
-                    const audioData = convertToBase64(inputData);
-                    
-                    humeWebSocket.send(JSON.stringify({
-                        type: 'audio_input',
-                        data: audioData
-                    }));
-                }
-            };
-            
-            source.connect(processor);
-            processor.connect(audioContext.destination);
+
+        function handleHumeOpen() {
+            console.log('✅ Hume Voice connection opened');
+            isConnected = true;
+            updateConnectionStatus('Connected', 'connected');
+            updateStatus('Ready! Click anywhere to start conversation', personalityTemplates[currentPersonality].greeting);
         }
-        
-        // Handle messages from Hume EVI
-        function handleHumeMessage(data) {
-            const messageType = data.type;
+
+        function handleHumeClose() {
+            console.log('❌ Hume Voice connection closed');
+            isConnected = false;
+            isConversationActive = false;
+            updateConnectionStatus('Disconnected', 'disconnected');
+            updateStatus('Connection lost', 'Please refresh the page');
+            updateSunState('idle');
+        }
+
+        function handleHumeError(error) {
+            console.error('❌ Hume Voice error:', error);
+            updateStatus('Error occurred', 'Please try again');
+            updateSunState('idle');
+        }
+
+        function handleHumeMessage(message) {
+            console.log('📨 Hume message:', message);
             
-            switch (messageType) {
-                case 'audio_output':
-                    // Play audio response immediately
-                    playAudioResponse(data.data);
-                    break;
-                    
+            switch (message.type) {
                 case 'user_message':
-                    // Show what user said
-                    const transcript = data.message?.content || '';
-                    if (transcript) {
-                        updateStatus(`You: "${transcript}"`);
-                    }
+                    updateStatus('Processing...', message.message.content);
+                    updateSunState('processing');
                     break;
                     
                 case 'assistant_message':
-                    // AI is responding
-                    updateStatus('ORA is responding...');
-                    abstractSun.className = 'abstract-sun speaking';
+                    updateStatus('Speaking...', message.message.content);
+                    updateSunState('speaking');
                     break;
                     
-                case 'emotion_scores':
-                    // Handle emotion detection
-                    console.log('Emotions detected:', data.emotions);
+                case 'audio_output':
+                    // Audio is handled automatically by Hume SDK
                     break;
                     
-                case 'error':
-                    console.error('Hume error:', data.message);
-                    updateStatus('Error: ' + data.message);
+                case 'user_interruption':
+                    updateStatus('Listening...', 'Continue speaking');
+                    updateSunState('listening');
                     break;
+                    
+                default:
+                    console.log('Unknown message type:', message.type);
             }
         }
-        
-        // Play audio response from Hume
-        function playAudioResponse(base64Audio) {
+
+        async function toggleConversation() {
+            if (!isConnected) {
+                updateStatus('Not connected', 'Please refresh the page');
+                return;
+            }
+
+            if (!isConversationActive) {
+                await startConversation();
+            } else {
+                await endConversation();
+            }
+        }
+
+        async function startConversation() {
             try {
-                const audio = new Audio('data:audio/wav;base64,' + base64Audio);
+                updateStatus('Starting conversation...', 'Connecting to AI');
                 
-                audio.onended = function() {
-                    updateStatus('Listening... Speak naturally');
-                    abstractSun.className = 'abstract-sun listening';
-                };
+                const personality = personalityTemplates[currentPersonality];
                 
-                audio.play();
+                // Start conversation with personality-specific system prompt
+                await voiceProvider.connect({
+                    systemPrompt: `${personality.systemPrompt}\n\nThe user's name is ${userProfile.name}. Greet them warmly and embody the personality described above.`
+                });
+
+                isConversationActive = true;
+                updateStatus('Listening...', 'Speak naturally - I\'m here to help');
+                updateSunState('listening');
+                
+                console.log('🎭 Conversation started with personality:', currentPersonality);
                 
             } catch (error) {
-                console.error('Error playing audio:', error);
-                updateStatus('Audio playback error');
+                console.error('❌ Error starting conversation:', error);
+                updateStatus('Error: ' + error.message, 'Please try again');
             }
         }
-        
-        // Convert audio data to base64
-        function convertToBase64(audioData) {
-            // Convert Float32Array to Int16Array
-            const int16Array = new Int16Array(audioData.length);
-            for (let i = 0; i < audioData.length; i++) {
-                int16Array[i] = Math.max(-32768, Math.min(32767, audioData[i] * 32768));
+
+        async function endConversation() {
+            try {
+                if (voiceProvider) {
+                    await voiceProvider.disconnect();
+                }
+                
+                isConversationActive = false;
+                updateStatus('Conversation ended', 'Click to start a new conversation');
+                updateSunState('idle');
+                
+                console.log('🔚 Conversation ended');
+                
+            } catch (error) {
+                console.error('❌ Error ending conversation:', error);
             }
-            
-            // Convert to base64
-            const uint8Array = new Uint8Array(int16Array.buffer);
-            return btoa(String.fromCharCode.apply(null, uint8Array));
         }
-        
-        // Stop conversation
-        function stopConversation() {
-            isConnected = false;
+
+        async function changePersonality(newPersonality) {
+            if (newPersonality === currentPersonality) return;
             
-            if (humeWebSocket) {
-                humeWebSocket.close();
-                humeWebSocket = null;
+            const wasActive = isConversationActive;
+            
+            // End current conversation if active
+            if (isConversationActive) {
+                await endConversation();
             }
             
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-            
-            if (processor) {
-                processor.disconnect();
-                processor = null;
-            }
-            
-            updateStatus('Click anywhere to start conversation');
-            abstractSun.className = 'abstract-sun';
-        }
-        
-        // Change personality
-        function changePersonality(personality) {
-            currentPersonality = personality;
-            localStorage.setItem('ora_personality', personality);
+            // Update personality
+            currentPersonality = newPersonality;
+            userProfile.personality = newPersonality;
+            localStorage.setItem('oraUserProfile', JSON.stringify(userProfile));
             
             updatePersonalityDisplay();
-            updatePersonalityButtons();
             
-            // If connected, restart with new personality
-            if (isConnected) {
-                stopConversation();
+            // Restart conversation with new personality if it was active
+            if (wasActive) {
                 setTimeout(() => startConversation(), 500);
             }
+            
+            console.log('🎭 Personality changed to:', newPersonality);
         }
-        
-        // UI update functions
-        function updatePersonalityDisplay() {
-            personalityDisplay.textContent = personalities[currentPersonality].name;
+
+        function updateSunState(state) {
+            const sun = document.getElementById('sun');
+            sun.className = 'sun';
+            if (state !== 'idle') {
+                sun.classList.add(state);
+            }
         }
-        
-        function updatePersonalityButtons() {
-            const buttons = document.querySelectorAll('.personality-btn');
-            buttons.forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent.toLowerCase().includes(currentPersonality)) {
-                    btn.classList.add('active');
-                }
-            });
+
+        function updateStatus(main, sub = '') {
+            document.getElementById('statusText').textContent = main;
+            document.getElementById('statusSubtext').textContent = sub;
         }
-        
-        function updateUserGreeting() {
-            userGreeting.textContent = `Hello, ${userName}`;
+
+        function updateConnectionStatus(text, className) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = text;
+            statusEl.className = `connection-status ${className}`;
         }
-        
-        function updateStatus(message) {
-            statusIndicator.textContent = message;
-        }
+
+        // Make functions available globally for onclick handlers
+        window.toggleConversation = toggleConversation;
+        window.changePersonality = changePersonality;
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && isConversationActive) {
+                endConversation();
+            }
+        });
+
+        // Handle beforeunload
+        window.addEventListener('beforeunload', function() {
+            if (isConversationActive) {
+                endConversation();
+            }
+        });
     </script>
 </body>
 </html>
