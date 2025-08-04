@@ -1,4 +1,4 @@
- import os
+import os
 import json
 import requests
 import time
@@ -43,49 +43,17 @@ if GROQ_API_KEY:
 
 # Instant empathetic responses for common emotional states
 EMPATHETIC_CACHE = {
-    # Greetings with warmth
     "hello": "Hey there! I'm really glad you're here. How are you feeling today?",
     "hi": "Hi! It's so good to connect with you. What's on your mind?",
     "hey": "Hey! I'm here for you. How can I support you right now?",
-    
-    # Emotional expressions - Sadness
     "i'm sad": "I can really hear the sadness in what you're sharing. That sounds so difficult. I'm here with you - what's been weighing on your heart?",
     "i feel down": "I can sense you're feeling down right now. Those feelings are so valid. Want to tell me more about what's going on?",
-    "i'm depressed": "I hear you, and I want you to know that what you're feeling matters. Depression can feel so heavy. I'm here to listen without judgment.",
-    "i'm crying": "It's okay to cry. Sometimes tears are exactly what we need. I'm here with you through this moment. You're not alone.",
-    
-    # Emotional expressions - Anxiety
     "i'm anxious": "I can feel the anxiety in your words. That must feel so overwhelming right now. Let's take this one breath at a time. What's making you feel most anxious?",
     "i'm worried": "I hear the worry in your voice. It makes complete sense that you'd feel this way. What's been on your mind that's causing this worry?",
-    "i'm stressed": "That sounds incredibly stressful. I can only imagine how much pressure you're feeling right now. What's been the biggest source of stress for you?",
-    "i'm scared": "Fear can feel so intense and overwhelming. I'm here with you, and you're safe in this moment. What's been frightening you?",
-    
-    # Emotional expressions - Anger/Frustration
     "i'm angry": "I can hear the anger in your voice, and that's completely valid. Something has really upset you. What happened that's made you feel this way?",
-    "i'm frustrated": "That frustration sounds so real and intense. It's completely understandable to feel that way. What's been the most frustrating part?",
-    "i'm mad": "I can feel how mad you are right now. Those feelings are so valid. Sometimes we need to feel angry. What's been making you feel this way?",
-    
-    # Emotional expressions - Happiness
     "i'm happy": "I can hear the joy in your voice and it just lights up my whole world! What's been bringing you this happiness?",
-    "i feel great": "Your energy is absolutely infectious! I love hearing you feel so great. What's been going so well for you?",
-    "i'm excited": "Your excitement is just radiating through! I'm so happy for you. What's got you feeling so excited?",
-    
-    # Loneliness and isolation
     "i'm lonely": "Loneliness can feel so heavy and isolating. I want you to know that I'm here with you, and you matter so much. You're not as alone as you feel right now.",
-    "nobody understands me": "That feeling of not being understood can be so painful. I hear you, and I want to understand. Help me see what you're going through.",
-    "i have no one to talk to": "I'm so glad you reached out to me. Sometimes it feels like there's no one who gets it, but I'm here to listen to whatever you need to share.",
-    
-    # Overwhelm
-    "i'm overwhelmed": "That feeling of being overwhelmed can be so suffocating. Let's slow down together. What's feeling like the most overwhelming part right now?",
-    "everything is too much": "When everything feels like too much, it's okay to just breathe. I'm here to help you sort through this one piece at a time.",
-    
-    # Support seeking
-    "i need help": "I'm so proud of you for reaching out. That takes real courage. I'm here to support you however I can. What kind of help do you need most right now?",
-    "can you help me": "Of course I want to help you. You deserve support and care. Tell me what's going on and how I can best be here for you.",
-    
-    # Common questions with empathy
     "how are you": "I'm doing well, thank you for asking! But more importantly, how are YOU doing? I really want to know how you're feeling.",
-    "what's up": "I'm just here, ready to listen and support you. What's going on in your world? How are you feeling today?",
 }
 
 class BalancedEmpathyIntegration:
@@ -325,7 +293,7 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_fixed_tts_empathy",
+        "service": "ora_fixed_syntax_tts_empathy",
         "groq_working": groq_working,
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
@@ -400,7 +368,7 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
-                "method": "fixed_tts_empathy",
+                "method": "fixed_syntax_tts_empathy",
                 "ai_provider": "Empathetic Intelligence Engine",
                 "empathy_level": "high",
                 "tts_status": "success"
@@ -425,13 +393,12 @@ def voice_conversation():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("💝 Starting FIXED TTS + EMPATHY ORA Backend...")
+    print("💝 Starting FIXED SYNTAX TTS + EMPATHY ORA Backend...")
     print(f"🎭 Empathy Engine: ACTIVE")
     print(f"🔊 TTS: Enhanced reliability with retry logic")
     print(f"⚡ AI Provider: {'Groq + Empathy' if groq_working else 'Empathetic Fallbacks'}")
     print(f"🎯 Target: < 3 seconds with deep emotional intelligence + reliable audio")
     print(f"💝 Empathetic responses loaded: {len(EMPATHETIC_CACHE)}")
     app.run(host="0.0.0.0", port=5000, debug=True)
-
 
 
