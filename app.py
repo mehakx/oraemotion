@@ -24,7 +24,23 @@ groq_working = False
 
 if GROQ_API_KEY:
     try:
-        from groq import Groq
+        # Try different import methods for Groq
+        try:
+            from groq import Groq
+            print("✅ Imported Groq from groq")
+        except ImportError:
+            try:
+                import groq
+                Groq = groq.Client
+                print("✅ Imported Groq as groq.Client")
+            except:
+                try:
+                    import groq
+                    Groq = groq.Groq
+                    print("✅ Imported Groq as groq.Groq")
+                except:
+                    raise ImportError("Could not import Groq client")
+        
         groq_client = Groq(api_key=GROQ_API_KEY)
         
         # Test Groq connection
@@ -293,11 +309,11 @@ def index():
 def health():
     return jsonify({
         "status": "healthy",
-        "service": "ora_fixed_syntax_tts_empathy",
+        "service": "ora_groq_import_fixed",
         "groq_working": groq_working,
         "hume_key_exists": bool(HUME_API_KEY),
         "current_time": datetime.now().isoformat(),
-        "ai_provider": "Groq + Empathetic Intelligence",
+        "ai_provider": "Groq + Empathetic Intelligence" if groq_working else "Empathetic Fallbacks",
         "empathy_engine": "active",
         "tts_reliability": "enhanced_with_retry",
         "target_response_time": "< 2 seconds with emotional intelligence",
@@ -368,8 +384,8 @@ def voice_conversation():
                 "processing_time": total_time,
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
-                "method": "fixed_syntax_tts_empathy",
-                "ai_provider": "Empathetic Intelligence Engine",
+                "method": "groq_import_fixed",
+                "ai_provider": "Groq + Empathetic Intelligence" if groq_working else "Empathetic Fallbacks",
                 "empathy_level": "high",
                 "tts_status": "success"
             })
@@ -384,7 +400,7 @@ def voice_conversation():
                 "ai_generation_time": ai_time,
                 "tts_time": tts_time,
                 "error": "Audio generation failed after retries",
-                "ai_provider": "Empathetic Intelligence Engine",
+                "ai_provider": "Groq + Empathetic Intelligence" if groq_working else "Empathetic Fallbacks",
                 "tts_status": "failed"
             })
         
@@ -393,7 +409,7 @@ def voice_conversation():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    print("💝 Starting FIXED SYNTAX TTS + EMPATHY ORA Backend...")
+    print("💝 Starting GROQ IMPORT FIXED + EMPATHY ORA Backend...")
     print(f"🎭 Empathy Engine: ACTIVE")
     print(f"🔊 TTS: Enhanced reliability with retry logic")
     print(f"⚡ AI Provider: {'Groq + Empathy' if groq_working else 'Empathetic Fallbacks'}")
