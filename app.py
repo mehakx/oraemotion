@@ -13,7 +13,7 @@ import logging
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 CORS(app, origins="*")
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # Environment variables
 HUME_API_KEY = os.getenv("HUME_API_KEY")
@@ -421,18 +421,6 @@ def health_check():
         "active_connections": len(active_connections),
         "personalities": list(PERSONALITY_TEMPLATES.keys())
     })
-
-if __name__ == '__main__':
-    print(f"\n🎭 HUME EVI PERSONALITY SYSTEM READY!")
-    print(f"🎙️ Direct Speech-to-Speech: Hume EVI")
-    print(f"🎯 Personalities Available: {list(PERSONALITY_TEMPLATES.keys())}")
-    print(f"⚡ WebSocket-based for real-time communication")
-    
-    # Get port from environment variable
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Run with SocketIO
-    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
 
 
 
