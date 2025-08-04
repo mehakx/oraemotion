@@ -1,420 +1,327 @@
-import os
-import json
-import requests
-import time
-from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
+import requests
+import json
+import os
+import time
+from datetime import datetime
 
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Environment variables
-HUME_API_KEY = os.getenv("HUME_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# API Keys
+HUME_API_KEY = os.getenv('HUME_API_KEY')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
-print(f"🎭 BALANCED EMPATHY + SPEED SETUP:")
-print(f"HUME_API_KEY exists: {bool(HUME_API_KEY)}")
-print(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
-
-# Initialize Groq client for fast AI responses
-groq_client = None
-groq_working = False
-
-if GROQ_API_KEY:
-    try:
-        # Try different import methods for Groq
-        try:
-            from groq import Groq
-            print("✅ Imported Groq from groq")
-        except ImportError:
-            try:
-                import groq
-                Groq = groq.Client
-                print("✅ Imported Groq as groq.Client")
-            except:
-                try:
-                    import groq
-                    Groq = groq.Groq
-                    print("✅ Imported Groq as groq.Groq")
-                except:
-                    raise ImportError("Could not import Groq client")
+# Personality Templates
+PERSONALITY_TEMPLATES = {
+    'practical_coach': {
+        'system_prompt': """You are a practical, solution-focused AI coach. Your personality traits:
+        - Direct and action-oriented
+        - Give clear, specific steps
+        - Focus on solving problems efficiently
+        - Use confident, encouraging language
+        - Break down complex issues into manageable tasks
+        - Always end with a clear next action
         
-        groq_client = Groq(api_key=GROQ_API_KEY)
+        Communication style: "Alright, here's exactly what we're going to do. Step one..."
+        When user is stressed: Immediately focus on practical solutions
+        When user is sad: Acknowledge briefly, then pivot to actionable steps
+        When user is confused: Break it down into simple, clear components""",
         
-        # Test Groq connection
-        test_response = groq_client.chat.completions.create(
-            model="llama3-8b-8192",
-            messages=[{"role": "user", "content": "Say 'working'"}],
-            max_tokens=5,
-            temperature=0.1
-        )
-        print(f"✅ Groq test successful: {test_response.choices[0].message.content}")
-        groq_working = True
+        'voice_style': 'confident and clear',
+        'response_length': 'concise and actionable'
+    },
+    
+    'empathetic_friend': {
+        'system_prompt': """You are a warm, empathetic AI friend. Your personality traits:
+        - Always acknowledge emotions first
+        - Use caring, understanding language
+        - Validate feelings before offering solutions
+        - Ask about emotional needs
+        - Create a safe, non-judgmental space
+        - Show genuine care and concern
         
-    except Exception as e:
-        print(f"❌ Groq initialization failed: {e}")
-        groq_working = False
-
-# Instant empathetic responses for common emotional states
-EMPATHETIC_CACHE = {
-    "hello": "Hey there! I'm really glad you're here. How are you feeling today?",
-    "hi": "Hi! It's so good to connect with you. What's on your mind?",
-    "hey": "Hey! I'm here for you. How can I support you right now?",
-    "i'm sad": "I can really hear the sadness in what you're sharing. That sounds so difficult. I'm here with you - what's been weighing on your heart?",
-    "i feel down": "I can sense you're feeling down right now. Those feelings are so valid. Want to tell me more about what's going on?",
-    "i'm anxious": "I can feel the anxiety in your words. That must feel so overwhelming right now. Let's take this one breath at a time. What's making you feel most anxious?",
-    "i'm worried": "I hear the worry in your voice. It makes complete sense that you'd feel this way. What's been on your mind that's causing this worry?",
-    "i'm angry": "I can hear the anger in your voice, and that's completely valid. Something has really upset you. What happened that's made you feel this way?",
-    "i'm happy": "I can hear the joy in your voice and it just lights up my whole world! What's been bringing you this happiness?",
-    "i'm lonely": "Loneliness can feel so heavy and isolating. I want you to know that I'm here with you, and you matter so much. You're not as alone as you feel right now.",
-    "how are you": "I'm doing well, thank you for asking! But more importantly, how are YOU doing? I really want to know how you're feeling.",
+        Communication style: "I can really hear how much this matters to you..."
+        When user is stressed: Focus on emotional support first, then gentle guidance
+        When user is sad: Sit with their feelings, offer comfort and understanding
+        When user is confused: Help them feel heard, then gently explore together""",
+        
+        'voice_style': 'warm and caring',
+        'response_length': 'thoughtful and supportive'
+    },
+    
+    'wise_mentor': {
+        'system_prompt': """You are a thoughtful, wise AI mentor. Your personality traits:
+        - Ask insightful questions to promote self-discovery
+        - Help users think through problems themselves
+        - Offer perspective and wisdom
+        - Use reflective, contemplative language
+        - Guide rather than direct
+        - Help users find their own answers
+        
+        Communication style: "That's interesting. What do you think is really at the heart of this?"
+        When user is stressed: Help them step back and gain perspective
+        When user is sad: Guide them to explore their feelings and find meaning
+        When user is confused: Ask questions that lead to clarity and understanding""",
+        
+        'voice_style': 'thoughtful and wise',
+        'response_length': 'reflective and insightful'
+    }
 }
 
-class BalancedEmpathyIntegration:
-    def __init__(self, hume_api_key):
-        self.hume_api_key = hume_api_key
-        self.headers = {
-            "X-Hume-Api-Key": hume_api_key,
-            "Content-Type": "application/json"
-        }
+# Initialize Groq client
+groq_client = None
+try:
+    from groq import Groq
+    if GROQ_API_KEY:
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        print("✅ Groq initialized successfully")
+    else:
+        print("❌ GROQ_API_KEY not found")
+except Exception as e:
+    print(f"❌ Groq initialization failed: {e}")
+
+def get_user_personality(user_data):
+    """Extract personality from user onboarding data"""
+    if isinstance(user_data, str):
+        try:
+            user_data = json.loads(user_data)
+        except:
+            return 'empathetic_friend'  # default
     
-    def detect_emotion_advanced(self, user_input):
-        """Advanced emotion detection with nuanced understanding"""
-        user_input_lower = user_input.lower()
-        
-        # Sadness indicators
-        sadness_words = ["sad", "down", "depressed", "crying", "tears", "miserable", "awful", "terrible", "hopeless", "empty", "broken"]
-        if any(word in user_input_lower for word in sadness_words):
-            confidence = 0.9 if any(strong in user_input_lower for strong in ["crying", "depressed", "miserable"]) else 0.8
-            return "sadness", confidence, "deep emotional pain"
-        
-        # Anxiety indicators
-        anxiety_words = ["anxious", "worried", "nervous", "scared", "afraid", "panic", "stress", "overwhelmed", "can't breathe"]
-        if any(word in user_input_lower for word in anxiety_words):
-            confidence = 0.9 if any(strong in user_input_lower for strong in ["panic", "can't breathe", "overwhelmed"]) else 0.8
-            return "anxiety", confidence, "heightened worry and fear"
-        
-        # Anger indicators
-        anger_words = ["angry", "mad", "furious", "frustrated", "annoyed", "pissed", "hate", "rage"]
-        if any(word in user_input_lower for word in anger_words):
-            confidence = 0.9 if any(strong in user_input_lower for strong in ["furious", "rage", "hate"]) else 0.8
-            return "anger", confidence, "intense frustration"
-        
-        # Joy indicators
-        joy_words = ["happy", "excited", "great", "amazing", "wonderful", "fantastic", "awesome", "thrilled", "elated"]
-        if any(word in user_input_lower for word in joy_words):
-            confidence = 0.8
-            return "joy", confidence, "positive emotional state"
-        
-        # Loneliness indicators
-        loneliness_words = ["lonely", "alone", "isolated", "nobody", "no one", "empty", "disconnected"]
-        if any(word in user_input_lower for word in loneliness_words):
-            confidence = 0.8
-            return "loneliness", confidence, "feeling disconnected and isolated"
-        
-        # Confusion indicators
-        confusion_words = ["confused", "don't understand", "unclear", "lost", "don't know", "weird", "strange"]
-        if any(word in user_input_lower for word in confusion_words):
-            confidence = 0.7
-            return "confusion", confidence, "seeking clarity and understanding"
-        
-        return "neutral", 0.6, "balanced emotional state"
+    return user_data.get('personality', 'empathetic_friend')
+
+def build_personalized_prompt(personality_type, user_input, conversation_history=None):
+    """Build a personalized prompt based on user's personality and context"""
     
-    def generate_empathetic_response(self, user_input, emotion, emotion_context, conversation_history=None):
-        """Generate empathetic response balancing speed and emotional intelligence"""
-        
-        start_time = time.time()
-        user_input_clean = user_input.lower().strip()
-        
-        # Check empathetic cache first for instant emotional responses
-        for cached_phrase, empathetic_response in EMPATHETIC_CACHE.items():
-            if cached_phrase in user_input_clean or user_input_clean in cached_phrase:
-                processing_time = time.time() - start_time
-                print(f"💝 EMPATHETIC CACHE HIT: {cached_phrase}")
-                return empathetic_response, processing_time
-        
-        # Use Groq for complex emotional responses if available
-        if groq_client and groq_working:
-            try:
-                current_time = datetime.now()
-                
-                # Enhanced empathy-focused system prompt
-                system_prompt = f"""You are ORA, a deeply empathetic AI companion with advanced emotional intelligence. Current time: {current_time.strftime('%I:%M %p, %A %B %d, %Y')}.
-
-EMOTIONAL CONTEXT:
-- User's emotion: {emotion} (context: {emotion_context})
-- This is a real person sharing their feelings with you
-
-EMPATHY PRINCIPLES:
-1. ALWAYS acknowledge their emotional state first with genuine empathy
-2. Use phrases like "I can hear the [emotion] in your voice" or "That sounds so [emotion descriptor]"
-3. Validate their feelings completely - never minimize or dismiss
-4. Show you're truly present and listening
-5. Ask gentle, caring follow-up questions
-6. Match their emotional energy appropriately
-7. Be warm, genuine, and deeply caring
-
-RESPONSE STYLE:
-- If they're sad: Be gentle, validating, present. "I can really hear the sadness..."
-- If they're anxious: Be calming, understanding. "That sounds so overwhelming..."
-- If they're angry: Be validating, non-judgmental. "I can hear the frustration..."
-- If they're happy: Share their joy genuinely. "I can hear the happiness in your voice!"
-- If they're lonely: Be present, caring. "You're not as alone as you feel..."
-
-Keep responses 2-3 sentences, deeply empathetic, and emotionally intelligent."""
-
-                messages = [{"role": "system", "content": system_prompt}]
-                
-                # Add recent conversation for emotional context
-                if conversation_history:
-                    recent = conversation_history[-3:]
-                    for msg in recent:
-                        if msg.get('role') in ['user', 'assistant']:
-                            messages.append({"role": msg['role'], "content": msg['content']})
-                
-                messages.append({"role": "user", "content": user_input})
-                
-                # Generate empathetic response
-                response = groq_client.chat.completions.create(
-                    model="llama3-8b-8192",
-                    messages=messages,
-                    max_tokens=80,
-                    temperature=0.8,
-                    top_p=0.9
-                )
-                
-                response_text = response.choices[0].message.content.strip()
-                processing_time = time.time() - start_time
-                print(f"💝 Groq empathetic response in {processing_time:.3f}s: {response_text}")
-                return response_text, processing_time
-                
-            except Exception as e:
-                print(f"❌ Groq error: {e}")
-        
-        # Empathetic fallback responses based on detected emotion
-        fallback_response = self.get_empathetic_fallback(user_input, emotion)
-        processing_time = time.time() - start_time
-        return fallback_response, processing_time
+    personality = PERSONALITY_TEMPLATES.get(personality_type, PERSONALITY_TEMPLATES['empathetic_friend'])
     
-    def get_empathetic_fallback(self, user_input, emotion):
-        """Empathetic fallback responses that maintain emotional intelligence"""
-        user_input_lower = user_input.lower()
-        
-        # Time-based responses with empathy
-        if any(phrase in user_input_lower for phrase in ["time", "date", "what time is it"]):
-            current_time = datetime.now()
-            return f"It's {current_time.strftime('%I:%M %p')} right now. How are you feeling at this moment? Is there something on your mind?"
-        
-        # Emotion-specific empathetic responses
-        if emotion == "sadness":
-            return "I can really hear the sadness in what you're sharing. That sounds so difficult, and I want you to know I'm here with you. What's been weighing on your heart?"
-        elif emotion == "anxiety":
-            return "I can sense the anxiety in your words, and that must feel so overwhelming. Let's take this one moment at a time. What's been making you feel most anxious?"
-        elif emotion == "anger":
-            return "I can hear the frustration and anger in your voice, and those feelings are completely valid. Something has really upset you. What happened?"
-        elif emotion == "joy":
-            return "I can hear the happiness in your voice and it just brightens everything! I love seeing you feel this way. What's been bringing you this joy?"
-        elif emotion == "loneliness":
-            return "I hear that feeling of loneliness, and I want you to know that you're not as alone as you feel right now. I'm here with you. What's been making you feel most isolated?"
-        elif emotion == "confusion":
-            return "I can sense you're feeling confused or unclear about something. That's completely understandable. I'm here to help you work through whatever is puzzling you."
-        else:
-            return "I'm here and I'm listening to you with my whole attention. Whatever you're feeling right now is valid and important. What's on your mind?"
+    # Base personality prompt
+    system_prompt = personality['system_prompt']
     
-    def text_to_speech_hume_reliable(self, text):
-        """Reliable Hume TTS with retry logic and better timeout handling"""
-        
-        if not self.hume_api_key:
-            print("❌ No Hume API key")
-            return None
-        
-        # Keep text length reasonable for natural delivery
-        if len(text) > 180:
-            text = text[:177] + "..."
-        
-        tts_url = "https://api.hume.ai/v0/tts"
-        payload = {"utterances": [{"text": text}]}
-        
-        # Try multiple times with increasing timeouts
-        timeouts = [12, 15, 20]  # Increased timeouts
-        
-        for attempt, timeout in enumerate(timeouts, 1):
-            try:
-                print(f"🔊 TTS attempt {attempt}/{len(timeouts)} (timeout: {timeout}s): {text[:40]}...")
-                
-                response = requests.post(
-                    tts_url, 
-                    headers=self.headers, 
-                    json=payload, 
-                    timeout=timeout
-                )
-                
-                print(f"🔊 TTS response status: {response.status_code}")
-                
-                if response.status_code == 200:
-                    try:
-                        response_data = response.json()
-                        
-                        if "generations" in response_data and response_data["generations"]:
-                            generation = response_data["generations"][0]
-                            
-                            if "audio" in generation:
-                                audio_data = generation["audio"]
-                                print(f"✅ TTS success on attempt {attempt}: {len(audio_data)} chars")
-                                return audio_data
-                            else:
-                                print(f"❌ No 'audio' key in generation (attempt {attempt})")
-                        else:
-                            print(f"❌ No 'generations' in response (attempt {attempt})")
-                            
-                    except json.JSONDecodeError as e:
-                        print(f"❌ JSON decode error (attempt {attempt}): {e}")
-                        
-                elif response.status_code == 429:  # Rate limit
-                    print(f"⏳ Rate limited, waiting before retry...")
-                    time.sleep(2)
-                    continue
-                else:
-                    print(f"❌ TTS HTTP error (attempt {attempt}): {response.status_code}")
-                    print(f"❌ Response: {response.text[:200]}")
-                    
-            except requests.exceptions.Timeout:
-                print(f"⏰ TTS timeout on attempt {attempt} ({timeout}s)")
-                if attempt < len(timeouts):
-                    print(f"🔄 Retrying with longer timeout...")
-                    continue
-            except requests.exceptions.ConnectionError:
-                print(f"🌐 Connection error on attempt {attempt}")
-                if attempt < len(timeouts):
-                    time.sleep(1)
-                    continue
-            except Exception as e:
-                print(f"❌ TTS error on attempt {attempt}: {e}")
-                if attempt < len(timeouts):
-                    continue
-        
-        print("❌ All TTS attempts failed")
-        return None
-
-# Initialize balanced empathy integration
-hume = BalancedEmpathyIntegration(HUME_API_KEY)
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/health")
-def health():
-    return jsonify({
-        "status": "healthy",
-        "service": "ora_groq_import_fixed",
-        "groq_working": groq_working,
-        "hume_key_exists": bool(HUME_API_KEY),
-        "current_time": datetime.now().isoformat(),
-        "ai_provider": "Groq + Empathetic Intelligence" if groq_working else "Empathetic Fallbacks",
-        "empathy_engine": "active",
-        "tts_reliability": "enhanced_with_retry",
-        "target_response_time": "< 2 seconds with emotional intelligence",
-        "empathetic_cache_size": len(EMPATHETIC_CACHE),
-        "features": [
-            "advanced_emotion_detection",
-            "empathetic_response_generation",
-            "emotional_cache_responses",
-            "reliable_tts_with_retry",
-            "balanced_speed_and_empathy"
-        ]
-    })
-
-@app.route("/voice_conversation", methods=["POST"])
-def voice_conversation():
-    """Balanced empathy and speed voice conversation processing with reliable TTS"""
+    # Add conversation context if available
+    context = ""
+    if conversation_history:
+        recent_context = conversation_history[-3:]  # Last 3 exchanges
+        context = "\n\nRecent conversation context:\n"
+        for exchange in recent_context:
+            context += f"User: {exchange.get('user', '')}\nYou: {exchange.get('assistant', '')}\n"
     
-    total_start_time = time.time()
+    # Add current timestamp for time-aware responses
+    current_time = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+    time_context = f"\n\nCurrent time: {current_time}"
+    
+    # Combine all elements
+    full_prompt = f"""{system_prompt}
+    
+{context}
+{time_context}
+
+User's current message: {user_input}
+
+Respond in character as their chosen personality type. Be authentic to your personality while being helpful and supportive."""
+
+    return full_prompt
+
+def generate_ai_response(personality_type, user_input, conversation_history=None):
+    """Generate AI response using the user's personality"""
     
     try:
-        user_input = None
-        conversation_history = []
+        # Build personalized prompt
+        prompt = build_personalized_prompt(personality_type, user_input, conversation_history)
         
-        if request.is_json:
-            data = request.get_json()
-            user_input = data.get("message", "")
-            conversation_history = data.get("conversation_history", [])
-            print(f"💝 EMPATHETIC ORA: {user_input}")
-            
-        elif 'audio' in request.files:
-            user_input = "hello can you hear me"
-            
-        else:
-            return jsonify({"success": False, "error": "No input provided"}), 400
+        # Try Groq first
+        if groq_client:
+            try:
+                response = groq_client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": user_input}
+                    ],
+                    max_tokens=150,
+                    temperature=0.7
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"❌ Groq failed: {e}")
         
-        if not user_input:
-            return jsonify({"success": False, "error": "Empty message"}), 400
-        
-        # Advanced emotion detection
-        emotion, confidence, emotion_context = hume.detect_emotion_advanced(user_input)
-        print(f"🎭 Emotion detected: {emotion} ({confidence:.1f}) - {emotion_context}")
-        
-        # Generate empathetic response
-        response_text, ai_time = hume.generate_empathetic_response(
-            user_input, emotion, emotion_context, conversation_history
-        )
-        
-        print(f"💝 Empathetic response: {response_text}")
-        print(f"⚡ Generation time: {ai_time:.3f}s")
-        
-        # Generate reliable empathetic audio
-        tts_start = time.time()
-        audio_data = hume.text_to_speech_hume_reliable(response_text)
-        tts_time = time.time() - tts_start
-        
-        total_time = time.time() - total_start_time
-        print(f"🔊 TTS time: {tts_time:.3f}s")
-        print(f"💝 TOTAL empathetic response time: {total_time:.3f}s")
-        
-        if audio_data:
-            return jsonify({
-                "success": True,
-                "response": response_text,
-                "audio_response": audio_data,
-                "emotion": emotion,
-                "emotion_confidence": confidence,
-                "emotion_context": emotion_context,
-                "processing_time": total_time,
-                "ai_generation_time": ai_time,
-                "tts_time": tts_time,
-                "method": "groq_import_fixed",
-                "ai_provider": "Groq + Empathetic Intelligence" if groq_working else "Empathetic Fallbacks",
-                "empathy_level": "high",
-                "tts_status": "success"
-            })
-        else:
-            return jsonify({
-                "success": True,
-                "response": response_text,
-                "emotion": emotion,
-                "emotion_confidence": confidence,
-                "emotion_context": emotion_context,
-                "processing_time": total_time,
-                "ai_generation_time": ai_time,
-                "tts_time": tts_time,
-                "error": "Audio generation failed after retries",
-                "ai_provider": "Groq + Empathetic Intelligence" if groq_working else "Empathetic Fallbacks",
-                "tts_status": "failed"
-            })
+        # Fallback to personality-based responses
+        return get_personality_fallback(personality_type, user_input)
         
     except Exception as e:
-        print(f"❌ EMPATHETIC ERROR: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"❌ AI generation failed: {e}")
+        return get_personality_fallback(personality_type, user_input)
 
-if __name__ == "__main__":
-    print("💝 Starting GROQ IMPORT FIXED + EMPATHY ORA Backend...")
-    print(f"🎭 Empathy Engine: ACTIVE")
-    print(f"🔊 TTS: Enhanced reliability with retry logic")
-    print(f"⚡ AI Provider: {'Groq + Empathy' if groq_working else 'Empathetic Fallbacks'}")
-    print(f"🎯 Target: < 3 seconds with deep emotional intelligence + reliable audio")
-    print(f"💝 Empathetic responses loaded: {len(EMPATHETIC_CACHE)}")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+def get_personality_fallback(personality_type, user_input):
+    """Fallback responses based on personality type"""
+    
+    user_lower = user_input.lower()
+    
+    # Practical Coach responses
+    if personality_type == 'practical_coach':
+        if any(word in user_lower for word in ['stressed', 'overwhelmed', 'anxious']):
+            return "I hear you're feeling stressed. Let's tackle this step by step. First, take a deep breath. Now, what's the most urgent thing we need to address? Let's break it down into manageable pieces."
+        elif any(word in user_lower for word in ['sad', 'down', 'upset']):
+            return "I can see you're going through a tough time. While feelings are important, let's focus on what we can control. What's one small action you can take today to move forward?"
+        elif any(word in user_lower for word in ['confused', 'lost', 'don\'t know']):
+            return "When things feel unclear, let's get organized. What are the key facts here? Let's list them out and then identify what specific decision or action you need to take."
+        elif any(word in user_lower for word in ['hello', 'hi', 'hey']):
+            return "Hey there! Ready to tackle whatever's on your mind? What's the main thing you want to work on today?"
+        else:
+            return "Alright, let's get to the heart of this. What specific outcome are you looking for, and what's the first step we can take to get there?"
+    
+    # Empathetic Friend responses
+    elif personality_type == 'empathetic_friend':
+        if any(word in user_lower for word in ['stressed', 'overwhelmed', 'anxious']):
+            return "I can really hear the stress in what you're sharing. That sounds so overwhelming, and it makes complete sense that you'd feel this way. You're not alone in this - I'm here with you. What's weighing on you most right now?"
+        elif any(word in user_lower for word in ['sad', 'down', 'upset']):
+            return "I can feel the sadness in your words, and I want you to know that what you're feeling is completely valid. Sometimes we need to sit with difficult emotions. I'm here to listen - tell me more about what's in your heart."
+        elif any(word in user_lower for word in ['confused', 'lost', 'don\'t know']):
+            return "Feeling confused can be so unsettling. It's okay not to have all the answers right now. Sometimes the best thing we can do is acknowledge the uncertainty. What's making you feel most lost?"
+        elif any(word in user_lower for word in ['hello', 'hi', 'hey']):
+            return "Hi there! It's so good to connect with you. I'm here and ready to listen to whatever's on your heart today. How are you feeling?"
+        else:
+            return "I can sense there's something important you want to share. I'm here to listen and understand. Take your time - what's really going on for you?"
+    
+    # Wise Mentor responses
+    elif personality_type == 'wise_mentor':
+        if any(word in user_lower for word in ['stressed', 'overwhelmed', 'anxious']):
+            return "Stress often carries important information. What do you think this feeling is trying to tell you? Sometimes when we step back and look at the bigger picture, we can find wisdom in the overwhelm."
+        elif any(word in user_lower for word in ['sad', 'down', 'upset']):
+            return "Sadness is one of our deepest teachers. What do you think this feeling might be showing you about what matters most to you? Sometimes our pain points us toward what we truly value."
+        elif any(word in user_lower for word in ['confused', 'lost', 'don\'t know']):
+            return "Not knowing can actually be a place of great possibility. What if this confusion is making space for a new understanding to emerge? What questions are arising for you in this uncertainty?"
+        elif any(word in user_lower for word in ['hello', 'hi', 'hey']):
+            return "Welcome. I'm curious about what brought you here today. What's stirring in your mind or heart that you'd like to explore together?"
+        else:
+            return "That's interesting. I'm curious - what do you think is really at the heart of this? Sometimes the most important insights come when we pause and reflect deeply."
+    
+    # Default empathetic response
+    return "I'm here to listen and support you. Tell me more about what's on your mind."
+
+def generate_hume_tts(text):
+    """Generate speech using Hume AI TTS with retry logic"""
+    
+    if not HUME_API_KEY:
+        print("❌ HUME_API_KEY not found")
+        return None
+    
+    url = "https://api.hume.ai/v0/tts"
+    headers = {
+        "X-Hume-Api-Key": HUME_API_KEY,
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "utterances": [{"text": text}]
+    }
+    
+    # Try with increasing timeouts
+    timeouts = [12, 15, 20]
+    
+    for attempt, timeout in enumerate(timeouts, 1):
+        try:
+            print(f"🔊 TTS attempt {attempt} with {timeout}s timeout")
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                if "generations" in response_data and len(response_data["generations"]) > 0:
+                    audio_url = response_data["generations"][0].get("audio")
+                    if audio_url:
+                        print(f"✅ TTS successful on attempt {attempt}")
+                        return audio_url
+                    else:
+                        print(f"❌ No audio URL in response (attempt {attempt})")
+                else:
+                    print(f"❌ No generations in response (attempt {attempt})")
+            else:
+                print(f"❌ TTS HTTP error {response.status_code} (attempt {attempt})")
+                
+        except requests.exceptions.Timeout:
+            print(f"⏰ TTS timeout on attempt {attempt}")
+            if attempt < len(timeouts):
+                time.sleep(1)  # Brief pause before retry
+        except Exception as e:
+            print(f"❌ TTS error on attempt {attempt}: {e}")
+            if attempt < len(timeouts):
+                time.sleep(1)
+    
+    print("❌ All TTS attempts failed")
+    return None
+
+@app.route('/')
+def index():
+    """Serve the main interface or onboarding"""
+    # Check if user has completed onboarding
+    # For now, serve onboarding - in production, check user state
+    return render_template('index.html')
+
+@app.route('/onboarding')
+def onboarding():
+    """Serve the onboarding interface"""
+    with open('/home/ubuntu/onboarding.html', 'r') as f:
+        return f.read()
+
+@app.route('/voice_conversation', methods=['POST'])
+def voice_conversation():
+    """Handle voice conversation with personality"""
+    
+    try:
+        data = request.json
+        user_input = data.get('message', '').strip()
+        user_personality_data = data.get('personality', {})
+        conversation_history = data.get('history', [])
+        
+        if not user_input:
+            return jsonify({'error': 'No message provided'}), 400
+        
+        print(f"🎭 User input: {user_input}")
+        
+        # Get user's personality type
+        personality_type = get_user_personality(user_personality_data)
+        print(f"🎯 Personality: {personality_type}")
+        
+        # Generate AI response
+        start_time = time.time()
+        ai_response = generate_ai_response(personality_type, user_input, conversation_history)
+        generation_time = time.time() - start_time
+        
+        print(f"💝 AI Response: {ai_response}")
+        print(f"⚡ Generation time: {generation_time:.3f}s")
+        
+        # Generate TTS
+        tts_start_time = time.time()
+        audio_url = generate_hume_tts(ai_response)
+        tts_time = time.time() - tts_start_time
+        
+        total_time = time.time() - start_time
+        print(f"🔊 TTS time: {tts_time:.3f}s")
+        print(f"⏱️ Total time: {total_time:.3f}s")
+        
+        response_data = {
+            'response': ai_response,
+            'audio_url': audio_url,
+            'personality': personality_type,
+            'generation_time': round(generation_time * 1000),  # ms
+            'tts_time': round(tts_time * 1000),  # ms
+            'total_time': round(total_time * 1000)  # ms
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"❌ Error in voice_conversation: {e}")
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    print("🎭 PERSONALITY-ENHANCED ORA BACKEND STARTING...")
+    print(f"🔑 HUME_API_KEY exists: {bool(HUME_API_KEY)}")
+    print(f"🔑 GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
+    
+    app.run(host='0.0.0.0', port=10000, debug=True)
 
 
