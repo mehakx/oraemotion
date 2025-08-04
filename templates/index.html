@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORA - Your AI Companion</title>
+    <title>ORA - Voice Wellness Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * {
@@ -12,53 +13,389 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
+        body, html {
+            height: 100vh;
+            width: 100vw;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            color: #ffffff;
             overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
         }
 
-        .header {
+        /* Subtle ambient glow */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: ambientBreath 8s ease-in-out infinite;
+        }
+
+        @keyframes ambientBreath {
+            0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Main Container */
+        .voice-interface {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Elegant status indicator */
+        .status-indicator {
+            position: absolute;
+            top: 4rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+            transition: all 0.4s ease;
+            text-align: center;
+        }
+
+        .status-indicator.listening {
+            color: rgba(0, 122, 255, 0.8);
+        }
+
+        .status-indicator.thinking {
+            color: rgba(255, 149, 0, 0.8);
+        }
+
+        .status-indicator.speaking {
+            color: rgba(255, 69, 58, 0.8);
+        }
+
+        /* Premium sun container */
+        .sun-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .abstract-sun {
+            width: 200px;
+            height: 200px;
+            position: relative;
+        }
+
+        /* Warm understanding aura */
+        .sun-aura {
+            width: 400%;
+            height: 400%;
+            background: radial-gradient(circle, 
+                rgba(255, 204, 102, 0.15) 0%,
+                rgba(255, 179, 71, 0.12) 30%,
+                rgba(255, 149, 0, 0.08) 60%,
+                transparent 80%);
+            position: absolute;
+            top: -150%;
+            left: -150%;
+            animation: warmGlow 10s ease-in-out infinite;
+            filter: blur(40px);
+        }
+
+        @keyframes warmGlow {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1.2) rotate(180deg);
+                opacity: 1;
+            }
+        }
+
+        /* Abstract sun core */
+        .sun-core {
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, 
+                rgba(255, 255, 255, 0.5) 0%,
+                rgba(255, 204, 102, 0.4) 30%,
+                rgba(255, 179, 71, 0.3) 70%,
+                rgba(255, 149, 0, 0.15) 100%);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: gentlePulse 6s ease-in-out infinite, colorCycle 15s ease-in-out infinite;
+            backdrop-filter: blur(20px);
+            border: 0.5px solid rgba(255, 204, 102, 0.5);
+            box-shadow: 
+                0 0 40px rgba(255, 204, 102, 0.6),
+                0 0 80px rgba(255, 179, 71, 0.4),
+                inset 0 0 30px rgba(255, 255, 255, 0.25);
+        }
+
+        /* Beautiful color cycling for idle state */
+        @keyframes colorCycle {
+            0% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 204, 102, 0.4) 30%,
+                    rgba(255, 179, 71, 0.3) 70%,
+                    rgba(255, 149, 0, 0.15) 100%);
+                border-color: rgba(255, 204, 102, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 204, 102, 0.6),
+                    0 0 80px rgba(255, 179, 71, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            25% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 193, 7, 0.4) 30%,
+                    rgba(255, 167, 38, 0.3) 70%,
+                    rgba(255, 138, 101, 0.15) 100%);
+                border-color: rgba(255, 193, 7, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 193, 7, 0.6),
+                    0 0 80px rgba(255, 167, 38, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            50% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 183, 77, 0.4) 30%,
+                    rgba(255, 154, 158, 0.3) 70%,
+                    rgba(255, 138, 128, 0.15) 100%);
+                border-color: rgba(255, 183, 77, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 183, 77, 0.6),
+                    0 0 80px rgba(255, 154, 158, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            75% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 171, 145, 0.4) 30%,
+                    rgba(255, 138, 101, 0.3) 70%,
+                    rgba(255, 160, 122, 0.15) 100%);
+                border-color: rgba(255, 171, 145, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 171, 145, 0.6),
+                    0 0 80px rgba(255, 138, 101, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+            100% {
+                background: radial-gradient(circle, 
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 204, 102, 0.4) 30%,
+                    rgba(255, 179, 71, 0.3) 70%,
+                    rgba(255, 149, 0, 0.15) 100%);
+                border-color: rgba(255, 204, 102, 0.5);
+                box-shadow: 
+                    0 0 40px rgba(255, 204, 102, 0.6),
+                    0 0 80px rgba(255, 179, 71, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.25);
+            }
+        }
+
+        /* Abstract sun rays - NO ROTATION */
+        .sun-ray {
+            position: absolute;
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 204, 102, 0.7) 50%,
+                transparent 100%);
+            border-radius: 50px;
+            transform-origin: center;
+        }
+
+        .sun-ray:nth-child(1) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        .sun-ray:nth-child(2) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        .sun-ray:nth-child(3) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        .sun-ray:nth-child(4) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(135deg);
+        }
+
+        .sun-ray:nth-child(5) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+
+        .sun-ray:nth-child(6) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(225deg);
+        }
+
+        .sun-ray:nth-child(7) {
+            width: 80px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(270deg);
+        }
+
+        .sun-ray:nth-child(8) {
+            width: 60px;
+            height: 1.5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(315deg);
+        }
+
+        @keyframes gentlePulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1); 
+                opacity: 0.8; 
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.1); 
+                opacity: 1; 
+            }
+        }
+
+        /* Sun states with Apple colors */
+        .abstract-sun.listening .sun-core {
+            background: radial-gradient(circle, 
+                rgba(0, 122, 255, 0.5) 0%,
+                rgba(0, 122, 255, 0.35) 50%,
+                rgba(0, 122, 255, 0.2) 100%) !important;
+            border-color: rgba(0, 122, 255, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(0, 122, 255, 0.7),
+                0 0 100px rgba(0, 122, 255, 0.4),
+                inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
+            animation: gentlePulse 4s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.listening .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(0, 122, 255, 0.8) 50%,
+                transparent 100%) !important;
+        }
+
+        .abstract-sun.thinking .sun-core {
+            background: radial-gradient(circle, 
+                rgba(255, 149, 0, 0.5) 0%,
+                rgba(255, 149, 0, 0.35) 50%,
+                rgba(255, 149, 0, 0.2) 100%) !important;
+            border-color: rgba(255, 149, 0, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(255, 149, 0, 0.7),
+                0 0 100px rgba(255, 149, 0, 0.4),
+                inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
+            animation: gentlePulse 3s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.thinking .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 149, 0, 0.8) 50%,
+                transparent 100%) !important;
+        }
+
+        .abstract-sun.speaking .sun-core {
+            background: radial-gradient(circle, 
+                rgba(255, 69, 58, 0.5) 0%,
+                rgba(255, 69, 58, 0.35) 50%,
+                rgba(255, 69, 58, 0.2) 100%) !important;
+            border-color: rgba(255, 69, 58, 0.6) !important;
+            box-shadow: 
+                0 0 50px rgba(255, 69, 58, 0.7),
+                0 0 100px rgba(255, 69, 58, 0.4),
+                inset 0 0 30px rgba(255, 69, 58, 0.25) !important;
+            animation: gentlePulse 2s ease-in-out infinite !important;
+        }
+
+        .abstract-sun.speaking .sun-ray {
+            background: linear-gradient(90deg, 
+                transparent 0%,
+                rgba(255, 69, 58, 0.8) 50%,
+                transparent 100%) !important;
+        }
+
+        /* Personality display */
+        .personality-display {
             position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            text-align: center;
-            z-index: 10;
-        }
-
-        .personality-display {
             font-size: 18px;
             font-weight: 600;
-            margin-bottom: 5px;
-            color: #fff;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
         }
 
         .user-greeting {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 14px;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
         }
 
+        /* Personality switcher */
         .personality-switcher {
             position: absolute;
             top: 20px;
             right: 20px;
-            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .personality-btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
             padding: 8px 16px;
-            margin: 2px;
             border-radius: 20px;
             cursor: pointer;
             font-size: 12px;
@@ -66,182 +403,45 @@
         }
 
         .personality-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 1);
         }
 
         .personality-btn.active {
-            background: rgba(255,255,255,0.4);
-            border-color: rgba(255,255,255,0.6);
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 1);
         }
 
-        .sun-container {
-            position: relative;
-            width: 300px;
-            height: 300px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .sun-container:hover {
-            transform: scale(1.05);
-        }
-
-        .sun-core {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, #ffd700, #ffaa00, #ff6b00);
-            box-shadow: 
-                0 0 60px rgba(255, 215, 0, 0.8),
-                0 0 120px rgba(255, 215, 0, 0.4),
-                inset 0 0 60px rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-        }
-
-        .sun-rays {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-            height: 300px;
-        }
-
-        .ray {
-            position: absolute;
-            background: linear-gradient(to right, rgba(255, 215, 0, 0.8), transparent);
-            transform-origin: left center;
-        }
-
-        .ray:nth-child(1) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(0deg); }
-        .ray:nth-child(2) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(45deg); }
-        .ray:nth-child(3) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(90deg); }
-        .ray:nth-child(4) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(135deg); }
-        .ray:nth-child(5) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(180deg); }
-        .ray:nth-child(6) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(225deg); }
-        .ray:nth-child(7) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(270deg); }
-        .ray:nth-child(8) { width: 80px; height: 4px; top: 50%; left: 50%; transform: translate(90px, -2px) rotate(315deg); }
-
-        .status-text {
-            position: absolute;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 18px;
-            font-weight: 600;
-            text-align: center;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-        }
-
-        .listening {
-            background: radial-gradient(circle at 30% 30%, #4fc3f7, #29b6f6, #0288d1);
-            box-shadow: 
-                0 0 60px rgba(79, 195, 247, 0.8),
-                0 0 120px rgba(79, 195, 247, 0.4),
-                inset 0 0 60px rgba(255, 255, 255, 0.2);
-        }
-
-        .processing {
-            background: radial-gradient(circle at 30% 30%, #ffb74d, #ff9800, #f57c00);
-            box-shadow: 
-                0 0 60px rgba(255, 183, 77, 0.8),
-                0 0 120px rgba(255, 183, 77, 0.4),
-                inset 0 0 60px rgba(255, 255, 255, 0.2);
-        }
-
-        .speaking {
-            background: radial-gradient(circle at 30% 30%, #81c784, #66bb6a, #4caf50);
-            box-shadow: 
-                0 0 60px rgba(129, 199, 132, 0.8),
-                0 0 120px rgba(129, 199, 132, 0.4),
-                inset 0 0 60px rgba(255, 255, 255, 0.2);
-        }
-
-        .error {
-            background: radial-gradient(circle at 30% 30%, #e57373, #f44336, #d32f2f);
-            box-shadow: 
-                0 0 60px rgba(229, 115, 115, 0.8),
-                0 0 120px rgba(229, 115, 115, 0.4),
-                inset 0 0 60px rgba(255, 255, 255, 0.2);
-        }
-
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.1); }
-            100% { transform: translate(-50%, -50%) scale(1); }
-        }
-
-        .transcript {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            padding: 10px 20px;
-            border-radius: 20px;
-            max-width: 80%;
-            text-align: center;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .transcript.show {
-            opacity: 1;
-        }
-
+        /* Mobile responsive */
         @media (max-width: 768px) {
-            .sun-container {
-                width: 250px;
-                height: 250px;
-            }
-            
-            .sun-core {
-                width: 150px;
-                height: 150px;
-                font-size: 20px;
-            }
-            
-            .sun-rays {
-                width: 250px;
-                height: 250px;
-            }
-            
             .personality-switcher {
                 position: fixed;
                 bottom: 20px;
                 right: 20px;
                 top: auto;
+                flex-direction: row;
+                gap: 4px;
             }
             
-            .header {
+            .personality-btn {
+                font-size: 10px;
+                padding: 6px 12px;
+            }
+            
+            .personality-display {
                 top: 40px;
+            }
+            
+            .user-greeting {
+                top: 70px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="personality-display" id="personalityDisplay">The Empathetic Friend</div>
-        <div class="user-greeting" id="userGreeting">Hello, User</div>
-    </div>
+    <div class="personality-display" id="personalityDisplay">The Empathetic Friend</div>
+    <div class="user-greeting" id="userGreeting">Hello, User</div>
 
     <div class="personality-switcher">
         <button class="personality-btn" onclick="changePersonality('practical')">Practical Coach</button>
@@ -249,24 +449,24 @@
         <button class="personality-btn" onclick="changePersonality('wise')">Wise Mentor</button>
     </div>
 
-    <div class="sun-container" id="sunContainer" onclick="toggleListening()">
-        <div class="sun-rays">
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-            <div class="ray"></div>
-        </div>
-        <div class="sun-core" id="sunCore">
-            ORA
+    <div class="voice-interface">
+        <div class="status-indicator" id="statusIndicator">Click anywhere to start talking</div>
+        
+        <div class="sun-container" onclick="toggleListening()">
+            <div class="abstract-sun" id="abstractSun">
+                <div class="sun-aura"></div>
+                <div class="sun-core"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+                <div class="sun-ray"></div>
+            </div>
         </div>
     </div>
-
-    <div class="status-text" id="statusText">Click to start talking</div>
-    <div class="transcript" id="transcript"></div>
 
     <script>
         // Initialize Socket.IO connection
@@ -280,9 +480,8 @@
         let userPersonality = localStorage.getItem('ora_personality') || 'empathetic';
         
         // DOM elements
-        const sunCore = document.getElementById('sunCore');
-        const statusText = document.getElementById('statusText');
-        const transcript = document.getElementById('transcript');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const abstractSun = document.getElementById('abstractSun');
         const personalityDisplay = document.getElementById('personalityDisplay');
         const userGreeting = document.getElementById('userGreeting');
         
@@ -301,20 +500,20 @@
         socket.on('connect', function() {
             console.log('Connected to server');
             isConnected = true;
-            updateStatus('Connected! Click to start talking');
+            updateStatus('Connected! Click anywhere to start talking');
         });
         
         socket.on('disconnect', function() {
             console.log('Disconnected from server');
             isConnected = false;
             updateStatus('Disconnected. Refresh to reconnect.');
-            sunCore.className = 'sun-core error';
+            abstractSun.className = 'abstract-sun';
         });
         
         socket.on('conversation_started', function(data) {
             console.log('Conversation started:', data);
-            updateStatus('Ready to talk! Click to speak');
-            sunCore.className = 'sun-core';
+            updateStatus('Ready to talk! Click anywhere to speak');
+            abstractSun.className = 'abstract-sun';
         });
         
         socket.on('audio_response', function(data) {
@@ -324,7 +523,7 @@
         
         socket.on('transcript', function(data) {
             console.log('Transcript:', data.text);
-            showTranscript(data.text);
+            updateStatus('You said: "' + data.text + '"');
         });
         
         socket.on('emotions', function(data) {
@@ -340,7 +539,7 @@
         socket.on('error', function(data) {
             console.error('Socket error:', data.message);
             updateStatus('Error: ' + data.message);
-            sunCore.className = 'sun-core error';
+            abstractSun.className = 'abstract-sun';
             isListening = false;
         });
         
@@ -381,7 +580,7 @@
                 .then(function(stream) {
                     isListening = true;
                     updateStatus('Listening... Click to stop');
-                    sunCore.className = 'sun-core listening pulse';
+                    abstractSun.className = 'abstract-sun listening';
                     
                     // Start recording audio
                     startAudioRecording(stream);
@@ -389,14 +588,14 @@
                 .catch(function(error) {
                     console.error('Microphone access denied:', error);
                     updateStatus('Microphone access denied');
-                    sunCore.className = 'sun-core error';
+                    abstractSun.className = 'abstract-sun';
                 });
         }
         
         function stopListening() {
             isListening = false;
             updateStatus('Processing...');
-            sunCore.className = 'sun-core processing pulse';
+            abstractSun.className = 'abstract-sun thinking';
             
             // Stop recording and send audio
             stopAudioRecording();
@@ -449,19 +648,19 @@
         function playAudioResponse(base64Audio) {
             try {
                 updateStatus('ORA is speaking...');
-                sunCore.className = 'sun-core speaking pulse';
+                abstractSun.className = 'abstract-sun speaking';
                 
                 const audio = new Audio('data:audio/wav;base64,' + base64Audio);
                 
                 audio.onended = function() {
-                    updateStatus('Click to continue talking');
-                    sunCore.className = 'sun-core';
+                    updateStatus('Click anywhere to continue talking');
+                    abstractSun.className = 'abstract-sun';
                 };
                 
                 audio.onerror = function() {
                     console.error('Audio playback error');
                     updateStatus('Audio playback error');
-                    sunCore.className = 'sun-core error';
+                    abstractSun.className = 'abstract-sun';
                 };
                 
                 audio.play();
@@ -469,7 +668,7 @@
             } catch (error) {
                 console.error('Error playing audio:', error);
                 updateStatus('Error playing audio');
-                sunCore.className = 'sun-core error';
+                abstractSun.className = 'abstract-sun';
             }
         }
         
@@ -510,16 +709,7 @@
         }
         
         function updateStatus(message) {
-            statusText.textContent = message;
-        }
-        
-        function showTranscript(text) {
-            transcript.textContent = text;
-            transcript.classList.add('show');
-            
-            setTimeout(function() {
-                transcript.classList.remove('show');
-            }, 3000);
+            statusIndicator.textContent = message;
         }
         
         // Initialize personality buttons
@@ -527,7 +717,6 @@
     </script>
 </body>
 </html>
-
 
 
 
