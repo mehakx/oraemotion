@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORA - Voice Wellness Companion</title>
+    <title>ORA - Your Personal AI Companion</title>
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * {
@@ -50,1143 +50,581 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            padding: 2rem;
+            width: 100vw;
             position: relative;
             z-index: 1;
         }
 
-        /* Elegant status indicator */
-        .status-indicator {
+        /* Personality Header */
+        .personality-header {
             position: absolute;
-            top: 4rem;
+            top: 40px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.9rem;
-            font-weight: 400;
-            color: rgba(255, 255, 255, 0.6);
-            letter-spacing: 0.5px;
-            transition: all 0.4s ease;
             text-align: center;
+            z-index: 10;
         }
 
-        .status-indicator.listening {
-            color: rgba(0, 122, 255, 0.8);
+        .personality-name {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #ffd700;
+            margin-bottom: 5px;
         }
 
-        .status-indicator.thinking {
-            color: rgba(255, 149, 0, 0.8);
+        .user-name {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
         }
 
-        .status-indicator.speaking {
-            color: rgba(255, 69, 58, 0.8);
+        .settings-btn {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
         }
 
-        /* Premium sun container */
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #ffd700;
+        }
+
+        /* Close button */
+        .close-btn {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .close-btn:hover {
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        /* Central Sun Interface */
         .sun-container {
             position: relative;
-            width: 320px;
-            height: 320px;
+            width: 400px;
+            height: 400px;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
         }
 
-        .abstract-sun {
+        .sun {
             width: 200px;
             height: 200px;
+            border-radius: 50%;
             position: relative;
-        }
-
-        /* Warm understanding aura */
-        .sun-aura {
-            width: 400%;
-            height: 400%;
-            background: radial-gradient(circle, 
-                rgba(255, 204, 102, 0.15) 0%,
-                rgba(255, 179, 71, 0.12) 30%,
-                rgba(255, 149, 0, 0.08) 60%,
-                transparent 80%);
-            position: absolute;
-            top: -150%;
-            left: -150%;
-            animation: warmGlow 10s ease-in-out infinite;
-            filter: blur(40px);
-        }
-
-        @keyframes warmGlow {
-            0%, 100% {
-                transform: scale(1) rotate(0deg);
-                opacity: 0.8;
-            }
-            50% {
-                transform: scale(1.2) rotate(180deg);
-                opacity: 1;
-            }
-        }
-
-        /* Abstract sun core */
-        .sun-core {
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle, 
-                rgba(255, 255, 255, 0.5) 0%,
-                rgba(255, 204, 102, 0.4) 30%,
-                rgba(255, 179, 71, 0.3) 70%,
-                rgba(255, 149, 0, 0.15) 100%);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            animation: gentlePulse 6s ease-in-out infinite, colorCycle 15s ease-in-out infinite;
-            backdrop-filter: blur(20px);
-            border: 0.5px solid rgba(255, 204, 102, 0.5);
-            box-shadow: 
-                0 0 40px rgba(255, 204, 102, 0.6),
-                0 0 80px rgba(255, 179, 71, 0.4),
-                inset 0 0 30px rgba(255, 255, 255, 0.25);
-        }
-
-        /* Beautiful color cycling for idle state */
-        @keyframes colorCycle {
-            0% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 204, 102, 0.4) 30%,
-                    rgba(255, 179, 71, 0.3) 70%,
-                    rgba(255, 149, 0, 0.15) 100%);
-                border-color: rgba(255, 204, 102, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 204, 102, 0.6),
-                    0 0 80px rgba(255, 179, 71, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            25% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 193, 7, 0.4) 30%,
-                    rgba(255, 167, 38, 0.3) 70%,
-                    rgba(255, 138, 101, 0.15) 100%);
-                border-color: rgba(255, 193, 7, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 193, 7, 0.6),
-                    0 0 80px rgba(255, 167, 38, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            50% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 183, 77, 0.4) 30%,
-                    rgba(255, 154, 158, 0.3) 70%,
-                    rgba(255, 138, 128, 0.15) 100%);
-                border-color: rgba(255, 183, 77, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 183, 77, 0.6),
-                    0 0 80px rgba(255, 154, 158, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            75% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 171, 145, 0.4) 30%,
-                    rgba(255, 138, 101, 0.3) 70%,
-                    rgba(255, 160, 122, 0.15) 100%);
-                border-color: rgba(255, 171, 145, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 171, 145, 0.6),
-                    0 0 80px rgba(255, 138, 101, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-            100% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 255, 0.5) 0%,
-                    rgba(255, 204, 102, 0.4) 30%,
-                    rgba(255, 179, 71, 0.3) 70%,
-                    rgba(255, 149, 0, 0.15) 100%);
-                border-color: rgba(255, 204, 102, 0.5);
-                box-shadow: 
-                    0 0 40px rgba(255, 204, 102, 0.6),
-                    0 0 80px rgba(255, 179, 71, 0.4),
-                    inset 0 0 30px rgba(255, 255, 255, 0.25);
-            }
-        }
-
-        /* Abstract sun rays */
-        .sun-ray {
-            position: absolute;
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(255, 204, 102, 0.7) 50%,
-                transparent 100%);
-            border-radius: 50px;
-            transform-origin: center;
-            animation: gentleRotate 20s linear infinite, rayColorCycle 15s ease-in-out infinite;
-        }
-
-        /* Ray color cycling */
-        @keyframes rayColorCycle {
-            0% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 204, 102, 0.7) 50%,
-                    transparent 100%);
-            }
-            25% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 193, 7, 0.7) 50%,
-                    transparent 100%);
-            }
-            50% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 183, 77, 0.7) 50%,
-                    transparent 100%);
-            }
-            75% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 171, 145, 0.7) 50%,
-                    transparent 100%);
-            }
-            100% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 204, 102, 0.7) 50%,
-                    transparent 100%);
-            }
-        }
-
-        .sun-ray:nth-child(1) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(0deg);
-        }
-
-        .sun-ray:nth-child(2) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(45deg);
-        }
-
-        .sun-ray:nth-child(3) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(90deg);
-        }
-
-        .sun-ray:nth-child(4) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(135deg);
-        }
-
-        .sun-ray:nth-child(5) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(180deg);
-        }
-
-        .sun-ray:nth-child(6) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(225deg);
-        }
-
-        .sun-ray:nth-child(7) {
-            width: 80px;
-            height: 2px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(270deg);
-        }
-
-        .sun-ray:nth-child(8) {
-            width: 60px;
-            height: 1.5px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(315deg);
-        }
-
-        @keyframes gentlePulse {
-            0%, 100% { 
-                transform: translate(-50%, -50%) scale(1); 
-                opacity: 0.8; 
-            }
-            50% { 
-                transform: translate(-50%, -50%) scale(1.1); 
-                opacity: 1; 
-            }
-        }
-
-        @keyframes gentleRotate {
-            0% { transform: translate(-50%, -50%) rotate(var(--rotation, 0deg)); }
-            100% { transform: translate(-50%, -50%) rotate(calc(var(--rotation, 0deg) + 360deg)); }
-        }
-
-        /* Sun states with Apple colors - each with beautiful color cycling */
-        .abstract-sun.listening .sun-core {
-            background: radial-gradient(circle, 
-                rgba(0, 122, 255, 0.5) 0%,
-                rgba(0, 122, 255, 0.35) 50%,
-                rgba(0, 122, 255, 0.2) 100%) !important;
-            border-color: rgba(0, 122, 255, 0.6) !important;
-            box-shadow: 
-                0 0 50px rgba(0, 122, 255, 0.7),
-                0 0 100px rgba(0, 122, 255, 0.4),
-                inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
-            animation: gentlePulse 4s ease-in-out infinite, listeningGlow 2s ease-in-out infinite, coolColorCycle 12s ease-in-out infinite !important;
-        }
-
-        .abstract-sun.listening .sun-ray {
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(0, 122, 255, 0.8) 50%,
-                transparent 100%) !important;
-            animation: gentleRotate 15s linear infinite, coolRayCycle 12s ease-in-out infinite !important;
-        }
-
-        /* Cool color cycling for listening state */
-        @keyframes coolColorCycle {
-            0% {
-                background: radial-gradient(circle, 
-                    rgba(0, 122, 255, 0.5) 0%,
-                    rgba(0, 122, 255, 0.35) 50%,
-                    rgba(0, 122, 255, 0.2) 100%) !important;
-                border-color: rgba(0, 122, 255, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(0, 122, 255, 0.7),
-                    0 0 100px rgba(0, 122, 255, 0.4),
-                    inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
-            }
-            25% {
-                background: radial-gradient(circle, 
-                    rgba(30, 144, 255, 0.5) 0%,
-                    rgba(30, 144, 255, 0.35) 50%,
-                    rgba(30, 144, 255, 0.2) 100%) !important;
-                border-color: rgba(30, 144, 255, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(30, 144, 255, 0.7),
-                    0 0 100px rgba(30, 144, 255, 0.4),
-                    inset 0 0 30px rgba(30, 144, 255, 0.25) !important;
-            }
-            50% {
-                background: radial-gradient(circle, 
-                    rgba(64, 224, 208, 0.5) 0%,
-                    rgba(64, 224, 208, 0.35) 50%,
-                    rgba(64, 224, 208, 0.2) 100%) !important;
-                border-color: rgba(64, 224, 208, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(64, 224, 208, 0.7),
-                    0 0 100px rgba(64, 224, 208, 0.4),
-                    inset 0 0 30px rgba(64, 224, 208, 0.25) !important;
-            }
-            75% {
-                background: radial-gradient(circle, 
-                    rgba(138, 43, 226, 0.5) 0%,
-                    rgba(138, 43, 226, 0.35) 50%,
-                    rgba(138, 43, 226, 0.2) 100%) !important;
-                border-color: rgba(138, 43, 226, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(138, 43, 226, 0.7),
-                    0 0 100px rgba(138, 43, 226, 0.4),
-                    inset 0 0 30px rgba(138, 43, 226, 0.25) !important;
-            }
-            100% {
-                background: radial-gradient(circle, 
-                    rgba(0, 122, 255, 0.5) 0%,
-                    rgba(0, 122, 255, 0.35) 50%,
-                    rgba(0, 122, 255, 0.2) 100%) !important;
-                border-color: rgba(0, 122, 255, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(0, 122, 255, 0.7),
-                    0 0 100px rgba(0, 122, 255, 0.4),
-                    inset 0 0 30px rgba(0, 122, 255, 0.25) !important;
-            }
-        }
-
-        @keyframes coolRayCycle {
-            0% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(0, 122, 255, 0.8) 50%,
-                    transparent 100%) !important;
-            }
-            25% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(30, 144, 255, 0.8) 50%,
-                    transparent 100%) !important;
-            }
-            50% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(64, 224, 208, 0.8) 50%,
-                    transparent 100%) !important;
-            }
-            75% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(138, 43, 226, 0.8) 50%,
-                    transparent 100%) !important;
-            }
-            100% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(0, 122, 255, 0.8) 50%,
-                    transparent 100%) !important;
-            }
-        }
-
-        .abstract-sun.thinking .sun-core {
-            background: radial-gradient(circle, 
-                rgba(255, 149, 0, 0.5) 0%,
-                rgba(255, 149, 0, 0.35) 50%,
-                rgba(255, 149, 0, 0.2) 100%) !important;
-            border-color: rgba(255, 149, 0, 0.6) !important;
-            box-shadow: 
-                0 0 50px rgba(255, 149, 0, 0.7),
-                0 0 100px rgba(255, 149, 0, 0.4),
-                inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
-            animation: gentlePulse 3s ease-in-out infinite, thinkingShimmer 1.5s ease-in-out infinite, warmColorCycle 10s ease-in-out infinite !important;
-        }
-
-        .abstract-sun.thinking .sun-ray {
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(255, 149, 0, 0.9) 50%,
-                transparent 100%) !important;
-            animation: gentleRotate 10s linear infinite, warmRayCycle 10s ease-in-out infinite !important;
-        }
-
-        /* Warm color cycling for thinking state */
-        @keyframes warmColorCycle {
-            0% {
-                background: radial-gradient(circle, 
-                    rgba(255, 149, 0, 0.5) 0%,
-                    rgba(255, 149, 0, 0.35) 50%,
-                    rgba(255, 149, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 149, 0, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(255, 149, 0, 0.7),
-                    0 0 100px rgba(255, 149, 0, 0.4),
-                    inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
-            }
-            33% {
-                background: radial-gradient(circle, 
-                    rgba(255, 69, 0, 0.5) 0%,
-                    rgba(255, 69, 0, 0.35) 50%,
-                    rgba(255, 69, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 69, 0, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(255, 69, 0, 0.7),
-                    0 0 100px rgba(255, 69, 0, 0.4),
-                    inset 0 0 30px rgba(255, 69, 0, 0.25) !important;
-            }
-            66% {
-                background: radial-gradient(circle, 
-                    rgba(255, 140, 0, 0.5) 0%,
-                    rgba(255, 140, 0, 0.35) 50%,
-                    rgba(255, 140, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 140, 0, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(255, 140, 0, 0.7),
-                    0 0 100px rgba(255, 140, 0, 0.4),
-                    inset 0 0 30px rgba(255, 140, 0, 0.25) !important;
-            }
-            100% {
-                background: radial-gradient(circle, 
-                    rgba(255, 149, 0, 0.5) 0%,
-                    rgba(255, 149, 0, 0.35) 50%,
-                    rgba(255, 149, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 149, 0, 0.6) !important;
-                box-shadow: 
-                    0 0 50px rgba(255, 149, 0, 0.7),
-                    0 0 100px rgba(255, 149, 0, 0.4),
-                    inset 0 0 30px rgba(255, 149, 0, 0.25) !important;
-            }
-        }
-
-        @keyframes warmRayCycle {
-            0% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 149, 0, 0.9) 50%,
-                    transparent 100%) !important;
-            }
-            33% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 69, 0, 0.9) 50%,
-                    transparent 100%) !important;
-            }
-            66% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 140, 0, 0.9) 50%,
-                    transparent 100%) !important;
-            }
-            100% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 149, 0, 0.9) 50%,
-                    transparent 100%) !important;
-            }
-        }
-
-        .abstract-sun.speaking .sun-core {
-            background: radial-gradient(circle, 
-                rgba(255, 204, 102, 0.6) 0%,
-                rgba(255, 179, 71, 0.45) 30%,
-                rgba(255, 149, 0, 0.35) 70%,
-                rgba(255, 149, 0, 0.2) 100%) !important;
-            border-color: rgba(255, 204, 102, 0.7) !important;
-            box-shadow: 
-                0 0 60px rgba(255, 204, 102, 0.8),
-                0 0 120px rgba(255, 179, 71, 0.5),
-                inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
-            animation: gentlePulse 2s ease-in-out infinite, speakingRadiance 1s ease-in-out infinite, radiantColorCycle 8s ease-in-out infinite !important;
-        }
-
-        .abstract-sun.speaking .sun-ray {
-            background: linear-gradient(90deg, 
-                transparent 0%,
-                rgba(255, 204, 102, 1) 50%,
-                transparent 100%) !important;
-            animation: gentleRotate 8s linear infinite, radiantRayCycle 8s ease-in-out infinite !important;
-        }
-
-        /* Radiant color cycling for speaking state */
-        @keyframes radiantColorCycle {
-            0% {
-                background: radial-gradient(circle, 
-                    rgba(255, 204, 102, 0.6) 0%,
-                    rgba(255, 179, 71, 0.45) 30%,
-                    rgba(255, 149, 0, 0.35) 70%,
-                    rgba(255, 149, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 204, 102, 0.7) !important;
-                box-shadow: 
-                    0 0 60px rgba(255, 204, 102, 0.8),
-                    0 0 120px rgba(255, 179, 71, 0.5),
-                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
-            }
-            25% {
-                background: radial-gradient(circle, 
-                    rgba(255, 215, 0, 0.6) 0%,
-                    rgba(255, 193, 7, 0.45) 30%,
-                    rgba(255, 171, 64, 0.35) 70%,
-                    rgba(255, 149, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 215, 0, 0.7) !important;
-                box-shadow: 
-                    0 0 60px rgba(255, 215, 0, 0.8),
-                    0 0 120px rgba(255, 193, 7, 0.5),
-                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
-            }
-            50% {
-                background: radial-gradient(circle, 
-                    rgba(255, 255, 224, 0.6) 0%,
-                    rgba(255, 228, 181, 0.45) 30%,
-                    rgba(255, 218, 185, 0.35) 70%,
-                    rgba(255, 192, 203, 0.2) 100%) !important;
-                border-color: rgba(255, 255, 224, 0.7) !important;
-                box-shadow: 
-                    0 0 60px rgba(255, 255, 224, 0.8),
-                    0 0 120px rgba(255, 228, 181, 0.5),
-                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
-            }
-            75% {
-                background: radial-gradient(circle, 
-                    rgba(255, 248, 220, 0.6) 0%,
-                    rgba(255, 239, 213, 0.45) 30%,
-                    rgba(255, 228, 196, 0.35) 70%,
-                    rgba(255, 218, 185, 0.2) 100%) !important;
-                border-color: rgba(255, 248, 220, 0.7) !important;
-                box-shadow: 
-                    0 0 60px rgba(255, 248, 220, 0.8),
-                    0 0 120px rgba(255, 239, 213, 0.5),
-                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
-            }
-            100% {
-                background: radial-gradient(circle, 
-                    rgba(255, 204, 102, 0.6) 0%,
-                    rgba(255, 179, 71, 0.45) 30%,
-                    rgba(255, 149, 0, 0.35) 70%,
-                    rgba(255, 149, 0, 0.2) 100%) !important;
-                border-color: rgba(255, 204, 102, 0.7) !important;
-                box-shadow: 
-                    0 0 60px rgba(255, 204, 102, 0.8),
-                    0 0 120px rgba(255, 179, 71, 0.5),
-                    inset 0 0 40px rgba(255, 255, 255, 0.35) !important;
-            }
-        }
-
-        @keyframes radiantRayCycle {
-            0% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 204, 102, 1) 50%,
-                    transparent 100%) !important;
-            }
-            25% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 215, 0, 1) 50%,
-                    transparent 100%) !important;
-            }
-            50% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 255, 224, 1) 50%,
-                    transparent 100%) !important;
-            }
-            75% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 248, 220, 1) 50%,
-                    transparent 100%) !important;
-            }
-            100% {
-                background: linear-gradient(90deg, 
-                    transparent 0%,
-                    rgba(255, 204, 102, 1) 50%,
-                    transparent 100%) !important;
-            }
-        }
-
-        @keyframes listeningGlow {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.2); }
-        }
-
-        @keyframes thinkingShimmer {
-            0%, 100% { filter: brightness(1) saturate(1); }
-            50% { filter: brightness(1.3) saturate(1.2); }
-        }
-
-        @keyframes speakingRadiance {
-            0%, 100% { 
-                transform: translate(-50%, -50%) scale(1); 
-                filter: brightness(1);
-            }
-            50% { 
-                transform: translate(-50%, -50%) scale(1.15); 
-                filter: brightness(1.4);
-            }
-        }
-
-        /* Elegant interaction hint */
-        .interaction-hint {
-            position: absolute;
-            bottom: 6rem;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.85rem;
-            font-weight: 300;
-            color: rgba(255, 255, 255, 0.4);
-            letter-spacing: 0.3px;
-            text-align: center;
-            transition: all 0.4s ease;
-            opacity: 1;
-        }
-
-        .interaction-hint.hidden {
-            opacity: 0;
-        }
-
-        /* Subtle end call indicator */
-        .end-call-hint {
-            position: absolute;
-            top: 2rem;
-            right: 2rem;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 0.5px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.3);
             cursor: pointer;
-            transition: all 0.3s ease;
-            opacity: 0;
-            animation: fadeInDelay 2s ease-out 3s forwards;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(255, 215, 0, 0.9) 0%,
+                rgba(255, 193, 7, 0.8) 30%,
+                rgba(255, 152, 0, 0.7) 60%,
+                rgba(255, 87, 34, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(255, 215, 0, 0.4),
+                0 0 120px rgba(255, 215, 0, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
         }
 
-        @keyframes fadeInDelay {
-            0% { opacity: 0; }
-            100% { opacity: 1; }
+        .sun.listening {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(33, 150, 243, 0.9) 0%,
+                rgba(30, 136, 229, 0.8) 30%,
+                rgba(25, 118, 210, 0.7) 60%,
+                rgba(21, 101, 192, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(33, 150, 243, 0.4),
+                0 0 120px rgba(33, 150, 243, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
+            animation: listeningPulse 1.5s ease-in-out infinite;
         }
 
-        .end-call-hint:hover {
-            background: rgba(255, 69, 58, 0.1);
-            border-color: rgba(255, 69, 58, 0.3);
-            color: rgba(255, 69, 58, 0.8);
-            transform: scale(1.1);
+        .sun.processing {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(255, 152, 0, 0.9) 0%,
+                rgba(255, 143, 0, 0.8) 30%,
+                rgba(255, 111, 0, 0.7) 60%,
+                rgba(230, 81, 0, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(255, 152, 0, 0.4),
+                0 0 120px rgba(255, 152, 0, 0.2),
+                inset 0 0 60px rgba(255, 255, 255, 0.1);
+            animation: processingPulse 1s ease-in-out infinite;
         }
 
-        /* Credibility elements */
-        .credibility-badge {
+        @keyframes listeningPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes processingPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        /* Sun Rays - NO ROTATION */
+        .sun-rays {
             position: absolute;
-            bottom: 2rem;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ray {
+            position: absolute;
+            width: 2px;
+            height: 40px;
+            background: linear-gradient(to bottom, rgba(255, 215, 0, 0.8), transparent);
+            border-radius: 1px;
+            transform-origin: center bottom;
+        }
+
+        .ray:nth-child(1) { transform: rotate(0deg) translateY(-100px); }
+        .ray:nth-child(2) { transform: rotate(45deg) translateY(-100px); }
+        .ray:nth-child(3) { transform: rotate(90deg) translateY(-100px); }
+        .ray:nth-child(4) { transform: rotate(135deg) translateY(-100px); }
+        .ray:nth-child(5) { transform: rotate(180deg) translateY(-100px); }
+        .ray:nth-child(6) { transform: rotate(225deg) translateY(-100px); }
+        .ray:nth-child(7) { transform: rotate(270deg) translateY(-100px); }
+        .ray:nth-child(8) { transform: rotate(315deg) translateY(-100px); }
+
+        /* Status Text */
+        .status-container {
+            position: absolute;
+            bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.3);
-            font-weight: 300;
-            letter-spacing: 0.2px;
+            text-align: center;
         }
 
-        .security-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: rgba(52, 199, 89, 0.8);
-            animation: securityPulse 2s ease-in-out infinite;
+        .status-text {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
         }
 
-        @keyframes securityPulse {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; }
+        .status-subtext {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
         }
 
-        /* Responsive Design */
+        /* Responsive */
         @media (max-width: 768px) {
             .sun-container {
-                width: 280px;
-                height: 280px;
+                width: 300px;
+                height: 300px;
             }
             
-            .abstract-sun {
-                width: 160px;
-                height: 160px;
+            .sun {
+                width: 150px;
+                height: 150px;
             }
-            
-            .status-indicator {
-                top: 3rem;
+
+            .personality-header {
+                top: 30px;
+            }
+
+            .settings-btn {
+                top: 30px;
+                right: 30px;
+                padding: 8px 16px;
                 font-size: 0.8rem;
             }
-            
-            .interaction-hint {
-                bottom: 5rem;
-                font-size: 0.8rem;
+
+            .close-btn {
+                top: 30px;
+                left: 30px;
+                width: 35px;
+                height: 35px;
             }
-        }
-
-        /* Haptic feedback simulation */
-        .haptic-feedback {
-            animation: hapticPulse 0.1s ease-out;
-        }
-
-        @keyframes hapticPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <div class="voice-interface">
-        <!-- Status Indicator -->
-        <div class="status-indicator" id="statusIndicator">Ready to listen</div>
+        <!-- Personality Header -->
+        <div class="personality-header">
+            <div class="personality-name" id="personalityName">The Empathetic Friend</div>
+            <div class="user-name" id="userNameDisplay">Hello, friend</div>
+        </div>
 
-        <!-- End Call Hint -->
-        <div class="end-call-hint" id="endCallHint">✕</div>
+        <!-- Settings Button -->
+        <div class="settings-btn" onclick="changePersonality()">Change Personality</div>
 
-        <!-- Premium Abstract Sun -->
+        <!-- Close Button -->
+        <div class="close-btn" onclick="endConversation()" title="End conversation">×</div>
+
+        <!-- Central Sun Interface -->
         <div class="sun-container">
-            <div class="abstract-sun" id="abstractSun">
-                <div class="sun-aura"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-ray"></div>
-                <div class="sun-core"></div>
+            <div class="sun" id="sun" onclick="toggleListening()">
+                <div class="sun-rays">
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                    <div class="ray"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Interaction Hint -->
-        <div class="interaction-hint" id="interactionHint">Tap anywhere to speak</div>
-
-        <!-- Credibility Badge -->
-        <div class="credibility-badge">
-            <div class="security-dot"></div>
-            <span>Private & Secure</span>
+        <!-- Status Text -->
+        <div class="status-container">
+            <div class="status-text" id="statusText">Click to start talking</div>
+            <div class="status-subtext" id="statusSubtext">I'm here to listen and support you</div>
         </div>
     </div>
 
     <script>
-        // Ultra-Fast ORA Voice Interface
+        // Global variables
         let isListening = false;
+        let isProcessing = false;
         let recognition = null;
         let currentAudio = null;
-        let interactionStarted = false;
         let conversationHistory = [];
+        let userProfile = null;
         let silenceTimer = null;
-        let interimTranscript = '';
-        let finalTranscript = '';
+        let hasSpoken = false;
 
-        // Initialize speech recognition with ultra-fast settings
-        function initializeSpeechRecognition() {
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                
-                // ULTRA-FAST SETTINGS
-                recognition.continuous = true;
-                recognition.interimResults = true;
-                recognition.lang = 'en-US';
-                
-                recognition.onstart = function() {
-                    console.log('🎤 Speech recognition started');
-                    isListening = true;
-                    setSunState('listening');
-                    updateStatus('Listening...');
-                    hideInteractionHint();
-                };
-                
-                recognition.onresult = function(event) {
-                    interimTranscript = '';
-                    finalTranscript = '';
-                    
-                    // Process all results
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        const transcript = event.results[i][0].transcript;
-                        if (event.results[i].isFinal) {
-                            finalTranscript += transcript;
-                        } else {
-                            interimTranscript += transcript;
-                        }
-                    }
-                    
-                    // INTERRUPTION DETECTION: If user speaks while AI is speaking, interrupt
-                    if (currentAudio && !currentAudio.paused) {
-                        console.log('🛑 User interrupting AI - stopping audio');
-                        currentAudio.pause();
-                        currentAudio = null;
-                        setSunState('listening');
-                        updateStatus('Listening...');
-                    }
-                    
-                    // ULTRA-FAST SILENCE DETECTION: Only 300ms wait time
-                    if (finalTranscript) {
-                        console.log('🗣️ Final transcript:', finalTranscript);
-                        clearTimeout(silenceTimer);
-                        silenceTimer = setTimeout(() => {
-                            if (finalTranscript.trim()) {
-                                processUserInput(finalTranscript.trim());
-                                finalTranscript = '';
-                                recognition.stop();
-                            }
-                        }, 300); // REDUCED from 1500ms to 300ms for ultra-fast response
-                    }
-                };
-                
-                recognition.onerror = function(event) {
-                    console.error('❌ Speech recognition error:', event.error);
-                    if (event.error !== 'no-speech') {
-                        resetToReady();
-                    }
-                };
-                
-                recognition.onend = function() {
-                    console.log('🎤 Speech recognition ended');
-                    isListening = false;
-                    clearTimeout(silenceTimer);
-                };
-                
-                console.log('✅ Ultra-fast speech recognition initialized');
-            } else {
-                console.error('❌ Speech recognition not supported');
-                updateStatus('Voice not supported');
+        // Personality templates
+        const personalityTemplates = {
+            practical: {
+                name: "The Practical Coach",
+                greeting: "Ready to tackle challenges together",
+                description: "Direct, solution-focused guidance"
+            },
+            empathetic: {
+                name: "The Empathetic Friend", 
+                greeting: "I'm here to listen and support you",
+                description: "Warm, understanding emotional support"
+            },
+            wise: {
+                name: "The Wise Mentor",
+                greeting: "Let's explore this together thoughtfully",
+                description: "Thoughtful guidance through reflection"
             }
-        }
+        };
 
-        // Process user input with conversation history
-        function processUserInput(userInput) {
-            console.log('⚡ Processing user input:', userInput);
-            
-            // Add user message to conversation history
-            conversationHistory.push({
-                role: 'user',
-                content: userInput
-            });
-            
-            setSunState('thinking');
-            updateStatus('Thinking...');
-            sendToBackend(userInput);
-        }
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            checkUserProfile();
+            initializeSpeechRecognition();
+        });
 
-        // Set sun visual state
-        function setSunState(state) {
-            const sun = document.getElementById('abstractSun');
-            const statusIndicator = document.getElementById('statusIndicator');
+        function checkUserProfile() {
+            // Check if user has completed onboarding
+            const profile = localStorage.getItem('oraUserProfile');
             
-            sun.className = 'abstract-sun ' + state;
-            statusIndicator.className = 'status-indicator ' + state;
-        }
-
-        // Update status text
-        function updateStatus(message) {
-            const statusElement = document.getElementById('statusIndicator');
-            if (statusElement) {
-                statusElement.textContent = message;
+            if (!profile) {
+                // Redirect to onboarding if no profile exists
+                window.location.href = '/onboarding';
+                return;
             }
-        }
 
-        // Hide interaction hint
-        function hideInteractionHint() {
-            const hint = document.getElementById('interactionHint');
-            hint.classList.add('hidden');
-            interactionStarted = true;
-        }
-
-        // Show interaction hint
-        function showInteractionHint() {
-            if (!interactionStarted) {
-                const hint = document.getElementById('interactionHint');
-                hint.classList.remove('hidden');
-            }
-        }
-
-        // Reset to ready state
-        function resetToReady() {
-            isListening = false;
-            setSunState('idle');
-            updateStatus('Ready to listen');
-            clearTimeout(silenceTimer);
-            if (interactionStarted) {
-                setTimeout(showInteractionHint, 2000);
-            }
-        }
-
-        // Haptic feedback simulation
-        function simulateHaptic() {
-            const sun = document.getElementById('abstractSun');
-            sun.classList.add('haptic-feedback');
-            setTimeout(() => {
-                sun.classList.remove('haptic-feedback');
-            }, 100);
-        }
-
-        // Send user input to ultra-fast backend
-        async function sendToBackend(userInput) {
-            console.log('⚡ Sending to ultra-fast backend:', userInput);
-            
-            const startTime = performance.now();
-            
             try {
-                // Prepare payload with conversation history
-                const payload = {
-                    message: userInput,
-                    conversation_history: conversationHistory
-                };
-                
-                const response = await fetch('/voice_conversation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const responseData = await response.json();
-                const processingTime = performance.now() - startTime;
-                console.log(`⚡ Response received in ${processingTime.toFixed(0)}ms`);
-                
-                // Add assistant response to conversation history
-                if (responseData.response) {
-                    conversationHistory.push({
-                        role: 'assistant',
-                        content: responseData.response
-                    });
-                }
-                
-                handleOraResponse(responseData);
-                
-            } catch (error) {
-                console.error('❌ Error calling backend:', error);
-                resetToReady();
+                userProfile = JSON.parse(profile);
+                updatePersonalityDisplay();
+                console.log('User profile loaded:', userProfile);
+            } catch (e) {
+                console.error('Error parsing user profile:', e);
+                // Redirect to onboarding if profile is corrupted
+                window.location.href = '/onboarding';
             }
         }
 
-        // Handle ORA's response
-        function handleOraResponse(responseData) {
-            let audioUrl = "";
-            if (responseData) {
-                // Handle base64 audio response from Hume
-                if (responseData.audio_response) {
-                    audioUrl = `data:audio/wav;base64,${responseData.audio_response}`;
-                } else {
-                    audioUrl = responseData.audio_url || 
-                          responseData.audioUrl || 
-                          responseData.Audio_File || 
-                          responseData.audio_file ||
-                          "";
-                }
+        function updatePersonalityDisplay() {
+            if (!userProfile) return;
+
+            const personality = personalityTemplates[userProfile.personality];
+            if (personality) {
+                document.getElementById('personalityName').textContent = personality.name;
+                document.getElementById('userNameDisplay').textContent = `Hello, ${userProfile.name}`;
+                document.getElementById('statusSubtext').textContent = personality.greeting;
             }
+        }
+
+        function changePersonality() {
+            // Allow user to change personality without full onboarding
+            const personalities = Object.keys(personalityTemplates);
+            const currentIndex = personalities.indexOf(userProfile.personality);
+            const nextIndex = (currentIndex + 1) % personalities.length;
+            const newPersonality = personalities[nextIndex];
+
+            userProfile.personality = newPersonality;
+            localStorage.setItem('oraUserProfile', JSON.stringify(userProfile));
+            updatePersonalityDisplay();
+
+            updateStatus(`Switched to ${personalityTemplates[newPersonality].name}`, personalityTemplates[newPersonality].greeting);
+        }
+
+        function initializeSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                updateStatus('Speech recognition not supported', 'Please use Chrome or Safari');
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
             
-            if (audioUrl) {
-                console.log("🔊 Playing audio response");
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function() {
+                console.log('Speech recognition started');
+                isListening = true;
+                updateSunState('listening');
+                updateStatus('Listening...', 'Speak naturally');
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                console.log('Speech recognized:', transcript);
                 
-                setSunState('speaking');
-                updateStatus('Speaking...');
-                
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio = null;
+                if (transcript) {
+                    hasSpoken = true;
+                    clearTimeout(silenceTimer);
+                    
+                    // Wait for silence before processing
+                    silenceTimer = setTimeout(() => {
+                        if (hasSpoken) {
+                            processVoiceInput(transcript);
+                            hasSpoken = false;
+                        }
+                    }, 800); // Reduced from 1500ms to 800ms for faster response
                 }
-                
-                currentAudio = new Audio(audioUrl);
-                
-                currentAudio.play().then(() => {
-                    console.log("✅ Audio playing successfully");
-                }).catch(error => {
-                    console.error("❌ Audio autoplay blocked:", error);
-                    updateStatus('Tap to hear response');
-                    
-                    const playOverlay = document.createElement('div');
-                    playOverlay.style.cssText = `
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.8);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-size: 1.2rem;
-                        font-weight: 300;
-                        cursor: pointer;
-                        z-index: 1000;
-                        backdrop-filter: blur(20px);
-                    `;
-                    playOverlay.innerHTML = 'Tap to hear ORA';
-                    
-                    playOverlay.onclick = () => {
-                        currentAudio.play();
-                        document.body.removeChild(playOverlay);
-                    };
-                    
-                    document.body.appendChild(playOverlay);
-                });
-                
-                currentAudio.onended = () => {
-                    console.log("✅ Audio finished playing");
-                    console.log("🔄 Continuing conversation - starting to listen again");
-                    // Continue conversation - start listening again automatically
-                    setTimeout(() => {
-                        startListening();
-                    }, 200); // REDUCED from 500ms to 200ms for faster continuation
-                };
-                
-                currentAudio.onerror = (error) => {
-                    console.error("❌ Audio playback error:", error);
-                    resetToReady();
-                };
-                
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                if (event.error !== 'no-speech') {
+                    updateStatus('Speech recognition error', 'Click to try again');
+                    resetToIdle();
+                }
+            };
+
+            recognition.onend = function() {
+                console.log('Speech recognition ended');
+                if (isListening && !isProcessing) {
+                    // Restart if we're still supposed to be listening
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Recognition restart failed:', e);
+                        resetToIdle();
+                    }
+                }
+            };
+        }
+
+        function toggleListening() {
+            if (isProcessing) return;
+
+            if (currentAudio && !currentAudio.ended) {
+                // Stop current audio and start listening
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+
+            if (isListening) {
+                stopListening();
             } else {
-                console.log("❌ No audio URL found in response");
-                resetToReady();
+                startListening();
             }
         }
 
-        // Start listening
         function startListening() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-                setSunState('idle');
+            if (!recognition) {
+                updateStatus('Speech recognition not available', 'Please refresh the page');
+                return;
             }
-            
-            if (recognition && !isListening) {
-                simulateHaptic();
+
+            try {
                 recognition.start();
+            } catch (e) {
+                console.error('Failed to start recognition:', e);
+                updateStatus('Failed to start listening', 'Click to try again');
             }
         }
 
-        // End call
-        function endCall() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio = null;
-            }
-            
-            if (recognition && isListening) {
+        function stopListening() {
+            if (recognition) {
                 recognition.stop();
             }
-            
-            // Clear conversation history
-            conversationHistory = [];
+            isListening = false;
             clearTimeout(silenceTimer);
-            
-            updateStatus('Session ended');
-            setSunState('idle');
-            setTimeout(() => {
-                updateStatus('Ready to listen');
-                showInteractionHint();
-                interactionStarted = false;
-            }, 2000);
+            resetToIdle();
         }
 
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Ultra-Fast ORA Interface Loading...');
-            
-            initializeSpeechRecognition();
-            setSunState('idle');
-            
-            // Tap anywhere to speak
-            document.addEventListener('click', function(e) {
-                if (e.target.id !== 'endCallHint') {
-                    startListening();
+        function processVoiceInput(transcript) {
+            if (isProcessing) return;
+
+            isProcessing = true;
+            updateSunState('processing');
+            updateStatus('Processing...', 'Generating response');
+
+            const requestData = {
+                text: transcript,
+                user_id: 'user_' + Date.now(),
+                personality: userProfile.personality,
+                user_name: userProfile.name
+            };
+
+            console.log('Sending request:', requestData);
+
+            const startTime = Date.now();
+
+            fetch('/process_voice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseTime = Date.now() - startTime;
+                console.log(`Response received in ${responseTime}ms:`, data);
+
+                if (data.audio_url) {
+                    playAudioResponse(data.audio_url, data.response);
+                } else {
+                    console.log('No audio URL found in response');
+                    updateStatus('Response ready', data.response);
+                    setTimeout(() => {
+                        continueConversation();
+                    }, 2000);
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                updateStatus('Connection error', 'Click to try again');
+                resetToIdle();
             });
+        }
+
+        function playAudioResponse(audioUrl, responseText) {
+            updateStatus('Speaking...', responseText.substring(0, 60) + (responseText.length > 60 ? '...' : ''));
+
+            currentAudio = new Audio(audioUrl);
             
-            // End call button
-            const endCallHint = document.getElementById('endCallHint');
-            if (endCallHint) {
-                endCallHint.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    endCall();
+            currentAudio.onloadstart = function() {
+                console.log('Audio loading started');
+            };
+
+            currentAudio.oncanplay = function() {
+                console.log('Audio can play');
+                currentAudio.play().catch(e => {
+                    console.error('Audio play failed:', e);
+                    updateStatus('Audio playback failed', 'Click to continue');
+                    setTimeout(() => continueConversation(), 1000);
                 });
-            }
+            };
+
+            currentAudio.onplay = function() {
+                console.log('Audio playing successfully');
+            };
+
+            currentAudio.onended = function() {
+                console.log('Audio finished playing');
+                setTimeout(() => {
+                    continueConversation();
+                }, 300); // Reduced delay for faster conversation flow
+            };
+
+            currentAudio.onerror = function(e) {
+                console.error('Audio error:', e);
+                updateStatus('Audio error', 'Click to continue');
+                setTimeout(() => continueConversation(), 1000);
+            };
+        }
+
+        function continueConversation() {
+            isProcessing = false;
+            hasSpoken = false;
+            clearTimeout(silenceTimer);
             
-            console.log('✅ Ultra-Fast ORA Interface Ready');
+            // Automatically restart listening for continuous conversation
+            if (!isListening) {
+                startListening();
+            }
+        }
+
+        function updateSunState(state) {
+            const sun = document.getElementById('sun');
+            sun.className = 'sun';
+            if (state !== 'idle') {
+                sun.classList.add(state);
+            }
+        }
+
+        function updateStatus(main, sub = '') {
+            document.getElementById('statusText').textContent = main;
+            document.getElementById('statusSubtext').textContent = sub;
+        }
+
+        function resetToIdle() {
+            isListening = false;
+            isProcessing = false;
+            hasSpoken = false;
+            clearTimeout(silenceTimer);
+            updateSunState('idle');
+            updateStatus('Click to start talking', personalityTemplates[userProfile.personality].greeting);
+        }
+
+        function endConversation() {
+            stopListening();
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            conversationHistory = [];
+            updateStatus('Conversation ended', 'Click to start a new conversation');
+        }
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && isListening) {
+                stopListening();
+            }
+        });
+
+        // Handle beforeunload
+        window.addEventListener('beforeunload', function() {
+            if (recognition) {
+                recognition.stop();
+            }
         });
     </script>
 </body>
 </html>
-
-
 
 
 
