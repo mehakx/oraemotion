@@ -1,5 +1,6 @@
 Flask==2.3.3
 Flask-CORS==4.0.0
-requests==2.31.0
-groq==0.4.1
-gunicorn==21.2.0
+Flask-SocketIO==5.3.6
+websockets==11.0.3
+python-socketio==5.8.0
+eventlet==0.33.3
