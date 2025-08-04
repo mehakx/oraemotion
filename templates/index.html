@@ -477,6 +477,7 @@
         let currentPersonality = 'empathetic';
         let userName = localStorage.getItem('ora_user_name') || 'User';
         let userPersonality = localStorage.getItem('ora_personality') || 'empathetic';
+        let humeApiKey = null;
         
         // DOM elements
         const statusIndicator = document.getElementById('statusIndicator');
@@ -501,15 +502,43 @@
         };
         
         // Initialize on page load
-        window.addEventListener('load', function() {
+        window.addEventListener('load', async function() {
             currentPersonality = userPersonality;
             updatePersonalityDisplay();
             updateUserGreeting();
             updatePersonalityButtons();
+            
+            // Fetch Hume API key from backend
+            await fetchHumeApiKey();
         });
+        
+        // Fetch Hume API key from backend
+        async function fetchHumeApiKey() {
+            try {
+                const response = await fetch('/api/hume-key');
+                const data = await response.json();
+                humeApiKey = data.hume_api_key;
+                
+                if (!humeApiKey) {
+                    updateStatus('Error: No Hume API key configured');
+                    return;
+                }
+                
+                updateStatus('Ready! Click anywhere to start conversation');
+                
+            } catch (error) {
+                console.error('Failed to fetch Hume API key:', error);
+                updateStatus('Error: Could not connect to backend');
+            }
+        }
         
         // Main conversation toggle
         function toggleConversation() {
+            if (!humeApiKey) {
+                updateStatus('Error: API key not available');
+                return;
+            }
+            
             if (isConnected) {
                 stopConversation();
             } else {
@@ -544,10 +573,8 @@
         // Connect directly to Hume EVI WebSocket
         async function connectToHumeEVI() {
             try {
-                const HUME_API_KEY = 'YOUR_HUME_API_KEY'; // This should come from your backend
-                
-                // Connect to Hume EVI WebSocket
-                humeWebSocket = new WebSocket(`wss://api.hume.ai/v0/evi/chat?api_key=${HUME_API_KEY}`);
+                // Connect to Hume EVI WebSocket with real API key
+                humeWebSocket = new WebSocket(`wss://api.hume.ai/v0/evi/chat?api_key=${humeApiKey}`);
                 
                 humeWebSocket.onopen = function() {
                     console.log('Connected to Hume EVI');
