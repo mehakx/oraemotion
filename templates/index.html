@@ -74,12 +74,61 @@
             margin: 20px 0;
             min-height: 100px;
             text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .sun {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 20px auto;
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(255, 215, 0, 0.9) 0%,
+                rgba(255, 193, 7, 0.8) 30%,
+                rgba(255, 152, 0, 0.7) 60%,
+                rgba(255, 87, 34, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(255, 215, 0, 0.4),
+                0 0 120px rgba(255, 215, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .sun.listening {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(33, 150, 243, 0.9) 0%,
+                rgba(30, 136, 229, 0.8) 30%,
+                rgba(25, 118, 210, 0.7) 60%,
+                rgba(21, 101, 192, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(33, 150, 243, 0.4),
+                0 0 120px rgba(33, 150, 243, 0.2);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .sun.speaking {
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(76, 175, 80, 0.9) 0%,
+                rgba(67, 160, 71, 0.8) 30%,
+                rgba(56, 142, 60, 0.7) 60%,
+                rgba(46, 125, 50, 0.6) 100%);
+            box-shadow: 
+                0 0 60px rgba(76, 175, 80, 0.4),
+                0 0 120px rgba(76, 175, 80, 0.2);
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>ORA - Voice AI</h1>
+        
+        <div class="sun" id="sun"></div>
         
         <div class="status" id="status">Initializing...</div>
         
@@ -101,18 +150,31 @@
         let isConnected = false;
         let currentPersonality = 'empathetic';
         let apiKey = null;
+        let audioContext = null;
+        let audioQueue = [];
+        let isPlayingAudio = false;
 
         const personalities = {
-            empathetic: "You are a warm, empathetic AI friend. Listen actively and provide emotional support.",
-            practical: "You are a practical, solution-focused AI coach. Provide direct, actionable advice.",
-            wise: "You are a wise, thoughtful AI mentor. Guide users through reflection and deeper thinking."
+            empathetic: "You are a warm, empathetic AI friend. Listen actively and provide emotional support. Keep responses conversational and under 2 sentences.",
+            practical: "You are a practical, solution-focused AI coach. Provide direct, actionable advice. Keep responses brief and under 2 sentences.",
+            wise: "You are a wise, thoughtful AI mentor. Guide users through reflection. Keep responses thoughtful but under 2 sentences."
         };
 
         // Initialize
         window.onload = function() {
-            console.log('Initializing...');
+            console.log('🚀 Initializing...');
+            initializeAudioContext();
             getApiKey();
         };
+
+        function initializeAudioContext() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('🔊 Audio context initialized');
+            } catch (error) {
+                console.error('❌ Audio context error:', error);
+            }
+        }
 
         function getApiKey() {
             fetch('/api/hume-key')
@@ -122,13 +184,13 @@
                         apiKey = data.api_key;
                         updateStatus('Ready to start conversation');
                         document.getElementById('startBtn').disabled = false;
-                        console.log('API key loaded successfully');
+                        console.log('✅ API key loaded successfully');
                     } else {
                         throw new Error('No API key received');
                     }
                 })
                 .catch(error => {
-                    console.error('Error getting API key:', error);
+                    console.error('❌ Error getting API key:', error);
                     updateStatus('Error: Could not get API key');
                 });
         }
@@ -143,7 +205,7 @@
             event.target.classList.add('active');
             
             updateStatus(`Personality set to: ${personality}`);
-            console.log('Personality changed to:', personality);
+            console.log('🎭 Personality changed to:', personality);
         }
 
         function startConversation() {
@@ -161,13 +223,13 @@
                 socket = new WebSocket(wsUrl);
 
                 socket.onopen = function() {
-                    console.log('Connected to Hume EVI');
+                    console.log('✅ Connected to Hume EVI');
                     updateStatus('Connected! Starting microphone...');
                     
                     // Send system prompt
                     const systemMessage = {
                         type: 'session_settings',
-                        system_prompt: personalities[currentPersonality],
+                        system_prompt: personalities[currentPersonality] + " The user's name is User. Greet them warmly.",
                         language: 'en'
                     };
                     socket.send(JSON.stringify(systemMessage));
@@ -177,46 +239,63 @@
 
                 socket.onmessage = function(event) {
                     const data = JSON.parse(event.data);
-                    console.log('Received message:', data.type);
+                    console.log('📨 Received:', data.type);
                     
                     if (data.type === 'user_message') {
-                        addToTranscript('You: ' + (data.message?.content || '[Speaking...]'));
+                        const content = data.message?.content || '[Speaking...]';
+                        addToTranscript('You: ' + content);
                         updateStatus('Processing your message...');
+                        updateSunState('processing');
                     } else if (data.type === 'assistant_message') {
-                        addToTranscript('AI: ' + (data.message?.content || '[Responding...]'));
+                        const content = data.message?.content || '[Responding...]';
+                        addToTranscript('AI: ' + content);
                         updateStatus('AI is speaking...');
+                        updateSunState('speaking');
                     } else if (data.type === 'audio_output') {
-                        playAudio(data.data);
+                        console.log('🔊 Received audio output');
+                        playAudioImproved(data.data);
                     } else if (data.type === 'assistant_end') {
                         updateStatus('Listening... (speak now)');
+                        updateSunState('listening');
+                    } else if (data.type === 'user_interruption') {
+                        stopAllAudio();
+                        updateStatus('Listening... (continue speaking)');
+                        updateSunState('listening');
                     }
                 };
 
                 socket.onerror = function(error) {
-                    console.error('WebSocket error:', error);
+                    console.error('❌ WebSocket error:', error);
                     updateStatus('Connection error');
                     document.getElementById('startBtn').disabled = false;
                 };
 
                 socket.onclose = function() {
-                    console.log('WebSocket closed');
+                    console.log('🔌 WebSocket closed');
                     updateStatus('Disconnected');
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('stopBtn').disabled = true;
+                    updateSunState('idle');
                     isConnected = false;
                 };
 
             } catch (error) {
-                console.error('Error starting conversation:', error);
+                console.error('❌ Error starting conversation:', error);
                 updateStatus('Error starting conversation');
                 document.getElementById('startBtn').disabled = false;
             }
         }
 
         function startMicrophone() {
-            navigator.mediaDevices.getUserMedia({ audio: true })
+            navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            })
                 .then(function(stream) {
-                    console.log('Microphone access granted');
+                    console.log('🎙️ Microphone access granted');
                     
                     recorder = new MediaRecorder(stream, {
                         mimeType: 'audio/webm;codecs=opus'
@@ -240,19 +319,23 @@
                     
                     isConnected = true;
                     updateStatus('Listening... (speak now)');
+                    updateSunState('listening');
                     document.getElementById('stopBtn').disabled = false;
                     
-                    console.log('Recording started');
+                    console.log('🎤 Recording started');
                 })
                 .catch(function(error) {
-                    console.error('Microphone error:', error);
+                    console.error('❌ Microphone error:', error);
                     updateStatus('Microphone access denied');
                     if (socket) socket.close();
                 });
         }
 
-        function playAudio(audioData) {
+        function playAudioImproved(audioData) {
             try {
+                console.log('🔊 Processing audio data...');
+                
+                // Decode base64 audio
                 const binaryString = atob(audioData);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
@@ -260,24 +343,118 @@
                 }
                 
                 const audioBlob = new Blob([bytes], { type: 'audio/wav' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
                 
-                audio.onended = function() {
-                    URL.revokeObjectURL(audioUrl);
-                };
-                
-                audio.play().catch(error => {
-                    console.error('Audio playback error:', error);
-                });
+                // Use Web Audio API for better compatibility
+                if (audioContext) {
+                    playWithWebAudio(audioBlob);
+                } else {
+                    playWithHTMLAudio(audioBlob);
+                }
                 
             } catch (error) {
-                console.error('Error processing audio:', error);
+                console.error('❌ Error processing audio:', error);
+                // Fallback to simple audio element
+                playWithHTMLAudio(audioData, true);
             }
         }
 
+        function playWithWebAudio(audioBlob) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                audioContext.decodeAudioData(reader.result)
+                    .then(function(audioBuffer) {
+                        const source = audioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(audioContext.destination);
+                        
+                        source.onended = function() {
+                            console.log('🔊 Audio playback ended');
+                            isPlayingAudio = false;
+                        };
+                        
+                        if (audioContext.state === 'suspended') {
+                            audioContext.resume().then(() => {
+                                source.start();
+                                isPlayingAudio = true;
+                                console.log('🔊 Audio playback started (Web Audio)');
+                            });
+                        } else {
+                            source.start();
+                            isPlayingAudio = true;
+                            console.log('🔊 Audio playback started (Web Audio)');
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Web Audio decode error:', error);
+                        playWithHTMLAudio(audioBlob);
+                    });
+            };
+            reader.readAsArrayBuffer(audioBlob);
+        }
+
+        function playWithHTMLAudio(audioBlob, isBase64 = false) {
+            try {
+                let audioUrl;
+                
+                if (isBase64) {
+                    // Direct base64 data
+                    audioUrl = 'data:audio/wav;base64,' + audioBlob;
+                } else {
+                    // Blob URL
+                    audioUrl = URL.createObjectURL(audioBlob);
+                }
+                
+                const audio = new Audio();
+                
+                audio.oncanplaythrough = function() {
+                    console.log('🔊 Audio ready to play');
+                    audio.play().catch(error => {
+                        console.error('❌ HTML Audio play error:', error);
+                    });
+                };
+                
+                audio.onplay = function() {
+                    console.log('🔊 Audio playback started (HTML Audio)');
+                    isPlayingAudio = true;
+                };
+                
+                audio.onended = function() {
+                    console.log('🔊 Audio playback ended');
+                    if (!isBase64) {
+                        URL.revokeObjectURL(audioUrl);
+                    }
+                    isPlayingAudio = false;
+                };
+                
+                audio.onerror = function(error) {
+                    console.error('❌ HTML Audio error:', error);
+                    if (!isBase64) {
+                        URL.revokeObjectURL(audioUrl);
+                    }
+                    isPlayingAudio = false;
+                };
+                
+                audio.src = audioUrl;
+                audio.load();
+                
+            } catch (error) {
+                console.error('❌ HTML Audio setup error:', error);
+            }
+        }
+
+        function stopAllAudio() {
+            // Stop any playing audio
+            const audioElements = document.querySelectorAll('audio');
+            audioElements.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            isPlayingAudio = false;
+            console.log('🔇 All audio stopped');
+        }
+
         function stopConversation() {
-            console.log('Stopping conversation');
+            console.log('🔚 Stopping conversation');
             
             if (recorder) {
                 recorder.stop();
@@ -285,12 +462,15 @@
                 recorder = null;
             }
             
+            stopAllAudio();
+            
             if (socket) {
                 socket.close();
                 socket = null;
             }
             
             updateStatus('Conversation stopped');
+            updateSunState('idle');
             document.getElementById('startBtn').disabled = false;
             document.getElementById('stopBtn').disabled = true;
             isConnected = false;
@@ -298,12 +478,21 @@
 
         function updateStatus(message) {
             document.getElementById('status').textContent = message;
-            console.log('Status:', message);
+            console.log('📊 Status:', message);
+        }
+
+        function updateSunState(state) {
+            const sun = document.getElementById('sun');
+            sun.className = 'sun';
+            if (state !== 'idle') {
+                sun.classList.add(state);
+            }
         }
 
         function addToTranscript(message) {
             const transcript = document.getElementById('transcript');
-            transcript.innerHTML += message + '<br><br>';
+            const timestamp = new Date().toLocaleTimeString();
+            transcript.innerHTML += `<div><small>${timestamp}</small><br>${message}</div><br>`;
             transcript.scrollTop = transcript.scrollHeight;
         }
 
@@ -313,9 +502,16 @@
                 stopConversation();
             }
         });
+
+        // Handle user interaction for audio context
+        document.addEventListener('click', function() {
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+                console.log('🔊 Audio context resumed');
+            }
+        });
     </script>
 </body>
 </html>
-
 
 
