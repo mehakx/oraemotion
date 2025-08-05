@@ -14,7 +14,7 @@
         }
         
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
         }
         
@@ -31,66 +31,73 @@
             border-radius: 10px;
         }
         
-        button {
+        .personality-cards {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .personality-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            width: 220px;
+            text-align: center;
+        }
+        
+        .personality-card h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+        
+        .personality-card .status {
+            font-size: 14px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .personality-btn {
             background: #ffd700;
             color: #000;
             border: none;
-            padding: 15px 30px;
-            font-size: 16px;
-            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 20px;
             cursor: pointer;
-            margin: 10px;
+            margin: 5px;
+            width: 100%;
         }
         
-        button:hover {
+        .personality-btn:hover {
             background: #ffed4e;
         }
         
-        button:disabled {
+        .personality-btn:disabled {
             background: #666;
             cursor: not-allowed;
         }
         
-        .personality-buttons {
-            margin: 20px 0;
-        }
-        
-        .personality-btn {
-            background: rgba(255,255,255,0.2);
-            color: #fff;
-            padding: 10px 20px;
-            margin: 5px;
-        }
-        
         .personality-btn.active {
-            background: #ffd700;
-            color: #000;
+            background: #4CAF50;
+            color: white;
         }
         
-        .transcript {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            min-height: 100px;
-            text-align: left;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
         .sun {
-            width: 200px;
-            height: 200px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            margin: 20px auto;
+            margin: 15px auto;
             background: radial-gradient(circle at 30% 30%, 
                 rgba(255, 215, 0, 0.9) 0%,
                 rgba(255, 193, 7, 0.8) 30%,
                 rgba(255, 152, 0, 0.7) 60%,
                 rgba(255, 87, 34, 0.6) 100%);
             box-shadow: 
-                0 0 60px rgba(255, 215, 0, 0.4),
-                0 0 120px rgba(255, 215, 0, 0.2);
+                0 0 30px rgba(255, 215, 0, 0.4),
+                0 0 60px rgba(255, 215, 0, 0.2);
             transition: all 0.3s ease;
         }
 
@@ -101,8 +108,8 @@
                 rgba(25, 118, 210, 0.7) 60%,
                 rgba(21, 101, 192, 0.6) 100%);
             box-shadow: 
-                0 0 60px rgba(33, 150, 243, 0.4),
-                0 0 120px rgba(33, 150, 243, 0.2);
+                0 0 30px rgba(33, 150, 243, 0.4),
+                0 0 60px rgba(33, 150, 243, 0.2);
             animation: pulse 1.5s ease-in-out infinite;
         }
 
@@ -113,8 +120,8 @@
                 rgba(56, 142, 60, 0.7) 60%,
                 rgba(46, 125, 50, 0.6) 100%);
             box-shadow: 
-                0 0 60px rgba(76, 175, 80, 0.4),
-                0 0 120px rgba(76, 175, 80, 0.2);
+                0 0 30px rgba(76, 175, 80, 0.4),
+                0 0 60px rgba(76, 175, 80, 0.2);
             animation: pulse 0.8s ease-in-out infinite;
         }
 
@@ -122,51 +129,102 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
         }
+
+        .transcript {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            min-height: 80px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .global-controls {
+            margin: 30px 0;
+        }
+
+        .global-controls button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>ORA - Voice AI</h1>
         
-        <div class="sun" id="sun"></div>
+        <div class="status" id="globalStatus">Choose a personality to start conversation</div>
         
-        <div class="status" id="status">Initializing...</div>
-        
-        <div class="personality-buttons">
-            <button class="personality-btn active" onclick="setPersonality('empathetic')">Empathetic Friend</button>
-            <button class="personality-btn" onclick="setPersonality('practical')">Practical Coach</button>
-            <button class="personality-btn" onclick="setPersonality('wise')">Wise Mentor</button>
+        <div class="personality-cards">
+            <!-- Empathetic Friend -->
+            <div class="personality-card">
+                <h3>Empathetic Friend</h3>
+                <div class="sun" id="sun-empathetic"></div>
+                <div class="status" id="status-empathetic">Ready</div>
+                <button class="personality-btn" id="btn-empathetic" onclick="togglePersonality('empathetic')">Start Conversation</button>
+                <div class="transcript" id="transcript-empathetic">Conversation will appear here...</div>
+            </div>
+            
+            <!-- Practical Coach -->
+            <div class="personality-card">
+                <h3>Practical Coach</h3>
+                <div class="sun" id="sun-practical"></div>
+                <div class="status" id="status-practical">Ready</div>
+                <button class="personality-btn" id="btn-practical" onclick="togglePersonality('practical')">Start Conversation</button>
+                <div class="transcript" id="transcript-practical">Conversation will appear here...</div>
+            </div>
+            
+            <!-- Wise Mentor -->
+            <div class="personality-card">
+                <h3>Wise Mentor</h3>
+                <div class="sun" id="sun-wise"></div>
+                <div class="status" id="status-wise">Ready</div>
+                <button class="personality-btn" id="btn-wise" onclick="togglePersonality('wise')">Start Conversation</button>
+                <div class="transcript" id="transcript-wise">Conversation will appear here...</div>
+            </div>
         </div>
         
-        <button id="startBtn" onclick="startConversation()" disabled>Start Conversation</button>
-        <button id="stopBtn" onclick="stopConversation()" disabled>Stop Conversation</button>
-        
-        <div class="transcript" id="transcript">Conversation will appear here...</div>
+        <div class="global-controls">
+            <button onclick="stopAllConversations()">Stop All Conversations</button>
+        </div>
     </div>
 
     <script>
-        let socket = null;
-        let recorder = null;
-        let isConnected = false;
-        let currentPersonality = 'empathetic';
         let apiKey = null;
         let audioContext = null;
-        let currentAudioElement = null;
-        let isPlayingAudio = false;
-        let audioChunks = [];
-        let isCollectingAudio = false;
-        let audioTimeout = null;
-
+        
+        // Separate state for each personality
         const personalities = {
             empathetic: {
+                socket: null,
+                recorder: null,
+                isConnected: false,
+                currentAudio: null,
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
             },
             practical: {
+                socket: null,
+                recorder: null,
+                isConnected: false,
+                currentAudio: null,
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach"
             },
             wise: {
+                socket: null,
+                recorder: null,
+                isConnected: false,
+                currentAudio: null,
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
                 name: "The Wise Mentor"
             }
@@ -194,8 +252,7 @@
                 .then(data => {
                     if (data.api_key) {
                         apiKey = data.api_key;
-                        updateStatus('Ready to start conversation');
-                        document.getElementById('startBtn').disabled = false;
+                        updateGlobalStatus('Ready! Click any personality to start conversation');
                         console.log('✅ API key loaded successfully');
                     } else {
                         throw new Error('No API key received');
@@ -203,157 +260,102 @@
                 })
                 .catch(error => {
                     console.error('❌ Error getting API key:', error);
-                    updateStatus('Error: Could not get API key');
+                    updateGlobalStatus('Error: Could not get API key');
                 });
         }
 
-        function setPersonality(personality) {
-            // Stop any current audio when switching personalities
-            stopCurrentAudio();
+        function togglePersonality(personalityType) {
+            const personality = personalities[personalityType];
             
-            currentPersonality = personality;
-            
-            // Update button styles
-            document.querySelectorAll('.personality-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            const personalityInfo = personalities[personality];
-            updateStatus(`Personality set to: ${personalityInfo.name}`);
-            console.log('🎭 Personality changed to:', personalityInfo.name);
-            
-            // If conversation is active, send new personality prompt
-            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                console.log('🔄 Updating personality during active conversation');
-                const systemMessage = {
-                    type: 'session_settings',
-                    system_prompt: personalityInfo.prompt + " The user's name is User. You just switched personalities - acknowledge this change briefly and continue the conversation in your new personality style.",
-                    language: 'en'
-                };
-                socket.send(JSON.stringify(systemMessage));
-                
-                addToTranscript(`System: Switched to ${personalityInfo.name}`);
-                updateStatus(`Now speaking as: ${personalityInfo.name}`);
+            if (!personality.isConnected) {
+                startPersonalityConversation(personalityType);
+            } else {
+                stopPersonalityConversation(personalityType);
             }
         }
 
-        function startConversation() {
+        function startPersonalityConversation(personalityType) {
             if (!apiKey) {
-                updateStatus('Error: No API key available');
+                updatePersonalityStatus(personalityType, 'Error: No API key');
                 return;
             }
 
-            updateStatus('Connecting to Hume EVI...');
-            document.getElementById('startBtn').disabled = true;
+            const personality = personalities[personalityType];
+            
+            updatePersonalityStatus(personalityType, 'Connecting...');
+            updatePersonalityButton(personalityType, 'Connecting...', true);
 
             try {
                 // Connect to Hume EVI WebSocket
                 const wsUrl = `wss://api.hume.ai/v0/evi/chat?api_key=${encodeURIComponent(apiKey)}`;
-                socket = new WebSocket(wsUrl);
+                personality.socket = new WebSocket(wsUrl);
 
-                socket.onopen = function() {
-                    console.log('✅ Connected to Hume EVI');
-                    updateStatus('Connected! Starting microphone...');
+                personality.socket.onopen = function() {
+                    console.log(`✅ ${personalityType} connected to Hume EVI`);
+                    updatePersonalityStatus(personalityType, 'Connected! Starting microphone...');
                     
-                    // Send initial personality prompt
-                    const personalityInfo = personalities[currentPersonality];
+                    // Send personality prompt
                     const systemMessage = {
                         type: 'session_settings',
-                        system_prompt: personalityInfo.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personalityInfo.name + ".",
+                        system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ".",
                         language: 'en'
                     };
-                    socket.send(JSON.stringify(systemMessage));
+                    personality.socket.send(JSON.stringify(systemMessage));
                     
-                    console.log('🎭 Set personality:', personalityInfo.name);
-                    
-                    startMicrophone();
+                    startPersonalityMicrophone(personalityType);
                 };
 
-                socket.onmessage = function(event) {
+                personality.socket.onmessage = function(event) {
                     const data = JSON.parse(event.data);
-                    console.log('📨 Received:', data.type);
+                    console.log(`📨 ${personalityType} received:`, data.type);
                     
                     if (data.type === 'user_message') {
                         const content = data.message?.content || '[Speaking...]';
-                        addToTranscript('You: ' + content);
-                        updateStatus('Processing your message...');
-                        updateSunState('processing');
+                        addToPersonalityTranscript(personalityType, 'You: ' + content);
+                        updatePersonalityStatus(personalityType, 'Processing...');
+                        updatePersonalitySun(personalityType, 'processing');
                     } else if (data.type === 'assistant_message') {
                         const content = data.message?.content || '[Responding...]';
-                        addToTranscript('AI: ' + content);
-                        updateStatus('AI is speaking...');
-                        updateSunState('speaking');
-                        
-                        // Start collecting audio chunks for this response
-                        audioChunks = [];
-                        isCollectingAudio = true;
-                        console.log('🎵 Started collecting audio chunks for response');
-                        
-                        // Set timeout to play audio if assistant_end doesn't come
-                        if (audioTimeout) clearTimeout(audioTimeout);
-                        audioTimeout = setTimeout(() => {
-                            console.log('⏰ Timeout - playing collected audio chunks');
-                            playCollectedAudio();
-                        }, 3000); // 3 second timeout
-                        
+                        addToPersonalityTranscript(personalityType, 'AI: ' + content);
+                        updatePersonalityStatus(personalityType, 'Speaking...');
+                        updatePersonalitySun(personalityType, 'speaking');
                     } else if (data.type === 'audio_output') {
-                        console.log('🔊 Received audio chunk');
-                        
-                        if (isCollectingAudio) {
-                            // Collect this audio chunk
-                            audioChunks.push(data.data);
-                            console.log('📦 Collected audio chunk', audioChunks.length);
-                            
-                            // If we have enough chunks, play immediately
-                            if (audioChunks.length >= 3) {
-                                console.log('🎵 Have enough chunks - playing now');
-                                playCollectedAudio();
-                            }
-                        } else {
-                            // Play individual chunk immediately if not collecting
-                            console.log('🔊 Playing individual audio chunk');
-                            playAudioChunk(data.data);
-                        }
-                        
+                        console.log(`🔊 ${personalityType} received audio`);
+                        playPersonalityAudio(personalityType, data.data);
                     } else if (data.type === 'assistant_end') {
-                        console.log('🎵 Assistant finished - playing collected audio');
-                        playCollectedAudio();
-                        
+                        updatePersonalityStatus(personalityType, 'Listening...');
+                        updatePersonalitySun(personalityType, 'listening');
                     } else if (data.type === 'user_interruption') {
-                        // User interrupted - stop collecting and playing audio
-                        isCollectingAudio = false;
-                        audioChunks = [];
-                        if (audioTimeout) clearTimeout(audioTimeout);
-                        stopCurrentAudio();
-                        updateStatus('Listening... (continue speaking)');
-                        updateSunState('listening');
+                        stopPersonalityAudio(personalityType);
+                        updatePersonalityStatus(personalityType, 'Listening...');
+                        updatePersonalitySun(personalityType, 'listening');
                     }
                 };
 
-                socket.onerror = function(error) {
-                    console.error('❌ WebSocket error:', error);
-                    updateStatus('Connection error');
-                    document.getElementById('startBtn').disabled = false;
+                personality.socket.onerror = function(error) {
+                    console.error(`❌ ${personalityType} WebSocket error:`, error);
+                    updatePersonalityStatus(personalityType, 'Connection error');
+                    updatePersonalityButton(personalityType, 'Start Conversation', false);
                 };
 
-                socket.onclose = function() {
-                    console.log('🔌 WebSocket closed');
-                    updateStatus('Disconnected');
-                    document.getElementById('startBtn').disabled = false;
-                    document.getElementById('stopBtn').disabled = true;
-                    updateSunState('idle');
-                    isConnected = false;
+                personality.socket.onclose = function() {
+                    console.log(`🔌 ${personalityType} WebSocket closed`);
+                    updatePersonalityStatus(personalityType, 'Disconnected');
+                    updatePersonalityButton(personalityType, 'Start Conversation', false);
+                    updatePersonalitySun(personalityType, 'idle');
+                    personality.isConnected = false;
                 };
 
             } catch (error) {
-                console.error('❌ Error starting conversation:', error);
-                updateStatus('Error starting conversation');
-                document.getElementById('startBtn').disabled = false;
+                console.error(`❌ Error starting ${personalityType} conversation:`, error);
+                updatePersonalityStatus(personalityType, 'Error starting conversation');
+                updatePersonalityButton(personalityType, 'Start Conversation', false);
             }
         }
 
-        function startMicrophone() {
+        function startPersonalityMicrophone(personalityType) {
+            const personality = personalities[personalityType];
+            
             navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     echoCancellation: true,
@@ -362,18 +364,18 @@
                 }
             })
                 .then(function(stream) {
-                    console.log('🎙️ Microphone access granted');
+                    console.log(`🎙️ ${personalityType} microphone access granted`);
                     
-                    recorder = new MediaRecorder(stream, {
+                    personality.recorder = new MediaRecorder(stream, {
                         mimeType: 'audio/webm;codecs=opus'
                     });
 
-                    recorder.ondataavailable = function(event) {
-                        if (event.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+                    personality.recorder.ondataavailable = function(event) {
+                        if (event.data.size > 0 && personality.socket && personality.socket.readyState === WebSocket.OPEN) {
                             const reader = new FileReader();
                             reader.onloadend = function() {
                                 const base64Audio = reader.result.split(',')[1];
-                                socket.send(JSON.stringify({
+                                personality.socket.send(JSON.stringify({
                                     type: 'audio_input',
                                     data: base64Audio
                                 }));
@@ -382,57 +384,30 @@
                         }
                     };
 
-                    recorder.start(100); // Send audio every 100ms
+                    personality.recorder.start(100); // Send audio every 100ms
                     
-                    isConnected = true;
-                    updateStatus('Listening... (speak now)');
-                    updateSunState('listening');
-                    document.getElementById('stopBtn').disabled = false;
+                    personality.isConnected = true;
+                    updatePersonalityStatus(personalityType, 'Listening...');
+                    updatePersonalitySun(personalityType, 'listening');
+                    updatePersonalityButton(personalityType, 'Stop Conversation', false);
                     
-                    console.log('🎤 Recording started');
+                    console.log(`🎤 ${personalityType} recording started`);
                 })
                 .catch(function(error) {
-                    console.error('❌ Microphone error:', error);
-                    updateStatus('Microphone access denied');
-                    if (socket) socket.close();
+                    console.error(`❌ ${personalityType} microphone error:`, error);
+                    updatePersonalityStatus(personalityType, 'Microphone access denied');
+                    if (personality.socket) personality.socket.close();
                 });
         }
 
-        function playCollectedAudio() {
-            if (audioChunks.length === 0) {
-                console.log('⚠️ No audio chunks to play');
-                updateStatus('Listening... (speak now)');
-                updateSunState('listening');
-                return;
-            }
-            
-            console.log('🎵 Playing collected audio from', audioChunks.length, 'chunks');
-            
-            // Stop collecting
-            isCollectingAudio = false;
-            if (audioTimeout) clearTimeout(audioTimeout);
-            
-            // Stop any current audio first
-            stopCurrentAudio();
+        function playPersonalityAudio(personalityType, audioData) {
+            const personality = personalities[personalityType];
             
             try {
-                // Use the first chunk for now (simplest approach)
-                const audioData = audioChunks[0];
-                playAudioChunk(audioData);
+                console.log(`🔊 Playing ${personalityType} audio...`);
                 
-                // Clear chunks
-                audioChunks = [];
-                
-            } catch (error) {
-                console.error('❌ Error playing collected audio:', error);
-                updateStatus('Listening... (speak now)');
-                updateSunState('listening');
-            }
-        }
-
-        function playAudioChunk(audioData) {
-            try {
-                console.log('🔊 Playing audio chunk...');
+                // Stop any current audio for this personality
+                stopPersonalityAudio(personalityType);
                 
                 // Decode base64 audio
                 const binaryString = atob(audioData);
@@ -444,111 +419,116 @@
                 const audioBlob = new Blob([bytes], { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 
-                currentAudioElement = new Audio();
+                personality.currentAudio = new Audio();
                 
-                currentAudioElement.oncanplaythrough = function() {
-                    console.log('🔊 Audio ready to play');
-                    currentAudioElement.play().catch(error => {
-                        console.error('❌ Audio play error:', error);
-                        isPlayingAudio = false;
-                        updateStatus('Listening... (speak now)');
-                        updateSunState('listening');
+                personality.currentAudio.oncanplaythrough = function() {
+                    console.log(`🔊 ${personalityType} audio ready to play`);
+                    personality.currentAudio.play().catch(error => {
+                        console.error(`❌ ${personalityType} audio play error:`, error);
                     });
                 };
                 
-                currentAudioElement.onplay = function() {
-                    console.log('🔊 Audio playback started');
-                    isPlayingAudio = true;
+                personality.currentAudio.onplay = function() {
+                    console.log(`🔊 ${personalityType} audio playback started`);
                 };
                 
-                currentAudioElement.onended = function() {
-                    console.log('🔊 Audio playback ended');
+                personality.currentAudio.onended = function() {
+                    console.log(`🔊 ${personalityType} audio playback ended`);
                     URL.revokeObjectURL(audioUrl);
-                    currentAudioElement = null;
-                    isPlayingAudio = false;
-                    updateStatus('Listening... (speak now)');
-                    updateSunState('listening');
+                    personality.currentAudio = null;
                 };
                 
-                currentAudioElement.onerror = function(error) {
-                    console.error('❌ Audio error:', error);
+                personality.currentAudio.onerror = function(error) {
+                    console.error(`❌ ${personalityType} audio error:`, error);
                     URL.revokeObjectURL(audioUrl);
-                    currentAudioElement = null;
-                    isPlayingAudio = false;
-                    updateStatus('Listening... (speak now)');
-                    updateSunState('listening');
+                    personality.currentAudio = null;
                 };
                 
-                currentAudioElement.src = audioUrl;
-                currentAudioElement.load();
+                personality.currentAudio.src = audioUrl;
+                personality.currentAudio.load();
                 
             } catch (error) {
-                console.error('❌ Error playing audio chunk:', error);
-                updateStatus('Listening... (speak now)');
-                updateSunState('listening');
+                console.error(`❌ Error playing ${personalityType} audio:`, error);
             }
         }
 
-        function stopCurrentAudio() {
-            // Stop HTML Audio element
-            if (currentAudioElement) {
-                currentAudioElement.pause();
-                currentAudioElement.currentTime = 0;
-                currentAudioElement = null;
+        function stopPersonalityAudio(personalityType) {
+            const personality = personalities[personalityType];
+            
+            if (personality.currentAudio) {
+                personality.currentAudio.pause();
+                personality.currentAudio.currentTime = 0;
+                personality.currentAudio = null;
+                console.log(`🔇 ${personalityType} audio stopped`);
+            }
+        }
+
+        function stopPersonalityConversation(personalityType) {
+            const personality = personalities[personalityType];
+            
+            console.log(`🔚 Stopping ${personalityType} conversation`);
+            
+            if (personality.recorder) {
+                personality.recorder.stop();
+                personality.recorder.stream.getTracks().forEach(track => track.stop());
+                personality.recorder = null;
             }
             
-            // Stop all other audio elements
-            const audioElements = document.querySelectorAll('audio');
-            audioElements.forEach(audio => {
-                audio.pause();
-                audio.currentTime = 0;
+            stopPersonalityAudio(personalityType);
+            
+            if (personality.socket) {
+                personality.socket.close();
+                personality.socket = null;
+            }
+            
+            personality.isConnected = false;
+            updatePersonalityStatus(personalityType, 'Conversation stopped');
+            updatePersonalitySun(personalityType, 'idle');
+            updatePersonalityButton(personalityType, 'Start Conversation', false);
+        }
+
+        function stopAllConversations() {
+            console.log('🔚 Stopping all conversations');
+            Object.keys(personalities).forEach(personalityType => {
+                if (personalities[personalityType].isConnected) {
+                    stopPersonalityConversation(personalityType);
+                }
             });
-            
-            isPlayingAudio = false;
-            console.log('🔇 All audio stopped');
+            updateGlobalStatus('All conversations stopped');
         }
 
-        function stopConversation() {
-            console.log('🔚 Stopping conversation');
+        function updateGlobalStatus(message) {
+            document.getElementById('globalStatus').textContent = message;
+            console.log('📊 Global Status:', message);
+        }
+
+        function updatePersonalityStatus(personalityType, message) {
+            document.getElementById(`status-${personalityType}`).textContent = message;
+            console.log(`📊 ${personalityType} Status:`, message);
+        }
+
+        function updatePersonalityButton(personalityType, text, disabled) {
+            const button = document.getElementById(`btn-${personalityType}`);
+            button.textContent = text;
+            button.disabled = disabled;
             
-            if (recorder) {
-                recorder.stop();
-                recorder.stream.getTracks().forEach(track => track.stop());
-                recorder = null;
+            if (personalities[personalityType].isConnected) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
             }
-            
-            stopCurrentAudio();
-            isCollectingAudio = false;
-            audioChunks = [];
-            if (audioTimeout) clearTimeout(audioTimeout);
-            
-            if (socket) {
-                socket.close();
-                socket = null;
-            }
-            
-            updateStatus('Conversation stopped');
-            updateSunState('idle');
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-            isConnected = false;
         }
 
-        function updateStatus(message) {
-            document.getElementById('status').textContent = message;
-            console.log('📊 Status:', message);
-        }
-
-        function updateSunState(state) {
-            const sun = document.getElementById('sun');
+        function updatePersonalitySun(personalityType, state) {
+            const sun = document.getElementById(`sun-${personalityType}`);
             sun.className = 'sun';
             if (state !== 'idle') {
                 sun.classList.add(state);
             }
         }
 
-        function addToTranscript(message) {
-            const transcript = document.getElementById('transcript');
+        function addToPersonalityTranscript(personalityType, message) {
+            const transcript = document.getElementById(`transcript-${personalityType}`);
             const timestamp = new Date().toLocaleTimeString();
             transcript.innerHTML += `<div><small>${timestamp}</small><br>${message}</div><br>`;
             transcript.scrollTop = transcript.scrollHeight;
@@ -556,9 +536,7 @@
 
         // Handle page unload
         window.addEventListener('beforeunload', function() {
-            if (isConnected) {
-                stopConversation();
-            }
+            stopAllConversations();
         });
 
         // Handle user interaction for audio context
@@ -571,6 +549,5 @@
     </script>
 </body>
 </html>
-
 
 
