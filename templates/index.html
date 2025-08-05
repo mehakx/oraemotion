@@ -229,7 +229,7 @@
                 bufferTimeout: null,
                 currentSource: null,
                 nextStartTime: 0,
-                voice: 'AURA', // Warm female voice
+                voice: 'KORA', // CHANGED: Using KORA for definitely female voice
                 configId: null, // Will be set after creating EVI config
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
@@ -268,7 +268,7 @@
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Final Voice Fix Version...');
+            console.log('🚀 Initializing Female Voice Fix Version...');
             initializeAudioContext();
             getApiKeyAndCreateConfigs();
         };
@@ -312,7 +312,6 @@
                 for (const [personalityType, personality] of Object.entries(personalities)) {
                     console.log(`🔧 Creating EVI config for ${personalityType} with voice: ${personality.voice}`);
                     
-                    // FIXED: Correct EVI version value (should be "2" not "EVI_2")
                     const configData = {
                         evi_version: "2",
                         name: `${personality.name} Configuration`,
