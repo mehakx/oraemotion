@@ -209,6 +209,9 @@
                 recorder: null,
                 isConnected: false,
                 currentAudio: null,
+                audioBuffer: [],
+                isCollectingAudio: false,
+                audioTimeout: null,
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
             },
@@ -217,6 +220,9 @@
                 recorder: null,
                 isConnected: false,
                 currentAudio: null,
+                audioBuffer: [],
+                isCollectingAudio: false,
+                audioTimeout: null,
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach"
             },
@@ -225,6 +231,9 @@
                 recorder: null,
                 isConnected: false,
                 currentAudio: null,
+                audioBuffer: [],
+                isCollectingAudio: false,
+                audioTimeout: null,
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
                 name: "The Wise Mentor"
             }
@@ -319,13 +328,43 @@
                         addToPersonalityTranscript(personalityType, 'AI: ' + content);
                         updatePersonalityStatus(personalityType, 'Speaking...');
                         updatePersonalitySun(personalityType, 'speaking');
+                        
+                        // Start collecting audio for this response
+                        personality.audioBuffer = [];
+                        personality.isCollectingAudio = true;
+                        console.log(`🎵 ${personalityType} started collecting audio for response`);
+                        
+                        // Set timeout to play buffered audio
+                        if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
+                        personality.audioTimeout = setTimeout(() => {
+                            console.log(`⏰ ${personalityType} timeout - playing buffered audio`);
+                            playBufferedAudio(personalityType);
+                        }, 2000); // 2 second timeout
+                        
                     } else if (data.type === 'audio_output') {
-                        console.log(`🔊 ${personalityType} received audio`);
-                        playPersonalityAudio(personalityType, data.data);
+                        console.log(`🔊 ${personalityType} received audio chunk`);
+                        
+                        if (personality.isCollectingAudio) {
+                            // Buffer this audio chunk
+                            personality.audioBuffer.push(data.data);
+                            console.log(`📦 ${personalityType} buffered chunk ${personality.audioBuffer.length}`);
+                            
+                            // If we have enough chunks, play the buffered audio
+                            if (personality.audioBuffer.length >= 5) {
+                                console.log(`🎵 ${personalityType} has enough chunks - playing buffered audio`);
+                                playBufferedAudio(personalityType);
+                            }
+                        }
+                        
                     } else if (data.type === 'assistant_end') {
-                        updatePersonalityStatus(personalityType, 'Listening...');
-                        updatePersonalitySun(personalityType, 'listening');
+                        console.log(`🎵 ${personalityType} assistant finished - playing final buffered audio`);
+                        playBufferedAudio(personalityType);
+                        
                     } else if (data.type === 'user_interruption') {
+                        // User interrupted - stop collecting and playing audio
+                        personality.isCollectingAudio = false;
+                        personality.audioBuffer = [];
+                        if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
                         stopPersonalityAudio(personalityType);
                         updatePersonalityStatus(personalityType, 'Listening...');
                         updatePersonalitySun(personalityType, 'listening');
@@ -400,17 +439,34 @@
                 });
         }
 
-        function playPersonalityAudio(personalityType, audioData) {
+        function playBufferedAudio(personalityType) {
             const personality = personalities[personalityType];
             
+            if (personality.audioBuffer.length === 0) {
+                console.log(`⚠️ ${personalityType} no audio chunks to play`);
+                updatePersonalityStatus(personalityType, 'Listening...');
+                updatePersonalitySun(personalityType, 'listening');
+                return;
+            }
+            
+            console.log(`🎵 ${personalityType} playing buffered audio from ${personality.audioBuffer.length} chunks`);
+            
+            // Stop collecting
+            personality.isCollectingAudio = false;
+            if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
+            
+            // Stop any current audio first
+            stopPersonalityAudio(personalityType);
+            
             try {
-                console.log(`🔊 Playing ${personalityType} audio...`);
+                // Combine all buffered chunks into one audio stream
+                let combinedBase64 = '';
+                personality.audioBuffer.forEach(chunk => {
+                    combinedBase64 += chunk;
+                });
                 
-                // Stop any current audio for this personality
-                stopPersonalityAudio(personalityType);
-                
-                // Decode base64 audio
-                const binaryString = atob(audioData);
+                // Decode combined base64 audio
+                const binaryString = atob(combinedBase64);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
@@ -422,33 +478,44 @@
                 personality.currentAudio = new Audio();
                 
                 personality.currentAudio.oncanplaythrough = function() {
-                    console.log(`🔊 ${personalityType} audio ready to play`);
+                    console.log(`🔊 ${personalityType} combined audio ready to play`);
                     personality.currentAudio.play().catch(error => {
                         console.error(`❌ ${personalityType} audio play error:`, error);
+                        updatePersonalityStatus(personalityType, 'Listening...');
+                        updatePersonalitySun(personalityType, 'listening');
                     });
                 };
                 
                 personality.currentAudio.onplay = function() {
-                    console.log(`🔊 ${personalityType} audio playback started`);
+                    console.log(`🔊 ${personalityType} smooth audio playback started`);
                 };
                 
                 personality.currentAudio.onended = function() {
-                    console.log(`🔊 ${personalityType} audio playback ended`);
+                    console.log(`🔊 ${personalityType} smooth audio playback ended`);
                     URL.revokeObjectURL(audioUrl);
                     personality.currentAudio = null;
+                    updatePersonalityStatus(personalityType, 'Listening...');
+                    updatePersonalitySun(personalityType, 'listening');
                 };
                 
                 personality.currentAudio.onerror = function(error) {
                     console.error(`❌ ${personalityType} audio error:`, error);
                     URL.revokeObjectURL(audioUrl);
                     personality.currentAudio = null;
+                    updatePersonalityStatus(personalityType, 'Listening...');
+                    updatePersonalitySun(personalityType, 'listening');
                 };
                 
                 personality.currentAudio.src = audioUrl;
                 personality.currentAudio.load();
                 
+                // Clear buffer
+                personality.audioBuffer = [];
+                
             } catch (error) {
-                console.error(`❌ Error playing ${personalityType} audio:`, error);
+                console.error(`❌ Error playing ${personalityType} buffered audio:`, error);
+                updatePersonalityStatus(personalityType, 'Listening...');
+                updatePersonalitySun(personalityType, 'listening');
             }
         }
 
@@ -475,6 +542,9 @@
             }
             
             stopPersonalityAudio(personalityType);
+            personality.isCollectingAudio = false;
+            personality.audioBuffer = [];
+            if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
             
             if (personality.socket) {
                 personality.socket.close();
