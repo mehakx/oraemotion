@@ -175,15 +175,15 @@
     <div class="container">
         <h1>ORA - Voice AI</h1>
         
-        <div class="status" id="globalStatus">Choose a personality to start conversation</div>
+        <div class="status" id="globalStatus">Initializing EVI configurations...</div>
         
         <div class="personality-cards">
             <!-- Empathetic Friend -->
             <div class="personality-card" id="card-empathetic">
                 <h3>Empathetic Friend</h3>
                 <div class="sun" id="sun-empathetic"></div>
-                <div class="status" id="status-empathetic">Ready</div>
-                <button class="personality-btn" id="btn-empathetic" onclick="activatePersonality('empathetic')">Start Conversation</button>
+                <div class="status" id="status-empathetic">Initializing...</div>
+                <button class="personality-btn" id="btn-empathetic" onclick="activatePersonality('empathetic')" disabled>Loading...</button>
                 <div class="transcript" id="transcript-empathetic">Conversation will appear here...</div>
             </div>
             
@@ -191,8 +191,8 @@
             <div class="personality-card" id="card-practical">
                 <h3>Practical Coach</h3>
                 <div class="sun" id="sun-practical"></div>
-                <div class="status" id="status-practical">Ready</div>
-                <button class="personality-btn" id="btn-practical" onclick="activatePersonality('practical')">Start Conversation</button>
+                <div class="status" id="status-practical">Initializing...</div>
+                <button class="personality-btn" id="btn-practical" onclick="activatePersonality('practical')" disabled>Loading...</button>
                 <div class="transcript" id="transcript-practical">Conversation will appear here...</div>
             </div>
             
@@ -200,8 +200,8 @@
             <div class="personality-card" id="card-wise">
                 <h3>Wise Mentor</h3>
                 <div class="sun" id="sun-wise"></div>
-                <div class="status" id="status-wise">Ready</div>
-                <button class="personality-btn" id="btn-wise" onclick="activatePersonality('wise')">Start Conversation</button>
+                <div class="status" id="status-wise">Initializing...</div>
+                <button class="personality-btn" id="btn-wise" onclick="activatePersonality('wise')" disabled>Loading...</button>
                 <div class="transcript" id="transcript-wise">Conversation will appear here...</div>
             </div>
         </div>
@@ -217,7 +217,7 @@
         let sharedMicrophoneStream = null;
         let currentActivePersonality = null;
         
-        // Separate state for each personality
+        // Separate state for each personality with their EVI config IDs
         const personalities = {
             empathetic: {
                 socket: null,
@@ -230,6 +230,7 @@
                 currentSource: null,
                 nextStartTime: 0,
                 voice: 'AURA', // Warm female voice
+                configId: null, // Will be set after creating EVI config
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
             },
@@ -244,6 +245,7 @@
                 currentSource: null,
                 nextStartTime: 0,
                 voice: 'DACHER', // Confident male voice
+                configId: null, // Will be set after creating EVI config
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach"
             },
@@ -258,6 +260,7 @@
                 currentSource: null,
                 nextStartTime: 0,
                 voice: 'STELLA', // Thoughtful voice
+                configId: null, // Will be set after creating EVI config
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
                 name: "The Wise Mentor"
             }
@@ -265,9 +268,9 @@
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Voice Fixed Version...');
+            console.log('🚀 Initializing Correct Voice Configuration Version...');
             initializeAudioContext();
-            getApiKey();
+            getApiKeyAndCreateConfigs();
         };
 
         function initializeAudioContext() {
@@ -279,22 +282,84 @@
             }
         }
 
-        function getApiKey() {
-            fetch('/api/hume-key')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.api_key) {
-                        apiKey = data.api_key;
-                        updateGlobalStatus('Ready! Click any personality to start conversation');
-                        console.log('✅ API key loaded successfully');
-                    } else {
-                        throw new Error('No API key received');
+        async function getApiKeyAndCreateConfigs() {
+            try {
+                // Get API key
+                const response = await fetch('/api/hume-key');
+                const data = await response.json();
+                
+                if (!data.api_key) {
+                    throw new Error('No API key received');
+                }
+                
+                apiKey = data.api_key;
+                console.log('✅ API key loaded successfully');
+                
+                // Create EVI configurations for each personality
+                await createEVIConfigurations();
+                
+            } catch (error) {
+                console.error('❌ Error getting API key:', error);
+                updateGlobalStatus('Error: Could not get API key');
+            }
+        }
+
+        async function createEVIConfigurations() {
+            updateGlobalStatus('Creating EVI configurations with distinct voices...');
+            
+            try {
+                // Create configurations for each personality
+                for (const [personalityType, personality] of Object.entries(personalities)) {
+                    console.log(`🔧 Creating EVI config for ${personalityType} with voice: ${personality.voice}`);
+                    
+                    const configData = {
+                        name: `${personality.name} Configuration`,
+                        version: "EVI_2",
+                        system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today.",
+                        voice: {
+                            provider: "HUME_AI",
+                            name: personality.voice
+                        },
+                        language: "en"
+                    };
+                    
+                    const configResponse = await fetch('https://api.hume.ai/v0/evi/configs', {
+                        method: 'POST',
+                        headers: {
+                            'X-Hume-Api-Key': apiKey,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(configData)
+                    });
+                    
+                    if (!configResponse.ok) {
+                        throw new Error(`Failed to create config for ${personalityType}: ${configResponse.statusText}`);
                     }
-                })
-                .catch(error => {
-                    console.error('❌ Error getting API key:', error);
-                    updateGlobalStatus('Error: Could not get API key');
+                    
+                    const configResult = await configResponse.json();
+                    personality.configId = configResult.id;
+                    
+                    console.log(`✅ Created EVI config for ${personalityType}: ${personality.configId}`);
+                    updatePersonalityStatus(personalityType, 'Ready');
+                    updatePersonalityButton(personalityType, 'Start Conversation', false);
+                }
+                
+                updateGlobalStatus('Ready! Each personality now has its own voice - click any to start conversation');
+                console.log('🎭 All EVI configurations created successfully with distinct voices!');
+                
+            } catch (error) {
+                console.error('❌ Error creating EVI configurations:', error);
+                updateGlobalStatus('Error creating voice configurations');
+                
+                // Fallback: use default configuration without custom voices
+                console.log('🔄 Falling back to default configuration...');
+                Object.keys(personalities).forEach(type => {
+                    personalities[type].configId = null; // Use default
+                    updatePersonalityStatus(type, 'Ready (default voice)');
+                    updatePersonalityButton(type, 'Start Conversation', false);
                 });
+                updateGlobalStatus('Ready! Using default voices - click any personality to start conversation');
+            }
         }
 
         async function initializeMicrophone() {
@@ -361,50 +426,27 @@
                 // Initialize microphone if needed
                 await initializeMicrophone();
                 
-                // Connect to Hume EVI WebSocket
-                const wsUrl = `wss://api.hume.ai/v0/evi/chat?api_key=${encodeURIComponent(apiKey)}`;
+                // Build WebSocket URL with config_id if available
+                let wsUrl = `wss://api.hume.ai/v0/evi/chat?api_key=${encodeURIComponent(apiKey)}`;
+                if (personality.configId) {
+                    wsUrl += `&config_id=${encodeURIComponent(personality.configId)}`;
+                    console.log(`🎵 ${personalityType} using EVI config: ${personality.configId} with voice: ${personality.voice}`);
+                } else {
+                    console.log(`⚠️ ${personalityType} using default configuration (no custom voice)`);
+                }
+                
                 personality.socket = new WebSocket(wsUrl);
 
                 personality.socket.onopen = function() {
-                    console.log(`✅ ${personalityType} connected to Hume EVI`);
-                    console.log(`🎵 ${personalityType} using voice: ${personality.voice}`);
+                    console.log(`✅ ${personalityType} connected to Hume EVI with custom voice configuration`);
                     
-                    updatePersonalityStatus(personalityType, 'Connected! Configuring voice...');
-                    
-                    // FIXED: Send session settings with voice configuration immediately
-                    const sessionSettings = {
-                        type: 'session_settings',
-                        voice: {
-                            provider: 'HUME_AI',
-                            name: personality.voice
-                        },
-                        system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today."
-                    };
-                    
-                    console.log(`🎵 ${personalityType} SENDING VOICE CONFIG:`, sessionSettings);
-                    
-                    // Send the voice configuration
-                    if (personality.socket.readyState === WebSocket.OPEN) {
-                        personality.socket.send(JSON.stringify(sessionSettings));
-                        console.log(`✅ ${personalityType} Voice configuration sent successfully`);
-                    } else {
-                        console.error(`❌ ${personalityType} WebSocket not ready for voice config`);
-                    }
-                    
-                    // Start recording after a short delay to ensure voice config is processed
-                    setTimeout(() => {
-                        startPersonalityRecording(personalityType);
-                    }, 500);
+                    // Start recording immediately - no need for session_settings since voice is in config
+                    startPersonalityRecording(personalityType);
                 };
 
                 personality.socket.onmessage = function(event) {
                     const data = JSON.parse(event.data);
                     console.log(`📨 ${personalityType} received:`, data.type);
-                    
-                    // Log session settings response
-                    if (data.type === 'session_settings') {
-                        console.log(`🎵 ${personalityType} VOICE CONFIG RESPONSE:`, data);
-                    }
                     
                     if (data.type === 'user_message') {
                         const content = data.message?.content || '[Speaking...]';
@@ -502,9 +544,9 @@
                 updatePersonalityButton(personalityType, 'Stop Conversation', false);
                 updatePersonalitySun(personalityType, 'listening');
                 updatePersonalityCardStates();
-                updateGlobalStatus(`Active: ${personality.name}`);
+                updateGlobalStatus(`Active: ${personality.name} (${personality.voice} voice)`);
                 
-                console.log(`🎙️ ${personalityType} recording started with voice: ${personality.voice}`);
+                console.log(`🎙️ ${personalityType} recording started with ${personality.voice} voice via config: ${personality.configId}`);
 
             } catch (error) {
                 console.error(`❌ Error starting recording for ${personalityType}:`, error);
@@ -717,6 +759,7 @@
     </script>
 </body>
 </html>
+
 
 
 
