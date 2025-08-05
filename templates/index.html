@@ -209,9 +209,8 @@
                 recorder: null,
                 isConnected: false,
                 currentAudio: null,
-                audioBuffer: [],
-                isCollectingAudio: false,
-                audioTimeout: null,
+                audioQueue: [],
+                isPlayingAudio: false,
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
             },
@@ -220,9 +219,8 @@
                 recorder: null,
                 isConnected: false,
                 currentAudio: null,
-                audioBuffer: [],
-                isCollectingAudio: false,
-                audioTimeout: null,
+                audioQueue: [],
+                isPlayingAudio: false,
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach"
             },
@@ -231,9 +229,8 @@
                 recorder: null,
                 isConnected: false,
                 currentAudio: null,
-                audioBuffer: [],
-                isCollectingAudio: false,
-                audioTimeout: null,
+                audioQueue: [],
+                isPlayingAudio: false,
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
                 name: "The Wise Mentor"
             }
@@ -328,43 +325,14 @@
                         addToPersonalityTranscript(personalityType, 'AI: ' + content);
                         updatePersonalityStatus(personalityType, 'Speaking...');
                         updatePersonalitySun(personalityType, 'speaking');
-                        
-                        // Start collecting audio for this response
-                        personality.audioBuffer = [];
-                        personality.isCollectingAudio = true;
-                        console.log(`🎵 ${personalityType} started collecting audio for response`);
-                        
-                        // Set timeout to play buffered audio
-                        if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
-                        personality.audioTimeout = setTimeout(() => {
-                            console.log(`⏰ ${personalityType} timeout - playing buffered audio`);
-                            playBufferedAudio(personalityType);
-                        }, 2000); // 2 second timeout
-                        
                     } else if (data.type === 'audio_output') {
                         console.log(`🔊 ${personalityType} received audio chunk`);
-                        
-                        if (personality.isCollectingAudio) {
-                            // Buffer this audio chunk
-                            personality.audioBuffer.push(data.data);
-                            console.log(`📦 ${personalityType} buffered chunk ${personality.audioBuffer.length}`);
-                            
-                            // If we have enough chunks, play the buffered audio
-                            if (personality.audioBuffer.length >= 5) {
-                                console.log(`🎵 ${personalityType} has enough chunks - playing buffered audio`);
-                                playBufferedAudio(personalityType);
-                            }
-                        }
-                        
+                        playPersonalityAudio(personalityType, data.data);
                     } else if (data.type === 'assistant_end') {
-                        console.log(`🎵 ${personalityType} assistant finished - playing final buffered audio`);
-                        playBufferedAudio(personalityType);
-                        
+                        console.log(`🎵 ${personalityType} assistant finished`);
+                        // Don't change state here - let audio finish naturally
                     } else if (data.type === 'user_interruption') {
-                        // User interrupted - stop collecting and playing audio
-                        personality.isCollectingAudio = false;
-                        personality.audioBuffer = [];
-                        if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
+                        // User interrupted - stop playing audio
                         stopPersonalityAudio(personalityType);
                         updatePersonalityStatus(personalityType, 'Listening...');
                         updatePersonalitySun(personalityType, 'listening');
@@ -439,34 +407,42 @@
                 });
         }
 
-        function playBufferedAudio(personalityType) {
+        function playPersonalityAudio(personalityType, audioData) {
             const personality = personalities[personalityType];
             
-            if (personality.audioBuffer.length === 0) {
-                console.log(`⚠️ ${personalityType} no audio chunks to play`);
+            // Add to queue
+            personality.audioQueue.push(audioData);
+            console.log(`📦 ${personalityType} queued audio chunk (queue: ${personality.audioQueue.length})`);
+            
+            // Start playing if not already playing
+            if (!personality.isPlayingAudio) {
+                playNextAudioChunk(personalityType);
+            }
+        }
+
+        function playNextAudioChunk(personalityType) {
+            const personality = personalities[personalityType];
+            
+            if (personality.audioQueue.length === 0) {
+                console.log(`🔇 ${personalityType} audio queue empty - returning to listening`);
+                personality.isPlayingAudio = false;
                 updatePersonalityStatus(personalityType, 'Listening...');
                 updatePersonalitySun(personalityType, 'listening');
                 return;
             }
             
-            console.log(`🎵 ${personalityType} playing buffered audio from ${personality.audioBuffer.length} chunks`);
-            
-            // Stop collecting
-            personality.isCollectingAudio = false;
-            if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
-            
-            // Stop any current audio first
-            stopPersonalityAudio(personalityType);
+            const audioData = personality.audioQueue.shift();
+            console.log(`🔊 ${personalityType} playing audio chunk (${personality.audioQueue.length} remaining)`);
             
             try {
-                // Combine all buffered chunks into one audio stream
-                let combinedBase64 = '';
-                personality.audioBuffer.forEach(chunk => {
-                    combinedBase64 += chunk;
-                });
+                // Stop any current audio first
+                if (personality.currentAudio) {
+                    personality.currentAudio.pause();
+                    personality.currentAudio = null;
+                }
                 
-                // Decode combined base64 audio
-                const binaryString = atob(combinedBase64);
+                // Decode base64 audio
+                const binaryString = atob(audioData);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
@@ -476,57 +452,59 @@
                 const audioUrl = URL.createObjectURL(audioBlob);
                 
                 personality.currentAudio = new Audio();
+                personality.isPlayingAudio = true;
                 
                 personality.currentAudio.oncanplaythrough = function() {
-                    console.log(`🔊 ${personalityType} combined audio ready to play`);
+                    console.log(`🔊 ${personalityType} audio chunk ready to play`);
                     personality.currentAudio.play().catch(error => {
                         console.error(`❌ ${personalityType} audio play error:`, error);
-                        updatePersonalityStatus(personalityType, 'Listening...');
-                        updatePersonalitySun(personalityType, 'listening');
+                        // Try next chunk
+                        setTimeout(() => playNextAudioChunk(personalityType), 100);
                     });
                 };
                 
                 personality.currentAudio.onplay = function() {
-                    console.log(`🔊 ${personalityType} smooth audio playback started`);
+                    console.log(`🔊 ${personalityType} audio chunk playback started`);
                 };
                 
                 personality.currentAudio.onended = function() {
-                    console.log(`🔊 ${personalityType} smooth audio playback ended`);
+                    console.log(`🔊 ${personalityType} audio chunk ended - playing next`);
                     URL.revokeObjectURL(audioUrl);
                     personality.currentAudio = null;
-                    updatePersonalityStatus(personalityType, 'Listening...');
-                    updatePersonalitySun(personalityType, 'listening');
+                    // Play next chunk immediately
+                    setTimeout(() => playNextAudioChunk(personalityType), 50);
                 };
                 
                 personality.currentAudio.onerror = function(error) {
-                    console.error(`❌ ${personalityType} audio error:`, error);
+                    console.error(`❌ ${personalityType} audio chunk error:`, error);
                     URL.revokeObjectURL(audioUrl);
                     personality.currentAudio = null;
-                    updatePersonalityStatus(personalityType, 'Listening...');
-                    updatePersonalitySun(personalityType, 'listening');
+                    // Try next chunk
+                    setTimeout(() => playNextAudioChunk(personalityType), 100);
                 };
                 
                 personality.currentAudio.src = audioUrl;
                 personality.currentAudio.load();
                 
-                // Clear buffer
-                personality.audioBuffer = [];
-                
             } catch (error) {
-                console.error(`❌ Error playing ${personalityType} buffered audio:`, error);
-                updatePersonalityStatus(personalityType, 'Listening...');
-                updatePersonalitySun(personalityType, 'listening');
+                console.error(`❌ Error playing ${personalityType} audio chunk:`, error);
+                // Try next chunk
+                setTimeout(() => playNextAudioChunk(personalityType), 100);
             }
         }
 
         function stopPersonalityAudio(personalityType) {
             const personality = personalities[personalityType];
             
+            // Clear queue
+            personality.audioQueue = [];
+            personality.isPlayingAudio = false;
+            
             if (personality.currentAudio) {
                 personality.currentAudio.pause();
                 personality.currentAudio.currentTime = 0;
                 personality.currentAudio = null;
-                console.log(`🔇 ${personalityType} audio stopped`);
+                console.log(`🔇 ${personalityType} audio stopped and queue cleared`);
             }
         }
 
@@ -542,9 +520,6 @@
             }
             
             stopPersonalityAudio(personalityType);
-            personality.isCollectingAudio = false;
-            personality.audioBuffer = [];
-            if (personality.audioTimeout) clearTimeout(personality.audioTimeout);
             
             if (personality.socket) {
                 personality.socket.close();
@@ -619,5 +594,6 @@
     </script>
 </body>
 </html>
+
 
 
