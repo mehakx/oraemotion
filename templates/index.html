@@ -217,6 +217,9 @@
         let sharedMicrophoneStream = null;
         let currentActivePersonality = null;
         
+        // Generate unique session ID to avoid config name conflicts
+        const sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
         // Separate state for each personality with their EVI config IDs
         const personalities = {
             empathetic: {
@@ -229,7 +232,7 @@
                 bufferTimeout: null,
                 currentSource: null,
                 nextStartTime: 0,
-                voice: 'KORA', // CHANGED: Using KORA for definitely female voice
+                voice: 'KORA', // Female voice
                 configId: null, // Will be set after creating EVI config
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
@@ -244,7 +247,7 @@
                 bufferTimeout: null,
                 currentSource: null,
                 nextStartTime: 0,
-                voice: 'DACHER', // Confident male voice
+                voice: 'DACHER', // Male voice
                 configId: null, // Will be set after creating EVI config
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach"
@@ -268,7 +271,8 @@
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Female Voice Fix Version...');
+            console.log('🚀 Initializing Unique Config Names Version...');
+            console.log('🆔 Session ID:', sessionId);
             initializeAudioContext();
             getApiKeyAndCreateConfigs();
         };
@@ -312,10 +316,13 @@
                 for (const [personalityType, personality] of Object.entries(personalities)) {
                     console.log(`🔧 Creating EVI config for ${personalityType} with voice: ${personality.voice}`);
                     
+                    // Use unique name with session ID to avoid conflicts
+                    const uniqueName = `${personality.name} Config ${sessionId}`;
+                    
                     const configData = {
                         evi_version: "2",
-                        name: `${personality.name} Configuration`,
-                        version_description: `Configuration for ${personality.name} with ${personality.voice} voice`,
+                        name: uniqueName,
+                        version_description: `Configuration for ${personality.name} with ${personality.voice} voice (Session: ${sessionId})`,
                         prompt: {
                             text: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today."
                         },
@@ -600,23 +607,39 @@
                 clearTimeout(personality.bufferTimeout);
             }
             
-            // If we have enough chunks or timeout, play buffered audio
+            // If we have enough chunks or timeout, play the buffered audio
             if (personality.audioBuffer.length >= 3) {
-                flushAudioBuffer(personalityType);
+                playBufferedAudio(personalityType);
             } else {
-                // Set timeout to flush buffer after 500ms
+                // Set timeout to play buffered audio after 500ms
                 personality.bufferTimeout = setTimeout(() => {
-                    flushAudioBuffer(personalityType);
+                    if (personality.audioBuffer.length > 0) {
+                        playBufferedAudio(personalityType);
+                    }
                 }, 500);
             }
         }
 
-        async function flushAudioBuffer(personalityType) {
+        function flushAudioBuffer(personalityType) {
+            const personality = personalities[personalityType];
+            
+            if (personality.bufferTimeout) {
+                clearTimeout(personality.bufferTimeout);
+                personality.bufferTimeout = null;
+            }
+            
+            if (personality.audioBuffer.length > 0) {
+                console.log(`🎵 ${personalityType} flushing remaining ${personality.audioBuffer.length} audio chunks`);
+                playBufferedAudio(personalityType);
+            }
+        }
+
+        async function playBufferedAudio(personalityType) {
             const personality = personalities[personalityType];
             
             if (personality.audioBuffer.length === 0) return;
             
-            console.log(`🎵 ${personalityType} flushing ${personality.audioBuffer.length} audio chunks`);
+            console.log(`🎵 ${personalityType} playing buffered audio from ${personality.audioBuffer.length} chunks`);
             
             // Clear timeout
             if (personality.bufferTimeout) {
@@ -624,8 +647,9 @@
                 personality.bufferTimeout = null;
             }
             
-            // Play all buffered chunks sequentially
-            for (const audioData of personality.audioBuffer) {
+            // Play each chunk sequentially with Web Audio API
+            for (let i = 0; i < personality.audioBuffer.length; i++) {
+                const audioData = personality.audioBuffer[i];
                 await playAudioChunk(personalityType, audioData);
             }
             
@@ -635,44 +659,52 @@
             // Return to listening state
             updatePersonalityStatus(personalityType, 'Listening...');
             updatePersonalitySun(personalityType, 'listening');
+            
+            console.log(`🎵 ${personalityType} finished playing buffered audio - returning to listening`);
         }
 
         async function playAudioChunk(personalityType, audioData) {
-            // Only play if this personality is currently active
-            if (currentActivePersonality !== personalityType) {
-                return;
-            }
-
             const personality = personalities[personalityType];
             
             try {
-                // Decode base64 audio
+                // Resume audio context if needed
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
+                // Decode base64 audio data
                 const binaryString = atob(audioData);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
-
+                
                 // Decode audio buffer
                 const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
                 
-                // Create and schedule audio source
+                // Create audio source
                 const source = audioContext.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(audioContext.destination);
-
-                // Schedule seamless playback
+                
+                // Schedule playback
                 const startTime = Math.max(audioContext.currentTime, personality.nextStartTime);
                 source.start(startTime);
                 
                 // Update next start time for seamless playback
                 personality.nextStartTime = startTime + audioBuffer.duration;
                 
-                console.log(`🎵 ${personalityType} audio scheduled seamlessly`);
-
-                // Track current source
+                console.log(`🎵 ${personalityType} audio scheduled seamlessly at ${startTime.toFixed(3)}s`);
+                
+                // Store current source for stopping if needed
                 personality.currentSource = source;
-
+                
+                return new Promise((resolve) => {
+                    source.onended = () => {
+                        resolve();
+                    };
+                });
+                
             } catch (error) {
                 console.error(`❌ ${personalityType} audio playback error:`, error);
             }
@@ -681,6 +713,7 @@
         function stopPersonalityAudio(personalityType) {
             const personality = personalities[personalityType];
             
+            // Stop current audio source
             if (personality.currentSource) {
                 try {
                     personality.currentSource.stop();
@@ -690,17 +723,34 @@
                 personality.currentSource = null;
             }
             
+            // Clear audio buffer and timeout
             personality.audioBuffer = [];
-            personality.nextStartTime = 0;
-            
             if (personality.bufferTimeout) {
                 clearTimeout(personality.bufferTimeout);
                 personality.bufferTimeout = null;
             }
             
-            console.log(`🔇 ${personalityType} audio stopped`);
+            // Reset next start time
+            personality.nextStartTime = 0;
+            
+            console.log(`🔇 ${personalityType} audio stopped and buffer cleared`);
         }
 
+        function stopAllConversations() {
+            console.log('🛑 Stopping all conversations');
+            
+            Object.keys(personalities).forEach(type => {
+                if (personalities[type].isConnected) {
+                    stopPersonalityConversation(type);
+                }
+            });
+            
+            currentActivePersonality = null;
+            updatePersonalityCardStates();
+            updateGlobalStatus('All conversations stopped');
+        }
+
+        // UI Update Functions
         function updateGlobalStatus(message) {
             document.getElementById('globalStatus').textContent = message;
         }
@@ -714,55 +764,42 @@
             button.textContent = text;
             button.disabled = disabled;
             
-            if (text === 'Stop Conversation') {
+            if (personalities[personalityType].isConnected) {
                 button.classList.add('active');
-                button.onclick = () => activatePersonality(personalityType); // This will deactivate since it's already active
             } else {
                 button.classList.remove('active');
-                button.onclick = () => activatePersonality(personalityType);
             }
         }
 
         function updatePersonalitySun(personalityType, state) {
             const sun = document.getElementById(`sun-${personalityType}`);
-            sun.className = `sun ${state}`;
+            sun.className = 'sun';
+            if (state) {
+                sun.classList.add(state);
+            }
         }
 
         function updatePersonalityCardStates() {
             Object.keys(personalities).forEach(type => {
                 const card = document.getElementById(`card-${type}`);
+                
                 if (currentActivePersonality === type) {
                     card.classList.add('active');
                     card.classList.remove('inactive');
-                } else if (currentActivePersonality) {
+                } else if (currentActivePersonality !== null) {
                     card.classList.add('inactive');
                     card.classList.remove('active');
                 } else {
                     card.classList.remove('active', 'inactive');
                 }
             });
-            
-            if (!currentActivePersonality) {
-                updateGlobalStatus('Choose a personality to start conversation');
-            }
         }
 
         function addToPersonalityTranscript(personalityType, message) {
             const transcript = document.getElementById(`transcript-${personalityType}`);
             const timestamp = new Date().toLocaleTimeString();
-            transcript.innerHTML += `<div><small>${timestamp}</small><br>${message}</div><br>`;
+            transcript.innerHTML += `<div><small>${timestamp}</small> ${message}</div>`;
             transcript.scrollTop = transcript.scrollHeight;
-        }
-
-        function stopAllConversations() {
-            console.log('🛑 Stopping all conversations');
-            Object.keys(personalities).forEach(type => {
-                if (personalities[type].isConnected) {
-                    stopPersonalityConversation(type);
-                }
-            });
-            currentActivePersonality = null;
-            updatePersonalityCardStates();
         }
     </script>
 </body>
