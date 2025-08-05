@@ -217,7 +217,7 @@
         let sharedMicrophoneStream = null;
         let currentActivePersonality = null;
         
-        // Separate state for each personality
+        // Separate state for each personality with distinct voices
         const personalities = {
             empathetic: {
                 socket: null,
@@ -230,7 +230,8 @@
                 currentSource: null,
                 nextStartTime: 0,
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
-                name: "The Empathetic Friend"
+                name: "The Empathetic Friend",
+                voiceId: "248be419-c632-4f23-adf1-5324ed7dbf1d" // Warm female voice
             },
             practical: {
                 socket: null,
@@ -243,7 +244,8 @@
                 currentSource: null,
                 nextStartTime: 0,
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
-                name: "The Practical Coach"
+                name: "The Practical Coach",
+                voiceId: "5345cf08-6f37-4d33-8e49-5618c4ec60ac" // Confident male voice
             },
             wise: {
                 socket: null,
@@ -256,13 +258,14 @@
                 currentSource: null,
                 nextStartTime: 0,
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
-                name: "The Wise Mentor"
+                name: "The Wise Mentor",
+                voiceId: "694f9f93-424b-4080-8c17-3952b40de2c0" // Calm, thoughtful voice
             }
         };
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Perfect Smooth Audio...');
+            console.log('🚀 Initializing Distinct Voices...');
             initializeAudioContext();
             getApiKey();
         };
@@ -358,19 +361,23 @@
                 // Initialize microphone if needed
                 await initializeMicrophone();
                 
-                // Connect to Hume EVI WebSocket
+                // Connect to Hume EVI WebSocket with specific voice
                 const wsUrl = `wss://api.hume.ai/v0/evi/chat?api_key=${encodeURIComponent(apiKey)}`;
                 personality.socket = new WebSocket(wsUrl);
 
                 personality.socket.onopen = function() {
-                    console.log(`✅ ${personalityType} connected to Hume EVI`);
+                    console.log(`✅ ${personalityType} connected to Hume EVI with voice: ${personality.voiceId}`);
                     updatePersonalityStatus(personalityType, 'Connected! Starting conversation...');
                     
-                    // Send personality prompt
+                    // Send personality prompt with specific voice
                     const systemMessage = {
                         type: 'session_settings',
                         system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today.",
-                        language: 'en'
+                        language: 'en',
+                        voice: {
+                            provider: 'hume_ai',
+                            name: personality.voiceId
+                        }
                     };
                     personality.socket.send(JSON.stringify(systemMessage));
                     
@@ -392,7 +399,7 @@
                         updatePersonalityStatus(personalityType, 'Speaking...');
                         updatePersonalitySun(personalityType, 'speaking');
                     } else if (data.type === 'audio_output') {
-                        console.log(`🔊 ${personalityType} received audio chunk`);
+                        console.log(`🔊 ${personalityType} received audio chunk (voice: ${personality.voiceId})`);
                         // Only play audio if this personality is currently active
                         if (currentActivePersonality === personalityType) {
                             bufferAudioChunk(personalityType, data.data);
@@ -477,7 +484,7 @@
                 updatePersonalityButton(personalityType, 'Stop Conversation', false);
                 updatePersonalityCardStates();
                 
-                console.log(`🎤 ${personalityType} recording started (ACTIVE)`);
+                console.log(`🎤 ${personalityType} recording started (ACTIVE) with voice: ${personality.voiceId}`);
                 
             } catch (error) {
                 console.error(`❌ ${personalityType} recording error:`, error);
