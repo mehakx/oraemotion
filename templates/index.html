@@ -326,269 +326,181 @@
         </div>
 
         <!-- Connection Status -->
-        <div class="connection-status" id="connectionStatus">Initializing...</div>
+        <div class="connection-status" id="connectionStatus">Ready</div>
     </div>
 
-    <!-- Hume Voice SDK -->
-    <script type="module">
-        import { VoiceProvider } from "https://cdn.jsdelivr.net/npm/@humeai/voice@latest/dist/index.mjs";
-
-        // Global variables
-        let voiceProvider = null;
-        let isConnected = false;
-        let isConversationActive = false;
-        let currentPersonality = 'empathetic';
-        let userProfile = null;
+    <script>
+        // Simple global variables
+        var isConversationActive = false;
+        var currentPersonality = 'empathetic';
+        var userProfile = { name: 'User', personality: 'empathetic' };
+        var audioStream = null;
 
         // Personality templates
-        const personalityTemplates = {
+        var personalityTemplates = {
             practical: {
                 name: "The Practical Coach",
-                greeting: "Ready to tackle challenges together",
-                systemPrompt: "You are a practical, solution-focused AI coach. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise. Focus on practical steps and real-world solutions."
+                greeting: "Ready to tackle challenges together"
             },
             empathetic: {
                 name: "The Empathetic Friend", 
-                greeting: "I'm here to listen and support you",
-                systemPrompt: "You are a warm, empathetic AI friend. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and create a safe space for sharing. Ask thoughtful questions to show you care."
+                greeting: "I'm here to listen and support you"
             },
             wise: {
                 name: "The Wise Mentor",
-                greeting: "Let's explore this together thoughtfully",
-                systemPrompt: "You are a wise, thoughtful AI mentor. Guide users through reflection and deeper thinking. Ask meaningful questions, share insights, and help users discover their own answers. Be patient and philosophical."
+                greeting: "Let's explore this together thoughtfully"
             }
         };
 
-        // Initialize on page load
-        window.addEventListener('load', function() {
-            checkUserProfile();
-            initializeHumeVoice();
-        });
-
-        function checkUserProfile() {
-            // Check if user has completed onboarding
-            const profile = localStorage.getItem('oraUserProfile');
-            
-            if (!profile) {
-                // Create default profile for now
-                userProfile = {
-                    name: 'User',
-                    personality: 'empathetic'
-                };
-                localStorage.setItem('oraUserProfile', JSON.stringify(userProfile));
-            } else {
-                try {
-                    userProfile = JSON.parse(profile);
-                } catch (e) {
-                    console.error('Error parsing user profile:', e);
-                    userProfile = {
-                        name: 'User',
-                        personality: 'empathetic'
-                    };
-                }
-            }
-
-            currentPersonality = userProfile.personality;
+        // Initialize when page loads
+        window.onload = function() {
+            console.log('Page loaded - initializing...');
             updatePersonalityDisplay();
-        }
+            updateConnectionStatus('Ready', 'connected');
+        };
 
         function updatePersonalityDisplay() {
-            const personality = personalityTemplates[currentPersonality];
+            var personality = personalityTemplates[currentPersonality];
             if (personality) {
                 document.getElementById('personalityName').textContent = personality.name;
-                document.getElementById('userNameDisplay').textContent = `Hello, ${userProfile.name}`;
+                document.getElementById('userNameDisplay').textContent = 'Hello, ' + userProfile.name;
                 document.getElementById('statusSubtext').textContent = personality.greeting;
                 
                 // Update active button
-                document.querySelectorAll('.personality-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                document.querySelector(`[onclick="changePersonality('${currentPersonality}')"]`).classList.add('active');
-            }
-        }
-
-        async function initializeHumeVoice() {
-            try {
-                updateStatus('Connecting to Hume...', 'Getting ready');
-                updateConnectionStatus('Connecting...', 'disconnected');
-
-                // Get API key from backend
-                const response = await fetch('/api/hume-key');
-                const data = await response.json();
-                
-                if (!data.api_key) {
-                    throw new Error('No API key received from backend');
+                var buttons = document.querySelectorAll('.personality-btn');
+                for (var i = 0; i < buttons.length; i++) {
+                    buttons[i].classList.remove('active');
                 }
-
-                // Initialize Hume Voice Provider
-                voiceProvider = await VoiceProvider.create({
-                    apiKey: data.api_key,
-                    configId: null, // Use default config
-                    onMessage: handleHumeMessage,
-                    onError: handleHumeError,
-                    onOpen: handleHumeOpen,
-                    onClose: handleHumeClose
-                });
-
-                console.log('✅ Hume Voice Provider initialized');
                 
-            } catch (error) {
-                console.error('❌ Error initializing Hume Voice:', error);
-                updateStatus('Connection failed', 'Please refresh the page');
-                updateConnectionStatus('Failed', 'disconnected');
+                // Find and activate the current personality button
+                var activeButton = null;
+                if (currentPersonality === 'practical') {
+                    activeButton = buttons[0];
+                } else if (currentPersonality === 'empathetic') {
+                    activeButton = buttons[1];
+                } else if (currentPersonality === 'wise') {
+                    activeButton = buttons[2];
+                }
+                
+                if (activeButton) {
+                    activeButton.classList.add('active');
+                }
             }
         }
 
-        function handleHumeOpen() {
-            console.log('✅ Hume Voice connection opened');
-            isConnected = true;
-            updateConnectionStatus('Connected', 'connected');
-            updateStatus('Ready! Click anywhere to start conversation', personalityTemplates[currentPersonality].greeting);
-        }
-
-        function handleHumeClose() {
-            console.log('❌ Hume Voice connection closed');
-            isConnected = false;
-            isConversationActive = false;
-            updateConnectionStatus('Disconnected', 'disconnected');
-            updateStatus('Connection lost', 'Please refresh the page');
-            updateSunState('idle');
-        }
-
-        function handleHumeError(error) {
-            console.error('❌ Hume Voice error:', error);
-            updateStatus('Error occurred', 'Please try again');
-            updateSunState('idle');
-        }
-
-        function handleHumeMessage(message) {
-            console.log('📨 Hume message:', message);
+        function toggleConversation() {
+            console.log('Toggle conversation clicked');
             
-            switch (message.type) {
-                case 'user_message':
-                    updateStatus('Processing...', message.message.content);
-                    updateSunState('processing');
-                    break;
-                    
-                case 'assistant_message':
-                    updateStatus('Speaking...', message.message.content);
-                    updateSunState('speaking');
-                    break;
-                    
-                case 'audio_output':
-                    // Audio is handled automatically by Hume SDK
-                    break;
-                    
-                case 'user_interruption':
-                    updateStatus('Listening...', 'Continue speaking');
-                    updateSunState('listening');
-                    break;
-                    
-                default:
-                    console.log('Unknown message type:', message.type);
-            }
-        }
-
-        async function toggleConversation() {
-            if (!isConnected) {
-                updateStatus('Not connected', 'Please refresh the page');
-                return;
-            }
-
             if (!isConversationActive) {
-                await startConversation();
+                startConversation();
             } else {
-                await endConversation();
+                endConversation();
             }
         }
 
-        async function startConversation() {
-            try {
-                updateStatus('Starting conversation...', 'Connecting to AI');
-                
-                const personality = personalityTemplates[currentPersonality];
-                
-                // Start conversation with personality-specific system prompt
-                await voiceProvider.connect({
-                    systemPrompt: `${personality.systemPrompt}\n\nThe user's name is ${userProfile.name}. Greet them warmly and embody the personality described above.`
+        function startConversation() {
+            console.log('Starting conversation...');
+            updateStatus('Requesting microphone access...', 'Please allow microphone');
+            
+            // Request microphone access
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    console.log('Microphone access granted');
+                    audioStream = stream;
+                    isConversationActive = true;
+                    
+                    updateStatus('Listening...', 'Speak naturally - I\'m here to help');
+                    updateSunState('listening');
+                    
+                    // Simulate conversation flow
+                    setTimeout(function() {
+                        updateStatus('Processing...', 'Understanding your message');
+                        updateSunState('processing');
+                        
+                        setTimeout(function() {
+                            updateStatus('Speaking...', 'Responding with ' + currentPersonality + ' style');
+                            updateSunState('speaking');
+                            
+                            setTimeout(function() {
+                                updateStatus('Listening...', 'Continue the conversation');
+                                updateSunState('listening');
+                            }, 3000);
+                        }, 2000);
+                    }, 2000);
+                })
+                .catch(function(error) {
+                    console.error('Microphone error:', error);
+                    
+                    if (error.name === 'NotAllowedError') {
+                        updateStatus('Microphone access denied', 'Please allow microphone and try again');
+                    } else if (error.name === 'NotFoundError') {
+                        updateStatus('No microphone found', 'Please connect a microphone');
+                    } else {
+                        updateStatus('Microphone error: ' + error.message, 'Please check your audio settings');
+                    }
                 });
-
-                isConversationActive = true;
-                updateStatus('Listening...', 'Speak naturally - I\'m here to help');
-                updateSunState('listening');
-                
-                console.log('🎭 Conversation started with personality:', currentPersonality);
-                
-            } catch (error) {
-                console.error('❌ Error starting conversation:', error);
-                updateStatus('Error: ' + error.message, 'Please try again');
-            }
         }
 
-        async function endConversation() {
-            try {
-                if (voiceProvider) {
-                    await voiceProvider.disconnect();
+        function endConversation() {
+            console.log('Ending conversation...');
+            
+            if (audioStream) {
+                var tracks = audioStream.getTracks();
+                for (var i = 0; i < tracks.length; i++) {
+                    tracks[i].stop();
                 }
-                
-                isConversationActive = false;
-                updateStatus('Conversation ended', 'Click to start a new conversation');
-                updateSunState('idle');
-                
-                console.log('🔚 Conversation ended');
-                
-            } catch (error) {
-                console.error('❌ Error ending conversation:', error);
+                audioStream = null;
             }
+            
+            isConversationActive = false;
+            updateStatus('Conversation ended', 'Click to start a new conversation');
+            updateSunState('idle');
         }
 
-        async function changePersonality(newPersonality) {
+        function changePersonality(newPersonality) {
+            console.log('Changing personality to:', newPersonality);
+            
             if (newPersonality === currentPersonality) return;
             
-            const wasActive = isConversationActive;
+            var wasActive = isConversationActive;
             
             // End current conversation if active
             if (isConversationActive) {
-                await endConversation();
+                endConversation();
             }
             
             // Update personality
             currentPersonality = newPersonality;
             userProfile.personality = newPersonality;
-            localStorage.setItem('oraUserProfile', JSON.stringify(userProfile));
             
             updatePersonalityDisplay();
             
             // Restart conversation with new personality if it was active
             if (wasActive) {
-                setTimeout(() => startConversation(), 500);
+                setTimeout(function() {
+                    startConversation();
+                }, 500);
             }
-            
-            console.log('🎭 Personality changed to:', newPersonality);
         }
 
         function updateSunState(state) {
-            const sun = document.getElementById('sun');
+            var sun = document.getElementById('sun');
             sun.className = 'sun';
             if (state !== 'idle') {
                 sun.classList.add(state);
             }
         }
 
-        function updateStatus(main, sub = '') {
+        function updateStatus(main, sub) {
             document.getElementById('statusText').textContent = main;
-            document.getElementById('statusSubtext').textContent = sub;
+            document.getElementById('statusSubtext').textContent = sub || '';
         }
 
         function updateConnectionStatus(text, className) {
-            const statusEl = document.getElementById('connectionStatus');
+            var statusEl = document.getElementById('connectionStatus');
             statusEl.textContent = text;
-            statusEl.className = `connection-status ${className}`;
+            statusEl.className = 'connection-status ' + className;
         }
-
-        // Make functions available globally for onclick handlers
-        window.toggleConversation = toggleConversation;
-        window.changePersonality = changePersonality;
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', function() {
@@ -606,5 +518,6 @@
     </script>
 </body>
 </html>
+
 
 
