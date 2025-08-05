@@ -268,7 +268,7 @@
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Correct Voice Configuration Version...');
+            console.log('🚀 Initializing Fixed API Voice Configuration Version...');
             initializeAudioContext();
             getApiKeyAndCreateConfigs();
         };
@@ -312,16 +312,21 @@
                 for (const [personalityType, personality] of Object.entries(personalities)) {
                     console.log(`🔧 Creating EVI config for ${personalityType} with voice: ${personality.voice}`);
                     
+                    // FIXED: Correct API format based on documentation
                     const configData = {
+                        evi_version: "EVI_2",
                         name: `${personality.name} Configuration`,
-                        version: "EVI_2",
-                        system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today.",
-                        voice: {
-                            provider: "HUME_AI",
-                            name: personality.voice
+                        version_description: `Configuration for ${personality.name} with ${personality.voice} voice`,
+                        prompt: {
+                            text: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today."
                         },
-                        language: "en"
+                        voice: {
+                            name: personality.voice,
+                            provider: "HUME_AI"
+                        }
                     };
+                    
+                    console.log(`🔧 ${personalityType} config data:`, JSON.stringify(configData, null, 2));
                     
                     const configResponse = await fetch('https://api.hume.ai/v0/evi/configs', {
                         method: 'POST',
@@ -332,24 +337,28 @@
                         body: JSON.stringify(configData)
                     });
                     
+                    console.log(`🔧 ${personalityType} config response status:`, configResponse.status);
+                    
                     if (!configResponse.ok) {
-                        throw new Error(`Failed to create config for ${personalityType}: ${configResponse.statusText}`);
+                        const errorText = await configResponse.text();
+                        console.error(`❌ ${personalityType} config error response:`, errorText);
+                        throw new Error(`Failed to create config for ${personalityType}: ${configResponse.status} - ${errorText}`);
                     }
                     
                     const configResult = await configResponse.json();
                     personality.configId = configResult.id;
                     
-                    console.log(`✅ Created EVI config for ${personalityType}: ${personality.configId}`);
-                    updatePersonalityStatus(personalityType, 'Ready');
+                    console.log(`✅ Created EVI config for ${personalityType}: ${personality.configId} with voice: ${personality.voice}`);
+                    updatePersonalityStatus(personalityType, `Ready (${personality.voice} voice)`);
                     updatePersonalityButton(personalityType, 'Start Conversation', false);
                 }
                 
-                updateGlobalStatus('Ready! Each personality now has its own voice - click any to start conversation');
+                updateGlobalStatus('✅ All personalities ready with distinct voices! Click any to start conversation');
                 console.log('🎭 All EVI configurations created successfully with distinct voices!');
                 
             } catch (error) {
                 console.error('❌ Error creating EVI configurations:', error);
-                updateGlobalStatus('Error creating voice configurations');
+                updateGlobalStatus('Error creating voice configurations: ' + error.message);
                 
                 // Fallback: use default configuration without custom voices
                 console.log('🔄 Falling back to default configuration...');
@@ -573,7 +582,7 @@
             personality.isConnected = false;
             personality.audioBuffer = [];
             
-            updatePersonalityStatus(personalityType, 'Ready');
+            updatePersonalityStatus(personalityType, `Ready (${personality.voice} voice)`);
             updatePersonalityButton(personalityType, 'Start Conversation', false);
             updatePersonalitySun(personalityType, '');
             
@@ -759,6 +768,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
