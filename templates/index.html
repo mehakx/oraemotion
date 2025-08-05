@@ -265,7 +265,7 @@
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Perfect Smooth Audio...');
+            console.log('🚀 Initializing Voice Fixed Version...');
             initializeAudioContext();
             getApiKey();
         };
@@ -367,28 +367,44 @@
 
                 personality.socket.onopen = function() {
                     console.log(`✅ ${personalityType} connected to Hume EVI`);
-                    updatePersonalityStatus(personalityType, 'Connected! Starting conversation...');
+                    console.log(`🎵 ${personalityType} using voice: ${personality.voice}`);
                     
-                    // Send session settings with voice configuration
+                    updatePersonalityStatus(personalityType, 'Connected! Configuring voice...');
+                    
+                    // FIXED: Send session settings with voice configuration immediately
                     const sessionSettings = {
                         type: 'session_settings',
                         voice: {
                             provider: 'HUME_AI',
                             name: personality.voice
                         },
-                        system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today.",
-                        language: 'en'
+                        system_prompt: personality.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personality.name + ". Then ask them how they're doing today."
                     };
                     
-                    console.log(`🎵 ${personalityType} using voice: ${personality.voice}`);
-                    personality.socket.send(JSON.stringify(sessionSettings));
+                    console.log(`🎵 ${personalityType} SENDING VOICE CONFIG:`, sessionSettings);
                     
-                    startPersonalityRecording(personalityType);
+                    // Send the voice configuration
+                    if (personality.socket.readyState === WebSocket.OPEN) {
+                        personality.socket.send(JSON.stringify(sessionSettings));
+                        console.log(`✅ ${personalityType} Voice configuration sent successfully`);
+                    } else {
+                        console.error(`❌ ${personalityType} WebSocket not ready for voice config`);
+                    }
+                    
+                    // Start recording after a short delay to ensure voice config is processed
+                    setTimeout(() => {
+                        startPersonalityRecording(personalityType);
+                    }, 500);
                 };
 
                 personality.socket.onmessage = function(event) {
                     const data = JSON.parse(event.data);
                     console.log(`📨 ${personalityType} received:`, data.type);
+                    
+                    // Log session settings response
+                    if (data.type === 'session_settings') {
+                        console.log(`🎵 ${personalityType} VOICE CONFIG RESPONSE:`, data);
+                    }
                     
                     if (data.type === 'user_message') {
                         const content = data.message?.content || '[Speaking...]';
@@ -488,7 +504,7 @@
                 updatePersonalityCardStates();
                 updateGlobalStatus(`Active: ${personality.name}`);
                 
-                console.log(`🎙️ ${personalityType} recording started`);
+                console.log(`🎙️ ${personalityType} recording started with voice: ${personality.voice}`);
 
             } catch (error) {
                 console.error(`❌ Error starting recording for ${personalityType}:`, error);
@@ -701,7 +717,6 @@
     </script>
 </body>
 </html>
-
 
 
 
