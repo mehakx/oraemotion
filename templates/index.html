@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORA - Your Personal AI companion</title>
+    <title>ORA - Voice Wellness Companion</title>
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * {
@@ -111,7 +111,7 @@
             color: #ffd700;
         }
 
-        /* Central Sun Interface */
+        /* Central Sun Interface - Clean, no rays */
         .sun-container {
             position: relative;
             width: 400px;
@@ -192,31 +192,6 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.06); }
         }
-
-        /* Sun Rays - Static */
-        .sun-rays {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
-        .ray {
-            position: absolute;
-            width: 2px;
-            height: 40px;
-            background: linear-gradient(to bottom, rgba(255, 215, 0, 0.8), transparent);
-            border-radius: 1px;
-            transform-origin: center bottom;
-        }
-
-        .ray:nth-child(1) { transform: rotate(0deg) translateY(-100px); }
-        .ray:nth-child(2) { transform: rotate(45deg) translateY(-100px); }
-        .ray:nth-child(3) { transform: rotate(90deg) translateY(-100px); }
-        .ray:nth-child(4) { transform: rotate(135deg) translateY(-100px); }
-        .ray:nth-child(5) { transform: rotate(180deg) translateY(-100px); }
-        .ray:nth-child(6) { transform: rotate(225deg) translateY(-100px); }
-        .ray:nth-child(7) { transform: rotate(270deg) translateY(-100px); }
-        .ray:nth-child(8) { transform: rotate(315deg) translateY(-100px); }
 
         /* Status Text */
         .status-container {
@@ -303,20 +278,9 @@
             <div class="personality-btn" onclick="changePersonality('wise')">Wise Mentor</div>
         </div>
 
-        <!-- Central Sun Interface -->
+        <!-- Central Sun Interface - Clean, no rays -->
         <div class="sun-container">
-            <div class="sun" id="sun" onclick="toggleConversation()">
-                <div class="sun-rays">
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                    <div class="ray"></div>
-                </div>
-            </div>
+            <div class="sun" id="sun" onclick="toggleConversation()"></div>
         </div>
 
         <!-- Status Text -->
@@ -326,54 +290,100 @@
         </div>
 
         <!-- Connection Status -->
-        <div class="connection-status" id="connectionStatus">Ready</div>
+        <div class="connection-status" id="connectionStatus">Initializing...</div>
     </div>
 
-    <script>
-        // Simple global variables
-        var isConversationActive = false;
-        var currentPersonality = 'empathetic';
-        var userProfile = { name: 'User', personality: 'empathetic' };
-        var audioStream = null;
+    <!-- Load Hume SDK from CDN -->
+    <script type="module">
+        // Import Hume SDK
+        import { HumeClient } from 'https://cdn.skypack.dev/hume@0.9.0';
+
+        // Global variables
+        let isConversationActive = false;
+        let currentPersonality = 'empathetic';
+        let userProfile = { name: 'User', personality: 'empathetic' };
+        let humeClient = null;
+        let socket = null;
+        let recorder = null;
+        let audioPlayer = null;
+        let humeApiKey = null;
 
         // Personality templates
-        var personalityTemplates = {
+        const personalityTemplates = {
             practical: {
                 name: "The Practical Coach",
-                greeting: "Ready to tackle challenges together"
+                greeting: "Ready to tackle challenges together",
+                prompt: "You are a practical, solution-focused AI coach. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise."
             },
             empathetic: {
                 name: "The Empathetic Friend", 
-                greeting: "I'm here to listen and support you"
+                greeting: "I'm here to listen and support you",
+                prompt: "You are a warm, empathetic AI friend. Listen actively, validate emotions, and provide emotional support. Be understanding and compassionate."
             },
             wise: {
                 name: "The Wise Mentor",
-                greeting: "Let's explore this together thoughtfully"
+                greeting: "Let's explore this together thoughtfully",
+                prompt: "You are a wise, thoughtful AI mentor. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights."
             }
         };
 
+        // Make functions global for onclick handlers
+        window.toggleConversation = toggleConversation;
+        window.changePersonality = changePersonality;
+
         // Initialize when page loads
-        window.onload = function() {
+        window.addEventListener('load', function() {
             console.log('Page loaded - initializing...');
             updatePersonalityDisplay();
-            updateConnectionStatus('Ready', 'connected');
-        };
+            initializeHumeClient();
+        });
+
+        async function initializeHumeClient() {
+            try {
+                updateStatus('Connecting...', 'Getting API credentials');
+                updateConnectionStatus('Connecting...', 'disconnected');
+
+                // Get API key from backend
+                const response = await fetch('/api/hume-key');
+                const data = await response.json();
+                
+                if (!data.api_key) {
+                    throw new Error('No API key received from backend');
+                }
+
+                humeApiKey = data.api_key;
+                
+                // Initialize Hume client
+                humeClient = new HumeClient({
+                    apiKey: humeApiKey
+                });
+
+                updateConnectionStatus('Ready', 'connected');
+                updateStatus('Ready! Click anywhere to start conversation', personalityTemplates[currentPersonality].greeting);
+                
+                console.log('✅ Hume client initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Error initializing Hume client:', error);
+                updateStatus('Connection failed', 'Please refresh the page');
+                updateConnectionStatus('Failed', 'disconnected');
+            }
+        }
 
         function updatePersonalityDisplay() {
-            var personality = personalityTemplates[currentPersonality];
+            const personality = personalityTemplates[currentPersonality];
             if (personality) {
                 document.getElementById('personalityName').textContent = personality.name;
-                document.getElementById('userNameDisplay').textContent = 'Hello, ' + userProfile.name;
+                document.getElementById('userNameDisplay').textContent = `Hello, ${userProfile.name}`;
                 document.getElementById('statusSubtext').textContent = personality.greeting;
                 
                 // Update active button
-                var buttons = document.querySelectorAll('.personality-btn');
-                for (var i = 0; i < buttons.length; i++) {
-                    buttons[i].classList.remove('active');
-                }
+                document.querySelectorAll('.personality-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
                 
-                // Find and activate the current personality button
-                var activeButton = null;
+                const buttons = document.querySelectorAll('.personality-btn');
+                let activeButton = null;
                 if (currentPersonality === 'practical') {
                     activeButton = buttons[0];
                 } else if (currentPersonality === 'empathetic') {
@@ -388,85 +398,215 @@
             }
         }
 
-        function toggleConversation() {
+        async function toggleConversation() {
             console.log('Toggle conversation clicked');
             
+            if (!humeClient) {
+                updateStatus('Not ready', 'Please wait for connection');
+                return;
+            }
+            
             if (!isConversationActive) {
-                startConversation();
+                await startConversation();
             } else {
-                endConversation();
+                await endConversation();
             }
         }
 
-        function startConversation() {
-            console.log('Starting conversation...');
-            updateStatus('Requesting microphone access...', 'Please allow microphone');
-            
-            // Request microphone access
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(function(stream) {
-                    console.log('Microphone access granted');
-                    audioStream = stream;
-                    isConversationActive = true;
-                    
-                    updateStatus('Listening...', 'Speak naturally - I\'m here to help');
-                    updateSunState('listening');
-                    
-                    // Simulate conversation flow
-                    setTimeout(function() {
-                        updateStatus('Processing...', 'Understanding your message');
-                        updateSunState('processing');
-                        
-                        setTimeout(function() {
-                            updateStatus('Speaking...', 'Responding with ' + currentPersonality + ' style');
-                            updateSunState('speaking');
-                            
-                            setTimeout(function() {
-                                updateStatus('Listening...', 'Continue the conversation');
-                                updateSunState('listening');
-                            }, 3000);
-                        }, 2000);
-                    }, 2000);
-                })
-                .catch(function(error) {
-                    console.error('Microphone error:', error);
-                    
-                    if (error.name === 'NotAllowedError') {
-                        updateStatus('Microphone access denied', 'Please allow microphone and try again');
-                    } else if (error.name === 'NotFoundError') {
-                        updateStatus('No microphone found', 'Please connect a microphone');
-                    } else {
-                        updateStatus('Microphone error: ' + error.message, 'Please check your audio settings');
-                    }
+        async function startConversation() {
+            try {
+                console.log('Starting conversation...');
+                updateStatus('Connecting to Hume EVI...', 'Please wait');
+                
+                // Connect to Hume EVI using the official SDK
+                socket = await humeClient.empathicVoice.chat.connect({
+                    // configId can be added here if you have a specific config
                 });
+
+                // Set up event handlers
+                socket.on('open', handleOpen);
+                socket.on('message', handleMessage);
+                socket.on('error', handleError);
+                socket.on('close', handleClose);
+                
+                console.log('✅ WebSocket connection established');
+                
+            } catch (error) {
+                console.error('❌ Error starting conversation:', error);
+                updateStatus('Connection error', 'Please try again');
+                updateConnectionStatus('Error', 'disconnected');
+            }
         }
 
-        function endConversation() {
-            console.log('Ending conversation...');
+        async function handleOpen() {
+            console.log('Socket opened');
             
-            if (audioStream) {
-                var tracks = audioStream.getTracks();
-                for (var i = 0; i < tracks.length; i++) {
-                    tracks[i].stop();
+            try {
+                // Send system prompt for current personality
+                const systemPrompt = personalityTemplates[currentPersonality].prompt + 
+                    ` The user's name is ${userProfile.name}. Greet them warmly and ask how they're doing.`;
+                
+                // Start audio capture
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Create MediaRecorder for audio streaming
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+                    ? 'audio/webm;codecs=opus' 
+                    : 'audio/webm';
+                
+                recorder = new MediaRecorder(stream, { mimeType });
+                
+                recorder.ondataavailable = async (event) => {
+                    if (event.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+                        // Convert audio to base64
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64Audio = reader.result.split(',')[1];
+                            socket.sendAudioInput({ data: base64Audio });
+                        };
+                        reader.readAsDataURL(event.data);
+                    }
+                };
+                
+                recorder.onerror = (error) => {
+                    console.error('MediaRecorder error:', error);
+                };
+                
+                // Start recording in chunks
+                recorder.start(100); // Send audio every 100ms
+                
+                isConversationActive = true;
+                updateStatus('Listening...', 'Speak naturally - I\'m here to help');
+                updateSunState('listening');
+                updateConnectionStatus('Connected', 'connected');
+                
+                console.log('🎙️ Audio capture started');
+                
+            } catch (error) {
+                console.error('❌ Error in handleOpen:', error);
+                updateStatus('Microphone error', 'Please allow microphone access');
+                socket?.close();
+            }
+        }
+
+        async function handleMessage(message) {
+            console.log('Received message:', message);
+            
+            switch (message.type) {
+                case 'user_message':
+                    updateStatus('Processing...', message.message?.content || 'Understanding your message');
+                    updateSunState('processing');
+                    break;
+                    
+                case 'assistant_message':
+                    updateStatus('Speaking...', message.message?.content || 'Responding with empathy');
+                    updateSunState('speaking');
+                    break;
+                    
+                case 'audio_output':
+                    // Play audio response
+                    await playAudioResponse(message.data);
+                    break;
+                    
+                case 'user_interruption':
+                    // Handle interruption
+                    updateStatus('Listening...', 'Continue speaking');
+                    updateSunState('listening');
+                    break;
+                    
+                case 'assistant_end':
+                    // Assistant finished speaking
+                    updateStatus('Listening...', 'Continue the conversation');
+                    updateSunState('listening');
+                    break;
+            }
+        }
+
+        async function playAudioResponse(audioData) {
+            try {
+                // Decode base64 audio data
+                const binaryString = atob(audioData);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
                 }
-                audioStream = null;
+                
+                const audioBlob = new Blob([bytes], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                const audio = new Audio(audioUrl);
+                
+                audio.onplay = () => {
+                    updateSunState('speaking');
+                };
+                
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    updateStatus('Listening...', 'Continue the conversation');
+                    updateSunState('listening');
+                };
+                
+                audio.onerror = (error) => {
+                    console.error('Audio playback error:', error);
+                    updateStatus('Audio error', 'Continue speaking');
+                    updateSunState('listening');
+                };
+                
+                await audio.play();
+                
+            } catch (error) {
+                console.error('Error playing audio:', error);
+                updateStatus('Audio error', 'Continue speaking');
+                updateSunState('listening');
+            }
+        }
+
+        function handleError(error) {
+            console.error('Socket error:', error);
+            updateStatus('Connection error', 'Please try again');
+            updateConnectionStatus('Error', 'disconnected');
+        }
+
+        function handleClose(event) {
+            console.log('Socket closed:', event);
+            
+            // Stop recording
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop();
             }
             
+            // Stop audio tracks
+            if (recorder && recorder.stream) {
+                recorder.stream.getTracks().forEach(track => track.stop());
+            }
+            
+            recorder = null;
+            socket = null;
             isConversationActive = false;
+            
             updateStatus('Conversation ended', 'Click to start a new conversation');
             updateSunState('idle');
+            updateConnectionStatus('Disconnected', 'disconnected');
         }
 
-        function changePersonality(newPersonality) {
+        async function endConversation() {
+            console.log('Ending conversation...');
+            
+            if (socket) {
+                socket.close();
+            }
+        }
+
+        async function changePersonality(newPersonality) {
             console.log('Changing personality to:', newPersonality);
             
             if (newPersonality === currentPersonality) return;
             
-            var wasActive = isConversationActive;
+            const wasActive = isConversationActive;
             
             // End current conversation if active
             if (isConversationActive) {
-                endConversation();
+                await endConversation();
             }
             
             // Update personality
@@ -477,29 +617,27 @@
             
             // Restart conversation with new personality if it was active
             if (wasActive) {
-                setTimeout(function() {
-                    startConversation();
-                }, 500);
+                setTimeout(() => startConversation(), 500);
             }
         }
 
         function updateSunState(state) {
-            var sun = document.getElementById('sun');
+            const sun = document.getElementById('sun');
             sun.className = 'sun';
             if (state !== 'idle') {
                 sun.classList.add(state);
             }
         }
 
-        function updateStatus(main, sub) {
+        function updateStatus(main, sub = '') {
             document.getElementById('statusText').textContent = main;
-            document.getElementById('statusSubtext').textContent = sub || '';
+            document.getElementById('statusSubtext').textContent = sub;
         }
 
         function updateConnectionStatus(text, className) {
-            var statusEl = document.getElementById('connectionStatus');
+            const statusEl = document.getElementById('connectionStatus');
             statusEl.textContent = text;
-            statusEl.className = 'connection-status ' + className;
+            statusEl.className = `connection-status ${className}`;
         }
 
         // Handle page visibility changes
@@ -518,6 +656,5 @@
     </script>
 </body>
 </html>
-
 
 
