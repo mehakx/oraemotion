@@ -227,6 +227,8 @@
                 isPlayingAudio: false,
                 audioBuffer: [],
                 bufferTimeout: null,
+                currentSource: null,
+                nextStartTime: 0,
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend"
             },
@@ -238,6 +240,8 @@
                 isPlayingAudio: false,
                 audioBuffer: [],
                 bufferTimeout: null,
+                currentSource: null,
+                nextStartTime: 0,
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach"
             },
@@ -249,6 +253,8 @@
                 isPlayingAudio: false,
                 audioBuffer: [],
                 bufferTimeout: null,
+                currentSource: null,
+                nextStartTime: 0,
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
                 name: "The Wise Mentor"
             }
@@ -256,7 +262,7 @@
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Ultra-Smooth Audio...');
+            console.log('🚀 Initializing Perfect Smooth Audio...');
             initializeAudioContext();
             getApiKey();
         };
@@ -264,7 +270,7 @@
         function initializeAudioContext() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log('🔊 Audio context initialized');
+                console.log('🔊 Web Audio API context initialized');
             } catch (error) {
                 console.error('❌ Audio context error:', error);
             }
@@ -498,14 +504,14 @@
                 clearTimeout(personality.bufferTimeout);
             }
             
-            // If we have enough chunks (3+) or this is the first chunk, start playing
-            if (personality.audioBuffer.length >= 3 || !personality.isPlayingAudio) {
+            // If we have enough chunks (2+) or this is the first chunk, start playing
+            if (personality.audioBuffer.length >= 2 || !personality.isPlayingAudio) {
                 flushAudioBuffer(personalityType);
             } else {
-                // Set timeout to flush buffer after 500ms if no more chunks come
+                // Set timeout to flush buffer after 300ms if no more chunks come
                 personality.bufferTimeout = setTimeout(() => {
                     flushAudioBuffer(personalityType);
-                }, 500);
+                }, 300);
             }
         }
 
@@ -529,11 +535,12 @@
             
             // Start playing if not already playing
             if (!personality.isPlayingAudio) {
-                playNextAudioChunk(personalityType);
+                personality.nextStartTime = audioContext.currentTime;
+                playNextAudioChunkWebAudio(personalityType);
             }
         }
 
-        function playNextAudioChunk(personalityType) {
+        async function playNextAudioChunkWebAudio(personalityType) {
             const personality = personalities[personalityType];
             
             // Check if this personality is still active
@@ -553,9 +560,14 @@
             }
             
             const audioData = personality.audioQueue.shift();
-            console.log(`🔊 ${personalityType} playing audio chunk (${personality.audioQueue.length} remaining)`);
+            console.log(`🔊 ${personalityType} playing audio chunk with Web Audio API (${personality.audioQueue.length} remaining)`);
             
             try {
+                // Ensure audio context is running
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
                 // Decode base64 audio
                 const binaryString = atob(audioData);
                 const bytes = new Uint8Array(binaryString.length);
@@ -563,46 +575,37 @@
                     bytes[i] = binaryString.charCodeAt(i);
                 }
                 
-                const audioBlob = new Blob([bytes], { type: 'audio/wav' });
-                const audioUrl = URL.createObjectURL(audioBlob);
+                // Decode audio data
+                const audioBuffer = await audioContext.decodeAudioData(bytes.buffer.slice());
                 
-                const audio = new Audio();
+                // Create audio source
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                
                 personality.isPlayingAudio = true;
                 
-                audio.oncanplaythrough = function() {
-                    console.log(`🔊 ${personalityType} audio chunk ready to play`);
-                    audio.play().catch(error => {
-                        console.error(`❌ ${personalityType} audio play error:`, error);
-                        // Try next chunk
-                        setTimeout(() => playNextAudioChunk(personalityType), 10);
-                    });
+                // Schedule to start at the exact right time for seamless playback
+                const startTime = Math.max(audioContext.currentTime, personality.nextStartTime);
+                source.start(startTime);
+                
+                // Update next start time for seamless continuation
+                personality.nextStartTime = startTime + audioBuffer.duration;
+                
+                console.log(`🔊 ${personalityType} Web Audio chunk scheduled at ${startTime.toFixed(3)}s, duration: ${audioBuffer.duration.toFixed(3)}s`);
+                
+                // When this chunk ends, play the next one
+                source.onended = function() {
+                    console.log(`🔊 ${personalityType} Web Audio chunk ended - playing next`);
+                    playNextAudioChunkWebAudio(personalityType);
                 };
                 
-                audio.onplay = function() {
-                    console.log(`🔊 ${personalityType} audio chunk playback started`);
-                };
-                
-                audio.onended = function() {
-                    console.log(`🔊 ${personalityType} audio chunk ended - playing next`);
-                    URL.revokeObjectURL(audioUrl);
-                    // Play next chunk with minimal delay (10ms instead of 50ms)
-                    setTimeout(() => playNextAudioChunk(personalityType), 10);
-                };
-                
-                audio.onerror = function(error) {
-                    console.error(`❌ ${personalityType} audio chunk error:`, error);
-                    URL.revokeObjectURL(audioUrl);
-                    // Try next chunk
-                    setTimeout(() => playNextAudioChunk(personalityType), 10);
-                };
-                
-                audio.src = audioUrl;
-                audio.load();
+                personality.currentSource = source;
                 
             } catch (error) {
-                console.error(`❌ Error playing ${personalityType} audio chunk:`, error);
-                // Try next chunk
-                setTimeout(() => playNextAudioChunk(personalityType), 10);
+                console.error(`❌ Error playing ${personalityType} Web Audio chunk:`, error);
+                // Fallback to next chunk
+                setTimeout(() => playNextAudioChunkWebAudio(personalityType), 10);
             }
         }
 
@@ -613,13 +616,23 @@
             personality.audioBuffer = [];
             personality.audioQueue = [];
             personality.isPlayingAudio = false;
+            personality.nextStartTime = 0;
             
             if (personality.bufferTimeout) {
                 clearTimeout(personality.bufferTimeout);
                 personality.bufferTimeout = null;
             }
             
-            console.log(`🔇 ${personalityType} audio stopped and buffers cleared`);
+            if (personality.currentSource) {
+                try {
+                    personality.currentSource.stop();
+                } catch (e) {
+                    // Source might already be stopped
+                }
+                personality.currentSource = null;
+            }
+            
+            console.log(`🔇 ${personalityType} Web Audio stopped and buffers cleared`);
         }
 
         function stopPersonalityConversation(personalityType) {
@@ -746,6 +759,7 @@
     </script>
 </body>
 </html>
+
 
 
 
