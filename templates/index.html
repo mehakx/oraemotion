@@ -46,15 +46,17 @@
             width: 220px;
             text-align: center;
             transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
         
         .personality-card.active {
-            background: rgba(255,215,0,0.2);
             border: 2px solid #ffd700;
+            background: rgba(255,215,0,0.1);
+            box-shadow: 0 0 20px rgba(255,215,0,0.3);
         }
         
         .personality-card.inactive {
-            opacity: 0.6;
+            opacity: 0.5;
             background: rgba(255,255,255,0.05);
         }
         
@@ -167,6 +169,15 @@
             cursor: pointer;
             margin: 10px;
         }
+
+        .active-indicator {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -181,7 +192,7 @@
                 <h3>Empathetic Friend</h3>
                 <div class="sun" id="sun-empathetic"></div>
                 <div class="status" id="status-empathetic">Ready</div>
-                <button class="personality-btn" id="btn-empathetic" onclick="togglePersonality('empathetic')">Start Conversation</button>
+                <button class="personality-btn" id="btn-empathetic" onclick="activatePersonality('empathetic')">Start Conversation</button>
                 <div class="transcript" id="transcript-empathetic">Conversation will appear here...</div>
             </div>
             
@@ -190,7 +201,7 @@
                 <h3>Practical Coach</h3>
                 <div class="sun" id="sun-practical"></div>
                 <div class="status" id="status-practical">Ready</div>
-                <button class="personality-btn" id="btn-practical" onclick="togglePersonality('practical')">Start Conversation</button>
+                <button class="personality-btn" id="btn-practical" onclick="activatePersonality('practical')">Start Conversation</button>
                 <div class="transcript" id="transcript-practical">Conversation will appear here...</div>
             </div>
             
@@ -199,7 +210,7 @@
                 <h3>Wise Mentor</h3>
                 <div class="sun" id="sun-wise"></div>
                 <div class="status" id="status-wise">Ready</div>
-                <button class="personality-btn" id="btn-wise" onclick="togglePersonality('wise')">Start Conversation</button>
+                <button class="personality-btn" id="btn-wise" onclick="activatePersonality('wise')">Start Conversation</button>
                 <div class="transcript" id="transcript-wise">Conversation will appear here...</div>
             </div>
         </div>
@@ -212,8 +223,8 @@
     <script>
         let apiKey = null;
         let audioContext = null;
-        let currentActivePersonality = null; // Track which personality is currently active
-        let sharedMicrophoneStream = null; // Single shared microphone stream
+        let sharedMicrophoneStream = null;
+        let currentActivePersonality = null;
         
         // Separate state for each personality
         const personalities = {
@@ -266,13 +277,6 @@
         }
 
         function getApiKey() {
-            // For demo purposes, using a placeholder
-            // Replace this with your actual API key fetching logic
-            apiKey = "your-hume-api-key-here";
-            updateGlobalStatus('Ready! Click any personality to start conversation');
-            console.log('✅ API key loaded successfully');
-            
-            /* Uncomment and modify this for actual API key fetching:
             fetch('/api/hume-key')
                 .then(response => response.json())
                 .then(data => {
@@ -288,43 +292,58 @@
                     console.error('❌ Error getting API key:', error);
                     updateGlobalStatus('Error: Could not get API key');
                 });
-            */
-        }
-
-        function togglePersonality(personalityType) {
-            const personality = personalities[personalityType];
-            
-            if (!personality.isConnected) {
-                // Stop any currently active personality first
-                if (currentActivePersonality && currentActivePersonality !== personalityType) {
-                    stopPersonalityConversation(currentActivePersonality);
-                }
-                startPersonalityConversation(personalityType);
-            } else {
-                stopPersonalityConversation(personalityType);
-            }
         }
 
         async function initializeMicrophone() {
-            if (!sharedMicrophoneStream) {
-                try {
-                    sharedMicrophoneStream = await navigator.mediaDevices.getUserMedia({ 
-                        audio: {
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true
-                        }
-                    });
-                    console.log('🎙️ Shared microphone stream initialized');
-                } catch (error) {
-                    console.error('❌ Microphone access error:', error);
-                    throw error;
-                }
+            if (sharedMicrophoneStream) {
+                console.log('🎙️ Using existing microphone stream');
+                return sharedMicrophoneStream;
             }
-            return sharedMicrophoneStream;
+
+            try {
+                sharedMicrophoneStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                console.log('🎙️ Shared microphone stream initialized');
+                return sharedMicrophoneStream;
+            } catch (error) {
+                console.error('❌ Microphone initialization error:', error);
+                throw error;
+            }
         }
 
-        function startPersonalityConversation(personalityType) {
+        function activatePersonality(personalityType) {
+            console.log(`🎭 Activating personality: ${personalityType}`);
+            
+            // If this personality is already active, deactivate it
+            if (currentActivePersonality === personalityType) {
+                deactivateCurrentPersonality();
+                return;
+            }
+            
+            // Deactivate current personality if any
+            if (currentActivePersonality) {
+                deactivateCurrentPersonality();
+            }
+            
+            // Activate new personality
+            startPersonalityConversation(personalityType);
+        }
+
+        function deactivateCurrentPersonality() {
+            if (!currentActivePersonality) return;
+            
+            console.log(`🔇 Deactivating current personality: ${currentActivePersonality}`);
+            stopPersonalityConversation(currentActivePersonality);
+            currentActivePersonality = null;
+            updatePersonalityCardStates();
+        }
+
+        async function startPersonalityConversation(personalityType) {
             if (!apiKey) {
                 updatePersonalityStatus(personalityType, 'Error: No API key');
                 return;
@@ -334,16 +353,18 @@
             
             updatePersonalityStatus(personalityType, 'Connecting...');
             updatePersonalityButton(personalityType, 'Connecting...', true);
-            updatePersonalityCardState(personalityType, 'connecting');
 
             try {
+                // Initialize microphone if needed
+                await initializeMicrophone();
+                
                 // Connect to Hume EVI WebSocket
                 const wsUrl = `wss://api.hume.ai/v0/evi/chat?api_key=${encodeURIComponent(apiKey)}`;
                 personality.socket = new WebSocket(wsUrl);
 
                 personality.socket.onopen = function() {
                     console.log(`✅ ${personalityType} connected to Hume EVI`);
-                    updatePersonalityStatus(personalityType, 'Connected! Starting microphone...');
+                    updatePersonalityStatus(personalityType, 'Connected! Starting conversation...');
                     
                     // Send personality prompt
                     const systemMessage = {
@@ -353,13 +374,7 @@
                     };
                     personality.socket.send(JSON.stringify(systemMessage));
                     
-                    initializeMicrophone()
-                        .then(() => startPersonalityMicrophone(personalityType))
-                        .catch(error => {
-                            console.error(`❌ ${personalityType} microphone error:`, error);
-                            updatePersonalityStatus(personalityType, 'Microphone access denied');
-                            if (personality.socket) personality.socket.close();
-                        });
+                    startPersonalityRecording(personalityType);
                 };
 
                 personality.socket.onmessage = function(event) {
@@ -378,15 +393,22 @@
                         updatePersonalitySun(personalityType, 'speaking');
                     } else if (data.type === 'audio_output') {
                         console.log(`🔊 ${personalityType} received audio chunk`);
-                        playPersonalityAudio(personalityType, data.data);
+                        // Only play audio if this personality is currently active
+                        if (currentActivePersonality === personalityType) {
+                            playPersonalityAudio(personalityType, data.data);
+                        } else {
+                            console.log(`🔇 Ignoring audio from inactive personality: ${personalityType}`);
+                        }
                     } else if (data.type === 'assistant_end') {
                         console.log(`🎵 ${personalityType} assistant finished`);
                         // Don't change state here - let audio finish naturally
                     } else if (data.type === 'user_interruption') {
                         // User interrupted - stop playing audio
-                        stopPersonalityAudio(personalityType);
-                        updatePersonalityStatus(personalityType, 'Listening...');
-                        updatePersonalitySun(personalityType, 'listening');
+                        if (currentActivePersonality === personalityType) {
+                            stopPersonalityAudio(personalityType);
+                            updatePersonalityStatus(personalityType, 'Listening...');
+                            updatePersonalitySun(personalityType, 'listening');
+                        }
                     }
                 };
 
@@ -394,7 +416,6 @@
                     console.error(`❌ ${personalityType} WebSocket error:`, error);
                     updatePersonalityStatus(personalityType, 'Connection error');
                     updatePersonalityButton(personalityType, 'Start Conversation', false);
-                    updatePersonalityCardState(personalityType, 'inactive');
                 };
 
                 personality.socket.onclose = function() {
@@ -402,11 +423,11 @@
                     updatePersonalityStatus(personalityType, 'Disconnected');
                     updatePersonalityButton(personalityType, 'Start Conversation', false);
                     updatePersonalitySun(personalityType, 'idle');
-                    updatePersonalityCardState(personalityType, 'inactive');
                     personality.isConnected = false;
                     
                     if (currentActivePersonality === personalityType) {
                         currentActivePersonality = null;
+                        updatePersonalityCardStates();
                     }
                 };
 
@@ -414,59 +435,62 @@
                 console.error(`❌ Error starting ${personalityType} conversation:`, error);
                 updatePersonalityStatus(personalityType, 'Error starting conversation');
                 updatePersonalityButton(personalityType, 'Start Conversation', false);
-                updatePersonalityCardState(personalityType, 'inactive');
             }
         }
 
-        function startPersonalityMicrophone(personalityType) {
+        function startPersonalityRecording(personalityType) {
             const personality = personalities[personalityType];
             
-            console.log(`🎙️ ${personalityType} microphone access granted`);
-            
-            personality.recorder = new MediaRecorder(sharedMicrophoneStream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
+            try {
+                personality.recorder = new MediaRecorder(sharedMicrophoneStream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
 
-            personality.recorder.ondataavailable = function(event) {
-                // Only send audio if this personality is currently active
-                if (currentActivePersonality === personalityType && 
-                    event.data.size > 0 && 
-                    personality.socket && 
-                    personality.socket.readyState === WebSocket.OPEN) {
-                    const reader = new FileReader();
-                    reader.onloadend = function() {
-                        const base64Audio = reader.result.split(',')[1];
-                        personality.socket.send(JSON.stringify({
-                            type: 'audio_input',
-                            data: base64Audio
-                        }));
-                    };
-                    reader.readAsDataURL(event.data);
-                }
-            };
+                personality.recorder.ondataavailable = function(event) {
+                    // Only send audio data if this personality is currently active
+                    if (event.data.size > 0 && 
+                        personality.socket && 
+                        personality.socket.readyState === WebSocket.OPEN &&
+                        currentActivePersonality === personalityType) {
+                        
+                        const reader = new FileReader();
+                        reader.onloadend = function() {
+                            const base64Audio = reader.result.split(',')[1];
+                            personality.socket.send(JSON.stringify({
+                                type: 'audio_input',
+                                data: base64Audio
+                            }));
+                        };
+                        reader.readAsDataURL(event.data);
+                    }
+                };
 
-            personality.recorder.start(100); // Send audio every 100ms
-            
-            personality.isConnected = true;
-            currentActivePersonality = personalityType; // Set as active personality
-            
-            updatePersonalityStatus(personalityType, 'Listening...');
-            updatePersonalitySun(personalityType, 'listening');
-            updatePersonalityButton(personalityType, 'Stop Conversation', false);
-            updatePersonalityCardState(personalityType, 'active');
-            updateGlobalStatus(`Now talking with ${personality.name}`);
-            
-            console.log(`🎤 ${personalityType} recording started and set as active`);
+                personality.recorder.start(100); // Send audio every 100ms
+                
+                personality.isConnected = true;
+                currentActivePersonality = personalityType;
+                updatePersonalityStatus(personalityType, 'Listening...');
+                updatePersonalitySun(personalityType, 'listening');
+                updatePersonalityButton(personalityType, 'Stop Conversation', false);
+                updatePersonalityCardStates();
+                
+                console.log(`🎤 ${personalityType} recording started (ACTIVE)`);
+                
+            } catch (error) {
+                console.error(`❌ ${personalityType} recording error:`, error);
+                updatePersonalityStatus(personalityType, 'Recording error');
+                if (personality.socket) personality.socket.close();
+            }
         }
 
         function playPersonalityAudio(personalityType, audioData) {
-            // Only play audio if this personality is currently active
+            const personality = personalities[personalityType];
+            
+            // Double-check this personality is still active
             if (currentActivePersonality !== personalityType) {
-                console.log(`🔇 ${personalityType} audio ignored (not active personality)`);
+                console.log(`🔇 Ignoring audio playback for inactive personality: ${personalityType}`);
                 return;
             }
-            
-            const personality = personalities[personalityType];
             
             // Add to queue
             personality.audioQueue.push(audioData);
@@ -481,13 +505,19 @@
         function playNextAudioChunk(personalityType) {
             const personality = personalities[personalityType];
             
+            // Check if this personality is still active
+            if (currentActivePersonality !== personalityType) {
+                console.log(`🔇 Stopping audio playback for inactive personality: ${personalityType}`);
+                personality.audioQueue = [];
+                personality.isPlayingAudio = false;
+                return;
+            }
+            
             if (personality.audioQueue.length === 0) {
                 console.log(`🔇 ${personalityType} audio queue empty - returning to listening`);
                 personality.isPlayingAudio = false;
-                if (currentActivePersonality === personalityType) {
-                    updatePersonalityStatus(personalityType, 'Listening...');
-                    updatePersonalitySun(personalityType, 'listening');
-                }
+                updatePersonalityStatus(personalityType, 'Listening...');
+                updatePersonalitySun(personalityType, 'listening');
                 return;
             }
             
@@ -589,30 +619,55 @@
             updatePersonalityStatus(personalityType, 'Conversation stopped');
             updatePersonalitySun(personalityType, 'idle');
             updatePersonalityButton(personalityType, 'Start Conversation', false);
-            updatePersonalityCardState(personalityType, 'inactive');
-            
-            if (currentActivePersonality === personalityType) {
-                currentActivePersonality = null;
-                updateGlobalStatus('Choose a personality to start conversation');
-            }
         }
 
         function stopAllConversations() {
             console.log('🔚 Stopping all conversations');
+            
+            // Stop current active personality
+            if (currentActivePersonality) {
+                deactivateCurrentPersonality();
+            }
+            
+            // Stop any other connected personalities
             Object.keys(personalities).forEach(personalityType => {
                 if (personalities[personalityType].isConnected) {
                     stopPersonalityConversation(personalityType);
                 }
             });
             
-            // Clean up shared microphone stream
+            // Stop shared microphone stream
             if (sharedMicrophoneStream) {
                 sharedMicrophoneStream.getTracks().forEach(track => track.stop());
                 sharedMicrophoneStream = null;
+                console.log('🎙️ Shared microphone stream stopped');
             }
             
             currentActivePersonality = null;
+            updatePersonalityCardStates();
             updateGlobalStatus('All conversations stopped');
+        }
+
+        function updatePersonalityCardStates() {
+            Object.keys(personalities).forEach(personalityType => {
+                const card = document.getElementById(`card-${personalityType}`);
+                
+                if (currentActivePersonality === personalityType) {
+                    card.classList.add('active');
+                    card.classList.remove('inactive');
+                } else if (currentActivePersonality) {
+                    card.classList.add('inactive');
+                    card.classList.remove('active');
+                } else {
+                    card.classList.remove('active', 'inactive');
+                }
+            });
+            
+            if (currentActivePersonality) {
+                updateGlobalStatus(`Active: ${personalities[currentActivePersonality].name}`);
+            } else {
+                updateGlobalStatus('Choose a personality to start conversation');
+            }
         }
 
         function updateGlobalStatus(message) {
@@ -630,7 +685,7 @@
             button.textContent = text;
             button.disabled = disabled;
             
-            if (personalities[personalityType].isConnected) {
+            if (personalities[personalityType].isConnected && currentActivePersonality === personalityType) {
                 button.classList.add('active');
             } else {
                 button.classList.remove('active');
@@ -642,27 +697,6 @@
             sun.className = 'sun';
             if (state !== 'idle') {
                 sun.classList.add(state);
-            }
-        }
-
-        function updatePersonalityCardState(personalityType, state) {
-            const card = document.getElementById(`card-${personalityType}`);
-            
-            // Remove all state classes
-            card.classList.remove('active', 'inactive');
-            
-            // Add appropriate state class
-            if (state === 'active') {
-                card.classList.add('active');
-                // Make other cards inactive
-                Object.keys(personalities).forEach(type => {
-                    if (type !== personalityType) {
-                        document.getElementById(`card-${type}`).classList.remove('active');
-                        document.getElementById(`card-${type}`).classList.add('inactive');
-                    }
-                });
-            } else if (state === 'inactive') {
-                card.classList.add('inactive');
             }
         }
 
@@ -688,5 +722,6 @@
     </script>
 </body>
 </html>
+
 
 
