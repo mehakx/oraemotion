@@ -151,22 +151,26 @@
         let currentPersonality = 'empathetic';
         let apiKey = null;
         let audioContext = null;
-        let currentAudioSource = null;
         let currentAudioElement = null;
         let isPlayingAudio = false;
+        let audioChunks = [];
+        let isCollectingAudio = false;
 
         const personalities = {
             empathetic: {
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
-                name: "The Empathetic Friend"
+                name: "The Empathetic Friend",
+                voice_id: "248be419-c632-4f23-adf1-5324ed7dbf1d" // Warm, caring female voice
             },
             practical: {
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
-                name: "The Practical Coach"
+                name: "The Practical Coach",
+                voice_id: "5345cf08-6f37-424d-a5d0-468a04e68c51" // Confident, direct voice
             },
             wise: {
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
-                name: "The Wise Mentor"
+                name: "The Wise Mentor",
+                voice_id: "694f9f93-7e68-4c8b-8a95-7e3c1b3c7c5e" // Calm, thoughtful voice
             }
         };
 
@@ -206,6 +210,9 @@
         }
 
         function setPersonality(personality) {
+            // Stop any current audio when switching personalities
+            stopCurrentAudio();
+            
             currentPersonality = personality;
             
             // Update button styles
@@ -216,19 +223,23 @@
             
             const personalityInfo = personalities[personality];
             updateStatus(`Personality set to: ${personalityInfo.name}`);
-            console.log('🎭 Personality changed to:', personalityInfo.name);
+            console.log('🎭 Personality changed to:', personalityInfo.name, 'Voice ID:', personalityInfo.voice_id);
             
-            // If conversation is active, send new personality prompt immediately
+            // If conversation is active, send new personality prompt with specific voice
             if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                console.log('🔄 Updating personality during active conversation');
+                console.log('🔄 Updating personality and voice during active conversation');
                 const systemMessage = {
                     type: 'session_settings',
                     system_prompt: personalityInfo.prompt + " The user's name is User. You just switched personalities - acknowledge this change briefly and continue the conversation in your new personality style.",
+                    voice: {
+                        provider: "hume_ai",
+                        voice_id: personalityInfo.voice_id
+                    },
                     language: 'en'
                 };
                 socket.send(JSON.stringify(systemMessage));
                 
-                addToTranscript(`System: Switched to ${personalityInfo.name}`);
+                addToTranscript(`System: Switched to ${personalityInfo.name} (Voice: ${personalityInfo.voice_id})`);
                 updateStatus(`Now speaking as: ${personalityInfo.name}`);
             }
         }
@@ -251,14 +262,20 @@
                     console.log('✅ Connected to Hume EVI');
                     updateStatus('Connected! Starting microphone...');
                     
-                    // Send initial personality prompt
+                    // Send initial personality prompt with specific voice
                     const personalityInfo = personalities[currentPersonality];
                     const systemMessage = {
                         type: 'session_settings',
                         system_prompt: personalityInfo.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personalityInfo.name + ".",
+                        voice: {
+                            provider: "hume_ai",
+                            voice_id: personalityInfo.voice_id
+                        },
                         language: 'en'
                     };
                     socket.send(JSON.stringify(systemMessage));
+                    
+                    console.log('🎭 Set personality:', personalityInfo.name, 'with voice:', personalityInfo.voice_id);
                     
                     startMicrophone();
                 };
@@ -277,16 +294,39 @@
                         addToTranscript('AI: ' + content);
                         updateStatus('AI is speaking...');
                         updateSunState('speaking');
+                        
+                        // Start collecting audio chunks for this response
+                        audioChunks = [];
+                        isCollectingAudio = true;
+                        console.log('🎵 Started collecting audio chunks for response');
+                        
                     } else if (data.type === 'audio_output') {
-                        console.log('🔊 Received audio output');
-                        // STOP ANY EXISTING AUDIO FIRST
-                        stopCurrentAudio();
-                        // THEN play new audio
-                        playAudioSingle(data.data);
+                        console.log('🔊 Received audio chunk');
+                        
+                        if (isCollectingAudio) {
+                            // Collect this audio chunk
+                            audioChunks.push(data.data);
+                            console.log('📦 Collected audio chunk', audioChunks.length);
+                        }
+                        
                     } else if (data.type === 'assistant_end') {
+                        console.log('🎵 Assistant finished - combining', audioChunks.length, 'audio chunks');
+                        
+                        // Stop collecting and play combined audio
+                        isCollectingAudio = false;
+                        
+                        if (audioChunks.length > 0) {
+                            playCombinedAudio(audioChunks);
+                            audioChunks = [];
+                        }
+                        
                         updateStatus('Listening... (speak now)');
                         updateSunState('listening');
+                        
                     } else if (data.type === 'user_interruption') {
+                        // User interrupted - stop collecting and playing audio
+                        isCollectingAudio = false;
+                        audioChunks = [];
                         stopCurrentAudio();
                         updateStatus('Listening... (continue speaking)');
                         updateSunState('listening');
@@ -360,18 +400,70 @@
                 });
         }
 
-        function stopCurrentAudio() {
-            // Stop Web Audio API source
-            if (currentAudioSource) {
-                try {
-                    currentAudioSource.stop();
-                    currentAudioSource.disconnect();
-                } catch (error) {
-                    console.log('Audio source already stopped');
-                }
-                currentAudioSource = null;
-            }
+        function playCombinedAudio(chunks) {
+            if (chunks.length === 0) return;
             
+            console.log('🎵 Playing combined audio from', chunks.length, 'chunks');
+            
+            // Stop any current audio first
+            stopCurrentAudio();
+            
+            try {
+                // Combine all base64 chunks
+                let combinedBase64 = '';
+                chunks.forEach(chunk => {
+                    combinedBase64 += chunk;
+                });
+                
+                // Decode combined base64 audio
+                const binaryString = atob(combinedBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                const audioBlob = new Blob([bytes], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                currentAudioElement = new Audio();
+                
+                currentAudioElement.oncanplaythrough = function() {
+                    console.log('🔊 Combined audio ready to play');
+                    currentAudioElement.play().catch(error => {
+                        console.error('❌ Combined audio play error:', error);
+                        isPlayingAudio = false;
+                    });
+                };
+                
+                currentAudioElement.onplay = function() {
+                    console.log('🔊 Combined audio playback started');
+                    isPlayingAudio = true;
+                };
+                
+                currentAudioElement.onended = function() {
+                    console.log('🔊 Combined audio playback ended');
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudioElement = null;
+                    isPlayingAudio = false;
+                };
+                
+                currentAudioElement.onerror = function(error) {
+                    console.error('❌ Combined audio error:', error);
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudioElement = null;
+                    isPlayingAudio = false;
+                };
+                
+                currentAudioElement.src = audioUrl;
+                currentAudioElement.load();
+                
+            } catch (error) {
+                console.error('❌ Error playing combined audio:', error);
+                isPlayingAudio = false;
+            }
+        }
+
+        function stopCurrentAudio() {
             // Stop HTML Audio element
             if (currentAudioElement) {
                 currentAudioElement.pause();
@@ -390,73 +482,6 @@
             console.log('🔇 All audio stopped');
         }
 
-        function playAudioSingle(audioData) {
-            if (isPlayingAudio) {
-                console.log('🔇 Stopping previous audio before playing new one');
-                stopCurrentAudio();
-            }
-
-            try {
-                console.log('🔊 Processing single audio stream...');
-                
-                // Decode base64 audio
-                const binaryString = atob(audioData);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                
-                const audioBlob = new Blob([bytes], { type: 'audio/wav' });
-                
-                // Use HTML Audio for simplicity and reliability
-                playWithHTMLAudioSingle(audioBlob);
-                
-            } catch (error) {
-                console.error('❌ Error processing audio:', error);
-            }
-        }
-
-        function playWithHTMLAudioSingle(audioBlob) {
-            try {
-                const audioUrl = URL.createObjectURL(audioBlob);
-                currentAudioElement = new Audio();
-                
-                currentAudioElement.oncanplaythrough = function() {
-                    console.log('🔊 Audio ready to play');
-                    currentAudioElement.play().catch(error => {
-                        console.error('❌ HTML Audio play error:', error);
-                        isPlayingAudio = false;
-                    });
-                };
-                
-                currentAudioElement.onplay = function() {
-                    console.log('🔊 Single audio playback started');
-                    isPlayingAudio = true;
-                };
-                
-                currentAudioElement.onended = function() {
-                    console.log('🔊 Single audio playback ended');
-                    URL.revokeObjectURL(audioUrl);
-                    currentAudioElement = null;
-                    isPlayingAudio = false;
-                };
-                
-                currentAudioElement.onerror = function(error) {
-                    console.error('❌ HTML Audio error:', error);
-                    URL.revokeObjectURL(audioUrl);
-                    currentAudioElement = null;
-                    isPlayingAudio = false;
-                };
-                
-                currentAudioElement.src = audioUrl;
-                currentAudioElement.load();
-                
-            } catch (error) {
-                console.error('❌ HTML Audio setup error:', error);
-                isPlayingAudio = false;
-            }
-        }
-
         function stopConversation() {
             console.log('🔚 Stopping conversation');
             
@@ -467,6 +492,8 @@
             }
             
             stopCurrentAudio();
+            isCollectingAudio = false;
+            audioChunks = [];
             
             if (socket) {
                 socket.close();
