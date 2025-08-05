@@ -236,8 +236,8 @@
                 configId: null, // Will be set after creating EVI config
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
                 name: "The Empathetic Friend",
-                responseState: 'listening', // NEW: Track response state
-                hasPlayedResponse: false // NEW: Track if response was already played
+                responseState: 'listening', // Track response state
+                hasPlayedResponse: false // Track if response was already played
             },
             practical: {
                 socket: null,
@@ -253,8 +253,8 @@
                 configId: null, // Will be set after creating EVI config
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
                 name: "The Practical Coach",
-                responseState: 'listening', // NEW: Track response state
-                hasPlayedResponse: false // NEW: Track if response was already played
+                responseState: 'listening', // Track response state
+                hasPlayedResponse: false // Track if response was already played
             },
             wise: {
                 socket: null,
@@ -270,14 +270,14 @@
                 configId: null, // Will be set after creating EVI config
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
                 name: "The Wise Mentor",
-                responseState: 'listening', // NEW: Track response state
-                hasPlayedResponse: false // NEW: Track if response was already played
+                responseState: 'listening', // Track response state
+                hasPlayedResponse: false // Track if response was already played
             }
         };
 
         // Initialize
         window.onload = function() {
-            console.log('🚀 Initializing Final No Loop Version...');
+            console.log('🚀 Initializing WebSocket Fixed Version...');
             console.log('🆔 Session ID:', sessionId);
             initializeAudioContext();
             getApiKeyAndCreateConfigs();
@@ -475,7 +475,7 @@
                         updatePersonalityStatus(personalityType, 'Processing...');
                         updatePersonalitySun(personalityType, 'processing');
                         
-                        // NEW: Reset response state when user speaks
+                        // Reset response state when user speaks
                         personality.responseState = 'processing';
                         personality.hasPlayedResponse = false;
                         personality.audioBuffer = []; // Clear any old audio
@@ -486,7 +486,7 @@
                         updatePersonalityStatus(personalityType, 'Speaking...');
                         updatePersonalitySun(personalityType, 'speaking');
                         
-                        // NEW: Set response state to speaking
+                        // Set response state to speaking
                         personality.responseState = 'speaking';
                         
                     } else if (data.type === 'audio_output') {
@@ -527,6 +527,18 @@
                     updatePersonalityButton(personalityType, 'Start Conversation', false);
                     updatePersonalitySun(personalityType, '');
                     
+                    // Clean up recorder when socket closes
+                    if (personality.recorder) {
+                        try {
+                            personality.recorder.stop();
+                        } catch (e) {
+                            // Recorder might already be stopped
+                        }
+                        personality.recorder = null;
+                    }
+                    
+                    personality.isConnected = false;
+                    
                     if (currentActivePersonality === personalityType) {
                         currentActivePersonality = null;
                         updatePersonalityCardStates();
@@ -554,16 +566,30 @@
                 });
 
                 personality.recorder.ondataavailable = function(event) {
-                    // Only send audio if this personality is currently active
-                    if (currentActivePersonality === personalityType && event.data.size > 0) {
+                    // NEW: Check WebSocket state before sending
+                    if (currentActivePersonality === personalityType && 
+                        event.data.size > 0 && 
+                        personality.socket && 
+                        personality.socket.readyState === WebSocket.OPEN) {
+                        
                         const reader = new FileReader();
                         reader.onload = function() {
-                            const base64Audio = reader.result.split(',')[1];
-                            const audioMessage = {
-                                type: 'audio_input',
-                                data: base64Audio
-                            };
-                            personality.socket.send(JSON.stringify(audioMessage));
+                            // Double-check WebSocket state again before sending
+                            if (personality.socket && personality.socket.readyState === WebSocket.OPEN) {
+                                const base64Audio = reader.result.split(',')[1];
+                                const audioMessage = {
+                                    type: 'audio_input',
+                                    data: base64Audio
+                                };
+                                
+                                try {
+                                    personality.socket.send(JSON.stringify(audioMessage));
+                                } catch (error) {
+                                    console.error(`❌ ${personalityType} failed to send audio:`, error);
+                                }
+                            } else {
+                                console.log(`🔇 ${personalityType} WebSocket not ready, skipping audio chunk`);
+                            }
                         };
                         reader.readAsDataURL(event.data);
                     }
@@ -573,7 +599,7 @@
                 personality.isConnected = true;
                 currentActivePersonality = personalityType;
                 
-                // NEW: Initialize response state
+                // Initialize response state
                 personality.responseState = 'listening';
                 personality.hasPlayedResponse = false;
                 
@@ -594,13 +620,23 @@
         function stopPersonalityConversation(personalityType) {
             const personality = personalities[personalityType];
             
+            // Stop recorder first
             if (personality.recorder) {
-                personality.recorder.stop();
+                try {
+                    personality.recorder.stop();
+                } catch (error) {
+                    console.log(`⚠️ ${personalityType} recorder already stopped`);
+                }
                 personality.recorder = null;
             }
             
+            // Close WebSocket
             if (personality.socket) {
-                personality.socket.close();
+                try {
+                    personality.socket.close();
+                } catch (error) {
+                    console.log(`⚠️ ${personalityType} WebSocket already closed`);
+                }
                 personality.socket = null;
             }
             
@@ -609,20 +645,20 @@
             
             personality.isConnected = false;
             personality.audioBuffer = [];
-            personality.responseState = 'listening'; // NEW: Reset response state
-            personality.hasPlayedResponse = false; // NEW: Reset played flag
+            personality.responseState = 'listening';
+            personality.hasPlayedResponse = false;
             
             updatePersonalityStatus(personalityType, `Ready (${personality.voice} voice)`);
             updatePersonalityButton(personalityType, 'Start Conversation', false);
             updatePersonalitySun(personalityType, '');
             
-            console.log(`🛑 ${personalityType} conversation stopped`);
+            console.log(`🛑 ${personalityType} conversation stopped cleanly`);
         }
 
         function bufferAudioChunk(personalityType, audioData) {
             const personality = personalities[personalityType];
             
-            // NEW: Only buffer if we haven't played this response yet
+            // Only buffer if we haven't played this response yet
             if (personality.hasPlayedResponse) {
                 console.log(`⏭️ ${personalityType} skipping audio chunk - response already played`);
                 return;
@@ -653,7 +689,7 @@
         function flushAudioBuffer(personalityType) {
             const personality = personalities[personalityType];
             
-            // NEW: Only flush if we haven't played this response yet
+            // Only flush if we haven't played this response yet
             if (personality.hasPlayedResponse) {
                 console.log(`⏭️ ${personalityType} skipping flush - response already played`);
                 return;
@@ -673,7 +709,7 @@
         async function playBufferedAudio(personalityType) {
             const personality = personalities[personalityType];
             
-            // NEW: Prevent playing if already played this response
+            // Prevent playing if already played this response
             if (personality.hasPlayedResponse) {
                 console.log(`⏭️ ${personalityType} skipping playback - response already played`);
                 return;
@@ -681,7 +717,7 @@
             
             if (personality.audioBuffer.length === 0) return;
             
-            // NEW: Mark as played immediately to prevent loops
+            // Mark as played immediately to prevent loops
             personality.hasPlayedResponse = true;
             console.log(`🎵 ${personalityType} playing buffered audio from ${personality.audioBuffer.length} chunks (ONCE ONLY)`);
             
@@ -786,8 +822,8 @@
             
             // Reset next start time and response state
             personality.nextStartTime = 0;
-            personality.responseState = 'listening'; // NEW: Reset response state
-            personality.hasPlayedResponse = false; // NEW: Reset played flag
+            personality.responseState = 'listening';
+            personality.hasPlayedResponse = false;
             
             console.log(`🔇 ${personalityType} audio stopped and state reset`);
         }
@@ -860,7 +896,6 @@
     </script>
 </body>
 </html>
-
 
 
 
