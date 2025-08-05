@@ -155,22 +155,20 @@
         let isPlayingAudio = false;
         let audioChunks = [];
         let isCollectingAudio = false;
+        let audioTimeout = null;
 
         const personalities = {
             empathetic: {
                 prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
-                name: "The Empathetic Friend",
-                voice_id: "248be419-c632-4f23-adf1-5324ed7dbf1d" // Warm, caring female voice
+                name: "The Empathetic Friend"
             },
             practical: {
                 prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
-                name: "The Practical Coach",
-                voice_id: "5345cf08-6f37-424d-a5d0-468a04e68c51" // Confident, direct voice
+                name: "The Practical Coach"
             },
             wise: {
                 prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
-                name: "The Wise Mentor",
-                voice_id: "694f9f93-7e68-4c8b-8a95-7e3c1b3c7c5e" // Calm, thoughtful voice
+                name: "The Wise Mentor"
             }
         };
 
@@ -223,23 +221,19 @@
             
             const personalityInfo = personalities[personality];
             updateStatus(`Personality set to: ${personalityInfo.name}`);
-            console.log('🎭 Personality changed to:', personalityInfo.name, 'Voice ID:', personalityInfo.voice_id);
+            console.log('🎭 Personality changed to:', personalityInfo.name);
             
-            // If conversation is active, send new personality prompt with specific voice
+            // If conversation is active, send new personality prompt
             if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                console.log('🔄 Updating personality and voice during active conversation');
+                console.log('🔄 Updating personality during active conversation');
                 const systemMessage = {
                     type: 'session_settings',
                     system_prompt: personalityInfo.prompt + " The user's name is User. You just switched personalities - acknowledge this change briefly and continue the conversation in your new personality style.",
-                    voice: {
-                        provider: "hume_ai",
-                        voice_id: personalityInfo.voice_id
-                    },
                     language: 'en'
                 };
                 socket.send(JSON.stringify(systemMessage));
                 
-                addToTranscript(`System: Switched to ${personalityInfo.name} (Voice: ${personalityInfo.voice_id})`);
+                addToTranscript(`System: Switched to ${personalityInfo.name}`);
                 updateStatus(`Now speaking as: ${personalityInfo.name}`);
             }
         }
@@ -262,20 +256,16 @@
                     console.log('✅ Connected to Hume EVI');
                     updateStatus('Connected! Starting microphone...');
                     
-                    // Send initial personality prompt with specific voice
+                    // Send initial personality prompt
                     const personalityInfo = personalities[currentPersonality];
                     const systemMessage = {
                         type: 'session_settings',
                         system_prompt: personalityInfo.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personalityInfo.name + ".",
-                        voice: {
-                            provider: "hume_ai",
-                            voice_id: personalityInfo.voice_id
-                        },
                         language: 'en'
                     };
                     socket.send(JSON.stringify(systemMessage));
                     
-                    console.log('🎭 Set personality:', personalityInfo.name, 'with voice:', personalityInfo.voice_id);
+                    console.log('🎭 Set personality:', personalityInfo.name);
                     
                     startMicrophone();
                 };
@@ -300,6 +290,13 @@
                         isCollectingAudio = true;
                         console.log('🎵 Started collecting audio chunks for response');
                         
+                        // Set timeout to play audio if assistant_end doesn't come
+                        if (audioTimeout) clearTimeout(audioTimeout);
+                        audioTimeout = setTimeout(() => {
+                            console.log('⏰ Timeout - playing collected audio chunks');
+                            playCollectedAudio();
+                        }, 3000); // 3 second timeout
+                        
                     } else if (data.type === 'audio_output') {
                         console.log('🔊 Received audio chunk');
                         
@@ -307,26 +304,27 @@
                             // Collect this audio chunk
                             audioChunks.push(data.data);
                             console.log('📦 Collected audio chunk', audioChunks.length);
+                            
+                            // If we have enough chunks, play immediately
+                            if (audioChunks.length >= 3) {
+                                console.log('🎵 Have enough chunks - playing now');
+                                playCollectedAudio();
+                            }
+                        } else {
+                            // Play individual chunk immediately if not collecting
+                            console.log('🔊 Playing individual audio chunk');
+                            playAudioChunk(data.data);
                         }
                         
                     } else if (data.type === 'assistant_end') {
-                        console.log('🎵 Assistant finished - combining', audioChunks.length, 'audio chunks');
-                        
-                        // Stop collecting and play combined audio
-                        isCollectingAudio = false;
-                        
-                        if (audioChunks.length > 0) {
-                            playCombinedAudio(audioChunks);
-                            audioChunks = [];
-                        }
-                        
-                        updateStatus('Listening... (speak now)');
-                        updateSunState('listening');
+                        console.log('🎵 Assistant finished - playing collected audio');
+                        playCollectedAudio();
                         
                     } else if (data.type === 'user_interruption') {
                         // User interrupted - stop collecting and playing audio
                         isCollectingAudio = false;
                         audioChunks = [];
+                        if (audioTimeout) clearTimeout(audioTimeout);
                         stopCurrentAudio();
                         updateStatus('Listening... (continue speaking)');
                         updateSunState('listening');
@@ -400,23 +398,44 @@
                 });
         }
 
-        function playCombinedAudio(chunks) {
-            if (chunks.length === 0) return;
+        function playCollectedAudio() {
+            if (audioChunks.length === 0) {
+                console.log('⚠️ No audio chunks to play');
+                updateStatus('Listening... (speak now)');
+                updateSunState('listening');
+                return;
+            }
             
-            console.log('🎵 Playing combined audio from', chunks.length, 'chunks');
+            console.log('🎵 Playing collected audio from', audioChunks.length, 'chunks');
+            
+            // Stop collecting
+            isCollectingAudio = false;
+            if (audioTimeout) clearTimeout(audioTimeout);
             
             // Stop any current audio first
             stopCurrentAudio();
             
             try {
-                // Combine all base64 chunks
-                let combinedBase64 = '';
-                chunks.forEach(chunk => {
-                    combinedBase64 += chunk;
-                });
+                // Use the first chunk for now (simplest approach)
+                const audioData = audioChunks[0];
+                playAudioChunk(audioData);
                 
-                // Decode combined base64 audio
-                const binaryString = atob(combinedBase64);
+                // Clear chunks
+                audioChunks = [];
+                
+            } catch (error) {
+                console.error('❌ Error playing collected audio:', error);
+                updateStatus('Listening... (speak now)');
+                updateSunState('listening');
+            }
+        }
+
+        function playAudioChunk(audioData) {
+            try {
+                console.log('🔊 Playing audio chunk...');
+                
+                // Decode base64 audio
+                const binaryString = atob(audioData);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
@@ -428,38 +447,45 @@
                 currentAudioElement = new Audio();
                 
                 currentAudioElement.oncanplaythrough = function() {
-                    console.log('🔊 Combined audio ready to play');
+                    console.log('🔊 Audio ready to play');
                     currentAudioElement.play().catch(error => {
-                        console.error('❌ Combined audio play error:', error);
+                        console.error('❌ Audio play error:', error);
                         isPlayingAudio = false;
+                        updateStatus('Listening... (speak now)');
+                        updateSunState('listening');
                     });
                 };
                 
                 currentAudioElement.onplay = function() {
-                    console.log('🔊 Combined audio playback started');
+                    console.log('🔊 Audio playback started');
                     isPlayingAudio = true;
                 };
                 
                 currentAudioElement.onended = function() {
-                    console.log('🔊 Combined audio playback ended');
+                    console.log('🔊 Audio playback ended');
                     URL.revokeObjectURL(audioUrl);
                     currentAudioElement = null;
                     isPlayingAudio = false;
+                    updateStatus('Listening... (speak now)');
+                    updateSunState('listening');
                 };
                 
                 currentAudioElement.onerror = function(error) {
-                    console.error('❌ Combined audio error:', error);
+                    console.error('❌ Audio error:', error);
                     URL.revokeObjectURL(audioUrl);
                     currentAudioElement = null;
                     isPlayingAudio = false;
+                    updateStatus('Listening... (speak now)');
+                    updateSunState('listening');
                 };
                 
                 currentAudioElement.src = audioUrl;
                 currentAudioElement.load();
                 
             } catch (error) {
-                console.error('❌ Error playing combined audio:', error);
-                isPlayingAudio = false;
+                console.error('❌ Error playing audio chunk:', error);
+                updateStatus('Listening... (speak now)');
+                updateSunState('listening');
             }
         }
 
@@ -494,6 +520,7 @@
             stopCurrentAudio();
             isCollectingAudio = false;
             audioChunks = [];
+            if (audioTimeout) clearTimeout(audioTimeout);
             
             if (socket) {
                 socket.close();
