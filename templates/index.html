@@ -151,13 +151,23 @@
         let currentPersonality = 'empathetic';
         let apiKey = null;
         let audioContext = null;
-        let audioQueue = [];
+        let currentAudioSource = null;
+        let currentAudioElement = null;
         let isPlayingAudio = false;
 
         const personalities = {
-            empathetic: "You are a warm, empathetic AI friend. Listen actively and provide emotional support. Keep responses conversational and under 2 sentences.",
-            practical: "You are a practical, solution-focused AI coach. Provide direct, actionable advice. Keep responses brief and under 2 sentences.",
-            wise: "You are a wise, thoughtful AI mentor. Guide users through reflection. Keep responses thoughtful but under 2 sentences."
+            empathetic: {
+                prompt: "You are a warm, empathetic AI friend named 'The Empathetic Friend'. Listen actively, validate emotions, and provide emotional support. Be understanding, compassionate, and caring. Keep responses conversational and under 2 sentences.",
+                name: "The Empathetic Friend"
+            },
+            practical: {
+                prompt: "You are a practical, solution-focused AI coach named 'The Practical Coach'. Provide direct, actionable advice and help users solve problems efficiently. Be encouraging but concise and results-oriented. Keep responses brief and under 2 sentences.",
+                name: "The Practical Coach"
+            },
+            wise: {
+                prompt: "You are a wise, thoughtful AI mentor named 'The Wise Mentor'. Guide users through reflection and deeper thinking. Ask meaningful questions and share insights. Be thoughtful and philosophical but keep responses under 2 sentences.",
+                name: "The Wise Mentor"
+            }
         };
 
         // Initialize
@@ -204,8 +214,23 @@
             });
             event.target.classList.add('active');
             
-            updateStatus(`Personality set to: ${personality}`);
-            console.log('🎭 Personality changed to:', personality);
+            const personalityInfo = personalities[personality];
+            updateStatus(`Personality set to: ${personalityInfo.name}`);
+            console.log('🎭 Personality changed to:', personalityInfo.name);
+            
+            // If conversation is active, send new personality prompt immediately
+            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                console.log('🔄 Updating personality during active conversation');
+                const systemMessage = {
+                    type: 'session_settings',
+                    system_prompt: personalityInfo.prompt + " The user's name is User. You just switched personalities - acknowledge this change briefly and continue the conversation in your new personality style.",
+                    language: 'en'
+                };
+                socket.send(JSON.stringify(systemMessage));
+                
+                addToTranscript(`System: Switched to ${personalityInfo.name}`);
+                updateStatus(`Now speaking as: ${personalityInfo.name}`);
+            }
         }
 
         function startConversation() {
@@ -226,10 +251,11 @@
                     console.log('✅ Connected to Hume EVI');
                     updateStatus('Connected! Starting microphone...');
                     
-                    // Send system prompt
+                    // Send initial personality prompt
+                    const personalityInfo = personalities[currentPersonality];
                     const systemMessage = {
                         type: 'session_settings',
-                        system_prompt: personalities[currentPersonality] + " The user's name is User. Greet them warmly.",
+                        system_prompt: personalityInfo.prompt + " The user's name is User. Greet them warmly and introduce yourself as " + personalityInfo.name + ".",
                         language: 'en'
                     };
                     socket.send(JSON.stringify(systemMessage));
@@ -253,12 +279,15 @@
                         updateSunState('speaking');
                     } else if (data.type === 'audio_output') {
                         console.log('🔊 Received audio output');
-                        playAudioImproved(data.data);
+                        // STOP ANY EXISTING AUDIO FIRST
+                        stopCurrentAudio();
+                        // THEN play new audio
+                        playAudioSingle(data.data);
                     } else if (data.type === 'assistant_end') {
                         updateStatus('Listening... (speak now)');
                         updateSunState('listening');
                     } else if (data.type === 'user_interruption') {
-                        stopAllAudio();
+                        stopCurrentAudio();
                         updateStatus('Listening... (continue speaking)');
                         updateSunState('listening');
                     }
@@ -331,9 +360,44 @@
                 });
         }
 
-        function playAudioImproved(audioData) {
+        function stopCurrentAudio() {
+            // Stop Web Audio API source
+            if (currentAudioSource) {
+                try {
+                    currentAudioSource.stop();
+                    currentAudioSource.disconnect();
+                } catch (error) {
+                    console.log('Audio source already stopped');
+                }
+                currentAudioSource = null;
+            }
+            
+            // Stop HTML Audio element
+            if (currentAudioElement) {
+                currentAudioElement.pause();
+                currentAudioElement.currentTime = 0;
+                currentAudioElement = null;
+            }
+            
+            // Stop all other audio elements
+            const audioElements = document.querySelectorAll('audio');
+            audioElements.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            
+            isPlayingAudio = false;
+            console.log('🔇 All audio stopped');
+        }
+
+        function playAudioSingle(audioData) {
+            if (isPlayingAudio) {
+                console.log('🔇 Stopping previous audio before playing new one');
+                stopCurrentAudio();
+            }
+
             try {
-                console.log('🔊 Processing audio data...');
+                console.log('🔊 Processing single audio stream...');
                 
                 // Decode base64 audio
                 const binaryString = atob(audioData);
@@ -344,113 +408,53 @@
                 
                 const audioBlob = new Blob([bytes], { type: 'audio/wav' });
                 
-                // Use Web Audio API for better compatibility
-                if (audioContext) {
-                    playWithWebAudio(audioBlob);
-                } else {
-                    playWithHTMLAudio(audioBlob);
-                }
+                // Use HTML Audio for simplicity and reliability
+                playWithHTMLAudioSingle(audioBlob);
                 
             } catch (error) {
                 console.error('❌ Error processing audio:', error);
-                // Fallback to simple audio element
-                playWithHTMLAudio(audioData, true);
             }
         }
 
-        function playWithWebAudio(audioBlob) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                audioContext.decodeAudioData(reader.result)
-                    .then(function(audioBuffer) {
-                        const source = audioContext.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(audioContext.destination);
-                        
-                        source.onended = function() {
-                            console.log('🔊 Audio playback ended');
-                            isPlayingAudio = false;
-                        };
-                        
-                        if (audioContext.state === 'suspended') {
-                            audioContext.resume().then(() => {
-                                source.start();
-                                isPlayingAudio = true;
-                                console.log('🔊 Audio playback started (Web Audio)');
-                            });
-                        } else {
-                            source.start();
-                            isPlayingAudio = true;
-                            console.log('🔊 Audio playback started (Web Audio)');
-                        }
-                    })
-                    .catch(function(error) {
-                        console.error('❌ Web Audio decode error:', error);
-                        playWithHTMLAudio(audioBlob);
-                    });
-            };
-            reader.readAsArrayBuffer(audioBlob);
-        }
-
-        function playWithHTMLAudio(audioBlob, isBase64 = false) {
+        function playWithHTMLAudioSingle(audioBlob) {
             try {
-                let audioUrl;
+                const audioUrl = URL.createObjectURL(audioBlob);
+                currentAudioElement = new Audio();
                 
-                if (isBase64) {
-                    // Direct base64 data
-                    audioUrl = 'data:audio/wav;base64,' + audioBlob;
-                } else {
-                    // Blob URL
-                    audioUrl = URL.createObjectURL(audioBlob);
-                }
-                
-                const audio = new Audio();
-                
-                audio.oncanplaythrough = function() {
+                currentAudioElement.oncanplaythrough = function() {
                     console.log('🔊 Audio ready to play');
-                    audio.play().catch(error => {
+                    currentAudioElement.play().catch(error => {
                         console.error('❌ HTML Audio play error:', error);
+                        isPlayingAudio = false;
                     });
                 };
                 
-                audio.onplay = function() {
-                    console.log('🔊 Audio playback started (HTML Audio)');
+                currentAudioElement.onplay = function() {
+                    console.log('🔊 Single audio playback started');
                     isPlayingAudio = true;
                 };
                 
-                audio.onended = function() {
-                    console.log('🔊 Audio playback ended');
-                    if (!isBase64) {
-                        URL.revokeObjectURL(audioUrl);
-                    }
+                currentAudioElement.onended = function() {
+                    console.log('🔊 Single audio playback ended');
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudioElement = null;
                     isPlayingAudio = false;
                 };
                 
-                audio.onerror = function(error) {
+                currentAudioElement.onerror = function(error) {
                     console.error('❌ HTML Audio error:', error);
-                    if (!isBase64) {
-                        URL.revokeObjectURL(audioUrl);
-                    }
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudioElement = null;
                     isPlayingAudio = false;
                 };
                 
-                audio.src = audioUrl;
-                audio.load();
+                currentAudioElement.src = audioUrl;
+                currentAudioElement.load();
                 
             } catch (error) {
                 console.error('❌ HTML Audio setup error:', error);
+                isPlayingAudio = false;
             }
-        }
-
-        function stopAllAudio() {
-            // Stop any playing audio
-            const audioElements = document.querySelectorAll('audio');
-            audioElements.forEach(audio => {
-                audio.pause();
-                audio.currentTime = 0;
-            });
-            isPlayingAudio = false;
-            console.log('🔇 All audio stopped');
         }
 
         function stopConversation() {
@@ -462,7 +466,7 @@
                 recorder = null;
             }
             
-            stopAllAudio();
+            stopCurrentAudio();
             
             if (socket) {
                 socket.close();
@@ -513,5 +517,6 @@
     </script>
 </body>
 </html>
+
 
 
